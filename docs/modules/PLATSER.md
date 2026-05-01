@@ -245,31 +245,102 @@ curl -s -X DELETE "${BASE}/place/<id>?apikey=${APIKEY}&deletedby=rasmus"
 ## Intern admin-väg (CMS reverse-proxy)
 
 Förutom den publika gatewayen finns ett **internt admin-API** på samma
-domän som platsadministrationen (Content Studio):
-
-- **Bas-URL:** `https://admin.svenskakyrkan.se/webapi/api-v2/place/{id}`
-- **Auth:** sessionscookie `CS_UserSessionId` (124 tecken opaque,
-  ASP.NET-session). Ingen API-nyckel.
-- **Method:** `PUT` med **full replace** (hela Place-objektet, inte
-  bara delta).
-- **Header:** `Prefer: return=representation` ger uppdaterat objekt i
-  svar (status 200).
-- **Behörighet:** styrs av AD-grupper kopplade till SSO-användaren -
-  cookien ger bara åtkomst till platser användaren äger.
-- **CORS:** låst till `https://admin.svenskakyrkan.se` - browser
-  cross-origin blockas, men server-till-server (vår dev-proxy)
-  fungerar.
-- **Timeout:** 90 minuter inaktivitet, ingen automatisk refresh.
-  Ny cookie kräver ny SSO-inloggning i browser.
-
-Detta är vägen som CMS:et själv använder för att spara öppettider när
-du är inloggad. Det är **inte** en officiellt dokumenterad endpoint -
-upptäcktes via reverse-engineering, se
+domän som platsadministrationen (Content Studio). Det är vägen som
+CMS:et själv använder. **Inte** officiellt dokumenterad - upptäcktes
+via reverse-engineering, se
 [`docs-from-claude-code-chrome/platser-edit-flow-2026-05-01.md`](../../docs-from-claude-code-chrome/platser-edit-flow-2026-05-01.md).
+End-to-end-verifierad mot Härnösands domkyrka 2026-05-01.
 
-`scripts/serve.py` i denna repo har en `/api/admin/`-proxy som lägger
-till cookien från `CS_SESSION` i `.env` server-sidigt - se
-[`platser-edit-app/`](../../platser-edit-app/).
+### Endpoints
+
+| Path | Method | Beskrivning |
+|---|---|---|
+| `https://admin.svenskakyrkan.se/webapi/api-v2/place/{id}` | GET | Hämta plats |
+| `https://admin.svenskakyrkan.se/webapi/api-v2/place/{id}` | PUT | **Full replace** - hela Place-objektet, inte delta |
+| `https://admin.svenskakyrkan.se/webapi/api-v2/place/{id}` | PATCH/DELETE | Antas finnas men inte testat |
+| `https://admin.svenskakyrkan.se/webapi/api-v3/...` | GET (SSE) | Realtids-events via `Content-Type: text/event-stream` (api-v**3**, inte v2) |
+| `https://admin.svenskakyrkan.se/churchcontext` | GET | Returnerar inloggad users config + session-keepalive |
+| `https://admin.svenskakyrkan.se/webapi/api-v2/Account/Login` | GET | SAML/WS-Federation-redirect (returneras vid 401) |
+
+### Auth - cookie-baserad
+
+Inga API-nycklar. Auth är **cookie-baserad** med flera samverkande
+cookies. Alla måste skickas i `Cookie:`-header för att flödet ska
+fungera:
+
+| Cookie | Längd | HttpOnly | Roll |
+|---|---|---|---|
+| `.Prod2.AuthCookie` | varierar | ✓ | **Kritisk auth-cookie**. ASP.NET Core auth-ticket. Utan den → 401 + redirect till /Account/Login |
+| `ASP.NET_SessionId` | ~24 tecken | ✓ | Klassisk ASP.NET-sessionscookie |
+| `CS_UserSessionId` | 124 tecken | nej | Applikations-session (komplement, räcker inte själv) |
+| `TS0174741b` | 202 tecken | nej | F5 BIG-IP / TrafficShield WAF-cookie. **Roteras vid varje anrop** (anti-replay) |
+| `AdminWebId` | 6 siffror | nej | Användar-ID |
+
+`ai_user` och `ai_session` (Azure Application Insights) behöver inte
+skickas - tracking only.
+
+### Headers vid skrivande operationer
+
+```
+Cookie: .Prod2.AuthCookie=...; ASP.NET_SessionId=...; CS_UserSessionId=...; TS0174741b=...; AdminWebId=...
+Origin: https://admin.svenskakyrkan.se
+Referer: https://admin.svenskakyrkan.se/
+X-Requested-With: XMLHttpRequest
+Content-Type: application/json
+Prefer: return=representation
+```
+
+`X-Requested-With` är viktig - utan den avvisar ASP.NET ofta requests
+med generisk 401 även om cookies är giltiga.
+
+### Sessionsbeteende
+
+- **Timeout:** 90 minuter **inaktivitet** (sliding). Aktivitet förlänger
+  timern.
+- **Sliding expiration utan rotation:** `.Prod2.AuthCookie`,
+  `ASP.NET_SessionId`, `CS_UserSessionId` har samma värde under hela
+  sessionens livslängd. Servern förlänger giltighet *internt* utan att
+  utfärda nya `Set-Cookie`-headers.
+- **WAF-rotation:** `TS0174741b` roteras vid **varje anrop** (verifierat
+  i dev.log) och måste skickas tillbaka i nästa anrop. F5 BIG-IP
+  anti-replay-skydd. Klient som inte uppdaterar TS-token kan börja
+  få avvisade requests.
+- **Ingen programmatisk refresh:** ny cookie kräver ny SSO-inloggning
+  via browser. `/Account/Login` redirectar till SAML/WS-Federation-IdP
+  (ADFS/Azure AD) och kräver browser-interaktion.
+
+### CORS
+
+`Access-Control-Allow-Origin: https://admin.svenskakyrkan.se` +
+`Vary: Origin`. Browser-clients på andra origins blockeras. **Server-
+till-server** (t.ex. vår dev-proxy) bryr sig inte om CORS och kan
+göra anrop fritt - så länge cookies + Origin/Referer-headers skickas.
+
+### Behörighet
+
+Styrs av AD-gruppmedlemskap som bestäms vid SSO-inloggning. Cookien
+ger bara skriv-access till platser där användaren är medlem av rätt
+KAP-/Ext-grupp. PUT mot en plats utanför scope ger 403.
+
+### Implementation i denna repo
+
+`scripts/serve.py` har en `/api/admin/`-proxy:
+
+- Tar cookie-header från env-var `CS_SESSION` eller via runtime-endpoint
+  `POST /api/admin/_session`.
+- Stödjer GET, PATCH, PUT, DELETE - server-till-server, kringgår CORS.
+- Sniffar `Set-Cookie` i upstream-svar via `apply_set_cookies()` och
+  uppdaterar lagrad cookie-header (täcker TS-rotation).
+- Bakgrundstråd `keep_session_alive()` pingar `/churchcontext` var
+  30:e minut (konfigurerbart via `ADMIN_KEEPALIVE_MIN`) för att hålla
+  sliding-timern levande.
+- Diagnostik-endpoint `GET /api/admin/_session` exponerar `set`,
+  `length`, `preview`, `last_pinged_at`, `last_ping_status`,
+  `last_rotated_at`.
+
+`platser-edit-app/` bygger på proxyn med ett UI för att klistra in
+cookies från DevTools (HttpOnly cookies syns inte via JS), pinga
+manuellt och redigera öppettider via PUT.
 
 ## Skriv-operationer (PATCH/PUT/DELETE)
 

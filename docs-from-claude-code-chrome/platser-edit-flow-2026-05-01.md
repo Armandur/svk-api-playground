@@ -41,6 +41,35 @@ CS_UserSessionId=...; TS0174741b=...; AdminWebId=...`. `serve.py`
 accepterar detta format i `CS_SESSION`-env / `POST
 /api/admin/_session`.
 
+### Ytterligare empiriska fynd (post-implementation)
+
+Efter live-tester med utförlig logging av admin-svar:
+
+- **WAF-cookie roteras vid varje anrop:** `TS0174741b` får ett nytt
+  värde i `Set-Cookie` på varje admin-respons. Sannolikt anti-replay-
+  skydd från F5 BIG-IP / TrafficShield WAF. Klienten **måste** skicka
+  tillbaka senaste värdet i nästa anrop - vår proxy gör det via
+  `apply_set_cookies()`-mergen.
+
+- **Auth-cookies roteras *inte*:** `.Prod2.AuthCookie`, `ASP.NET_SessionId`,
+  `CS_UserSessionId` har samma värde genom hela sessionens livstid.
+  ASP.NET Core sliding expiration förlänger session-state intern
+  utan att utfärda nya `Set-Cookie`. Det innebär att vår
+  `keep_session_alive()`-tråd inte behöver "fånga" en ny cookie -
+  det räcker att aktivitet sker så att intern timer reset:as.
+
+- **`X-Requested-With: XMLHttpRequest`** behövs för admin-anrop,
+  annars avvisar ASP.NET ofta med generisk 401 även med giltiga
+  cookies.
+
+- **api-v3 finns** för Server-Sent Events / realtidsfunktioner
+  (`Content-Type: text/event-stream`). Inte testat men sett i
+  `X-Proxy-Destination: admin/api-v3` på SSE-strömmar från CMS-fliken.
+
+- **Origin/Referer-validering:** servern verkar acceptera
+  `Referer: https://admin.svenskakyrkan.se/` (rotpath), inte krav på
+  specifik path som `/admin/platser/redigera/{id}`.
+
 ---
 
 ## Sektion 1: API-nyckel-/token-extraktion
