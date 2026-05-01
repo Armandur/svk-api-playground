@@ -87,6 +87,31 @@ tjänst får ny info (t.ex. när vi har en API-nyckel och kan testa
 fler endpoints), uppdatera respektive modul-fil och **inte** API.md
 på rotnivån (den är borttagen, all info ligger i modules/).
 
+## Pilot-projekt
+
+Pilot-projekt mot API:erna lever som **undermappar på `main`**, inte på
+egna branches. Anledning: alla projekt läser samma `docs/modules/` -
+branch-modellen skulle tvinga oss att rebase varje gång dokumentationen
+växer. Lyft ut till egen branch eller eget repo först om ett projekt
+växer till något som behöver egen deployment-cykel.
+
+Konvention per projekt:
+
+- Egen undermapp `<projektnamn>/` på roten.
+- Eget `README.md` med snabbstart.
+- Eget `CLAUDE.md` med stack, konfig, beroenden mot SVK-API:erna.
+- Refera till modul-filerna i `docs/modules/` istället för att duplicera
+  API-dokumentation lokalt.
+- Eget `.gitignore` om projektet har egna data-/byggartefakter.
+- Helst ingen ny bundler/ramverk - följ användarens default-stack
+  (vanilla JS + HTML + CSS för UI, FastAPI/SQLite för backend).
+
+Använd `git worktree add ../svk-<projektnamn> -b <projektnamn>` om du
+vill jobba på flera projekt samtidigt utan att stash:a - men huvudgrenen
+ska fortfarande vara `main`.
+
+Aktuella pilot-projekt: se `docs/modules/_todo.md`.
+
 ## Relaterat
 
 - **medvind-mobil-poc** - parallell-projekt med samma docs-arkitektur

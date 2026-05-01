@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Öppettider</title>
+<style>
+:root {
+  --bg: #0d0f12;
+  --fg: #f4f4f5;
+  --muted: #8a8f99;
+  --open: #4ade80;
+  --closed: #f87171;
+  --accent: #60a5fa;
+  --card: #1a1d22;
+  --border: #2a2e36;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font: 18px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Roboto", "Helvetica Neue", sans-serif;
+  background: var(--bg); color: var(--fg);
+  display: flex; flex-direction: column;
+  padding: clamp(16px, 3vw, 48px);
+  overflow: hidden;
+}
+header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-bottom: clamp(12px, 2vw, 24px);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: clamp(16px, 3vw, 32px);
+}
+h1 {
+  font-size: clamp(22px, 3.5vw, 40px);
+  font-weight: 600; letter-spacing: -0.02em;
+}
+h1 .subtitle { display: block; font-size: 0.55em; color: var(--muted);
+               font-weight: 400; margin-top: 4px; }
+.clock { font-size: clamp(20px, 2.8vw, 32px); font-variant-numeric: tabular-nums;
+         color: var(--muted); }
+
+.status {
+  display: flex; align-items: center; gap: clamp(20px, 4vw, 56px);
+  padding: clamp(20px, 3vw, 40px); border-radius: 12px;
+  background: var(--card); border: 1px solid var(--border);
+  margin-bottom: clamp(20px, 3vw, 36px);
+}
+.status .badge {
+  font-size: clamp(48px, 9vw, 120px); font-weight: 700; letter-spacing: -0.04em;
+  line-height: 1;
+}
+.status.open .badge { color: var(--open); }
+.status.closed .badge { color: var(--closed); }
+.status .detail {
+  font-size: clamp(18px, 2.4vw, 32px); color: var(--fg);
+}
+.status .detail .when { color: var(--muted); display: block; margin-top: 4px;
+                        font-size: 0.7em; }
+
+table.schedule {
+  width: 100%; border-collapse: collapse;
+  font-size: clamp(15px, 1.6vw, 22px);
+}
+table.schedule th, table.schedule td {
+  text-align: left; padding: clamp(8px, 1vw, 14px) clamp(10px, 1.5vw, 18px);
+  border-bottom: 1px solid var(--border);
+}
+table.schedule th { color: var(--muted); font-weight: 500; font-size: 0.7em;
+                    text-transform: uppercase; letter-spacing: 0.08em; }
+table.schedule tr.today td { background: rgba(96, 165, 250, 0.08); }
+table.schedule tr.today td:first-child { color: var(--accent); font-weight: 600; }
+.closed-cell { color: var(--muted); }
+
+footer {
+  margin-top: auto; padding-top: clamp(12px, 2vw, 20px);
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between;
+  font-size: 0.8em; color: var(--muted);
+}
+.error { background: var(--closed); color: var(--bg); padding: 12px 18px;
+         border-radius: 8px; font-weight: 500; }
+</style>
+</head>
+<body>
+<header>
+  <h1>
+    <span id="placeName">Laddar…</span>
+    <span class="subtitle" id="ownerName"></span>
+  </h1>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<div id="statusCard" class="status">
+  <div class="badge" id="statusBadge">…</div>
+  <div class="detail" id="statusDetail"></div>
+</div>
+
+<table class="schedule" id="schedule">
+  <thead><tr><th>Dag</th><th>Öppet</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<footer>
+  <span id="periodInfo"></span>
+  <span>Uppdaterad: <span id="updatedAt">-</span></span>
+</footer>
+
+<script>
+const REFRESH_DATA_MS = 60_000;
+const CLOCK_TICK_MS = 1_000;
+const DAY_KEYS = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa']; // index = Date.getDay()
+const DAY_ORDER = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
+const DAY_LABEL = { mo:'Måndag', tu:'Tisdag', we:'Onsdag', th:'Torsdag',
+                    fr:'Fredag', sa:'Lördag', su:'Söndag' };
+
+let cachedData = null;
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function nowMinutes(d) { return d.getHours() * 60 + d.getMinutes(); }
+function parseHHMM(s) { const [h, m] = s.split(':').map(Number); return h * 60 + m; }
+function fmtHHMM(s) { return s; } // redan "HH:MM"
+
+// Returnerar period som är aktiv för datumet d (eller första som matchar)
+function activePeriod(periods, d) {
+  if (!periods || !periods.length) return null;
+  const ymd = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  for (const p of periods) {
+    const okFrom = !p.validFrom || p.validFrom <= ymd;
+    const okTo = !p.validTo || p.validTo >= ymd;
+    if (okFrom && okTo) return p;
+  }
+  return periods[0]; // fallback
+}
+
+// { open: bool, openUntil?: "HH:MM", nextOpen?: {dayLabel, time} }
+function computeStatus(period, d) {
+  if (!period) return { open: false, nextOpen: null };
+  const days = period.days || {};
+  const todayKey = DAY_KEYS[d.getDay()];
+  const intervals = days[todayKey] || [];
+  const now = nowMinutes(d);
+  for (const iv of intervals) {
+    const f = parseHHMM(iv.from), t = parseHHMM(iv.to);
+    if (now >= f && now < t) return { open: true, openUntil: iv.to };
+  }
+  // Hitta nästa öppning: först idag (intervall efter nu), sen framåt 7 dagar
+  for (const iv of intervals) {
+    if (parseHHMM(iv.from) > now) {
+      return { open: false, nextOpen: { dayLabel: 'i dag', time: iv.from } };
+    }
+  }
+  for (let i = 1; i <= 7; i++) {
+    const dn = new Date(d); dn.setDate(d.getDate() + i);
+    const k = DAY_KEYS[dn.getDay()];
+    const ivs = days[k] || [];
+    if (ivs.length) {
+      const dayLabel = i === 1 ? 'i morgon' : DAY_LABEL[k];
+      return { open: false, nextOpen: { dayLabel, time: ivs[0].from } };
+    }
+  }
+  return { open: false, nextOpen: null };
+}
+
+function renderSchedule(period, d) {
+  const tbody = document.querySelector('#schedule tbody');
+  tbody.innerHTML = '';
+  if (!period) {
+    tbody.innerHTML = '<tr><td colspan="2" class="closed-cell">Inga öppettider angivna.</td></tr>';
+    return;
+  }
+  const todayKey = DAY_KEYS[d.getDay()];
+  for (const k of DAY_ORDER) {
+    const tr = document.createElement('tr');
+    if (k === todayKey) tr.classList.add('today');
+    const ivs = (period.days || {})[k] || [];
+    const cells = ivs.length
+      ? ivs.map(iv => `${fmtHHMM(iv.from)}–${fmtHHMM(iv.to)}`).join(', ')
+      : '<span class="closed-cell">stängt</span>';
+    tr.innerHTML = `<td>${DAY_LABEL[k]}</td><td>${cells}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderPeriodInfo(period) {
+  const el = document.getElementById('periodInfo');
+  if (!period) { el.textContent = ''; return; }
+  const parts = [];
+  if (period.validFrom) parts.push(`från ${period.validFrom}`);
+  if (period.validTo) parts.push(`till ${period.validTo}`);
+  el.textContent = parts.length ? `Period: ${parts.join(' ')}` : 'Standardperiod';
+}
+
+function render(now) {
+  if (!cachedData) return;
+  const place = cachedData.place;
+  document.getElementById('placeName').textContent = place.name || '(namn saknas)';
+  document.getElementById('ownerName').textContent = place.owner?.name || '';
+  document.getElementById('updatedAt').textContent = cachedData.fetched_at
+    ? new Date(cachedData.fetched_at).toLocaleString('sv-SE')
+    : '-';
+
+  const period = activePeriod(place.openHours?.periods, now);
+  renderPeriodInfo(period);
+  renderSchedule(period, now);
+
+  const status = computeStatus(period, now);
+  const card = document.getElementById('statusCard');
+  const badge = document.getElementById('statusBadge');
+  const detail = document.getElementById('statusDetail');
+  card.classList.toggle('open', status.open);
+  card.classList.toggle('closed', !status.open);
+
+  if (status.open) {
+    badge.textContent = 'ÖPPET';
+    detail.innerHTML = `Stänger kl. ${status.openUntil}
+      <span class="when">just nu öppet</span>`;
+  } else {
+    badge.textContent = 'STÄNGT';
+    if (status.nextOpen) {
+      detail.innerHTML = `Öppnar ${status.nextOpen.dayLabel} kl. ${status.nextOpen.time}
+        <span class="when">stängt just nu</span>`;
+    } else {
+      detail.innerHTML = `<span class="when">Inga kommande öppettider.</span>`;
+    }
+  }
+}
+
+function renderClock(now) {
+  document.getElementById('clock').textContent =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+
+async function fetchData() {
+  try {
+    const r = await fetch('place.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    cachedData = await r.json();
+    render(new Date());
+  } catch (e) {
+    document.getElementById('statusBadge').textContent = '!';
+    document.getElementById('statusDetail').innerHTML =
+      `<div class="error">Kunde inte ladda öppettider: ${e.message}</div>`;
+  }
+}
+
+function tick() {
+  const now = new Date();
+  renderClock(now);
+  // Räkna om status varje minut (när sekunderna är 0)
+  if (cachedData && now.getSeconds() === 0) render(now);
+}
+
+fetchData();
+setInterval(fetchData, REFRESH_DATA_MS);
+setInterval(tick, CLOCK_TICK_MS);
+tick();
+</script>
+</body>
+</html>
