@@ -74,6 +74,17 @@ def section_source(name: str) -> tuple[Path, str]:
     return path, f"docs/modules/{name}.md"
 
 
+HEX_CODE_RE = re.compile(r"<code>(#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?)</code>")
+
+
+def add_color_swatches(html: str) -> str:
+    """Lägg till en färgruta framför varje <code>#XXXXXX</code>."""
+    return HEX_CODE_RE.sub(
+        r'<span class="swatch" style="background:\1"></span><code>\1</code>',
+        html,
+    )
+
+
 def render_section(name: str) -> tuple[str, str, str]:
     path, meta = section_source(name)
     text = path.read_text(encoding="utf-8")
@@ -87,7 +98,9 @@ def render_section(name: str) -> tuple[str, str, str]:
     text = re.sub(r"\]\(CLAUDE\.md\)", r"](#_claude)", text)
     text = re.sub(r"\]\(README\.md\)", r"](#_readme)", text)
     md = markdown.Markdown(extensions=MD_EXTENSIONS, extension_configs=MD_CONFIG)
-    return title, md.convert(text), meta
+    html = md.convert(text)
+    html = add_color_swatches(html)
+    return title, html, meta
 
 
 def main() -> None:
@@ -163,6 +176,9 @@ blockquote p:first-child { margin-top:0; }
 blockquote p:last-child { margin-bottom:0; }
 a { color:var(--accent); }
 hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+.swatch { display:inline-block; width:1em; height:1em; border-radius:3px;
+          border:1px solid var(--border); vertical-align:-0.15em;
+          margin-right:6px; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.05); }
 __PYGMENTS_CSS__
 </style>
 </head>

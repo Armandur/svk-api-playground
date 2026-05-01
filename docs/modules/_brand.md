@@ -10,46 +10,79 @@ Svenska kyrkan. Använd den fullständiga manualen för formellt arbete.
 
 ## Färgpalett
 
+Färgerna delas i tre grupper: **grundfärger**, **primärfärger** och
+**sekundärfärger**. Tillsammans med den svarta typografin utgör de
+Svenska kyrkans grafiska uttryck.
+
 ### Grundfärger
 
-| Färg | HEX | RGB | NCS |
-|---|---|---|---|
-| Beige | `#FFEBE1` | 255 235 225 | S 1005-Y30R |
-| Svart | `#000000` | 0 0 0 | - |
+| Färg | HEX | RGB | NCS | PMS C |
+|---|---|---|---|---|
+| Beige | `#FFEBE1` | 255 235 225 | S 1005-Y30R | 9226 C |
+| Svart | `#000000` | 0 0 0 | - | Black 6 C |
 
-**Regel:** Svart används **endast för typografi**, aldrig i grafiska
-former eller illustrationer.
+**Regler:**
+- Svart används **endast för typografi**, aldrig i grafiska former eller
+  illustrationer.
+- Vid utskrift på lokal skrivare får beige bakgrund ersättas med vit.
 
-### Sekundära färger
+### Primärfärger
 
-| Färg | HEX | RGB |
-|---|---|---|
-| Guld | `#BC8E4C` | 188 142 76 |
-| Rosa | `#FFC3AA` | 255 195 170 |
-| Orange | `#FF785A` | 255 120 90 |
-| Vinröd | `#7D0037` | 125 0 55 |
-| Ljuslila | `#CDC3FF` | 205 195 255 |
-| Lila | `#9B87FF` | 155 135 255 |
-| Mörklila | `#412B72` | 65 43 114 |
-| Ljusgrön | `#BEE1C8` | 190 225 200 |
-| Grön | `#28A88E` | 40 168 142 |
-| Mörkgrön | `#00554B` | 0 85 75 |
+Dessa tre är **kärnan** i paletten. Minst en primärfärg ska användas
+i varje grafiskt uttryck (utöver grundfärgen beige).
 
-**Regel:** Blanda **inte** den gröna och lila färgskalan i samma grafik.
+| Färg | HEX | RGB | CMYK | PMS C |
+|---|---|---|---|---|
+| Vinröd | `#7D0037` | 125 0 55 | 0.100.40.55 | 4074 C |
+| Orange | `#FF785A` | 255 120 90 | 0.70.70.0 | 1665 C |
+| Rosa | `#FFC3AA` | 255 195 170 | 0.40.40.0 | 7520 C |
+
+**Praktik:** vinröd är den dominanta primärfärgen och används
+övervägande i merparten av Svenska kyrkans grafik. Använd den som
+default-accent / huvudfärg i nya vyer; orange och rosa funkar bättre
+som komplement eller i specialkampanjer.
+
+### Sekundärfärger
+
+Komplement som används utöver grundfärger + primärfärger.
+
+| Färg | HEX | RGB | CMYK | PMS C |
+|---|---|---|---|---|
+| Guld | `#BC8E4C` | 188 142 76 | 20.40.70.25 | 872 C |
+| Ljuslila | `#CDC3FF` | 205 195 255 | 33.35.0.0 | 9344 C |
+| Lila | `#9B87FF` | 155 135 255 | 63.65.0.0 | 2665 C |
+| Mörklila | `#412B72` | 65 43 114 | 80.85.0.35 | 3535 C |
+| Ljusgrön | `#BEE1C8` | 190 225 200 | 35.0.35.0 | 9504 C |
+| Grön | `#28A88E` | 40 168 142 | 100.10.65.0 | 3278 C |
+| Mörkgrön | `#00554B` | 0 85 75 | 100.10.70.50 | 329 C |
+
+### Kombinationsregler
+
+- **Beige + minst en primärfärg** är obligatoriskt i varje
+  grafiskt uttryck.
+- Med tre eller fyra färgytor får man hämta från sekundärpaletten,
+  så länge ovanstående regel hålls.
+- **Blanda inte** den gröna och lila skalan i samma grafik.
+- Andra färgsystem (NCS, RAL, TCX, Oracal) finns dokumenterade i
+  manualen för fysiska kontaktytor (väggar, tyg, vinyl). Använd
+  rätt färgsystem per kontaktyta - en CMYK-färg får t.ex. inte
+  tryckas på en NCS-färg.
 
 ### CSS-variabler (ready-to-use)
 
 ```css
 :root {
-  /* Grundfärger */
+  /* Grundfärger - beige bakgrund + svart typografi */
   --svk-beige:        #FFEBE1;
   --svk-black:        #000000;
 
-  /* Sekundära */
-  --svk-gold:         #BC8E4C;
-  --svk-pink:         #FFC3AA;
-  --svk-orange:       #FF785A;
+  /* Primärfärger - minst en ska alltid användas */
   --svk-wine:         #7D0037;
+  --svk-orange:       #FF785A;
+  --svk-pink:         #FFC3AA;
+
+  /* Sekundärfärger - komplement */
+  --svk-gold:         #BC8E4C;
   --svk-light-purple: #CDC3FF;
   --svk-purple:       #9B87FF;
   --svk-dark-purple:  #412B72;
@@ -136,11 +169,15 @@ För `signage-platser/`, `kyrkoaret-widget/` m.fl. - använd:
 
 1. CSS-variablerna ovan.
 2. DM Sans + Spectral via Google Fonts.
-3. Beige bakgrund (`#FFEBE1`) eller mörkgrön (`#00554B`) för signage
-   (hög läsbarhet på distans).
-4. Sekundärfärger för status: t.ex. mörkgrön = öppet, vinröd = stängt
-   (undvik ljus rosa/lila som är svaga på distans).
-5. Logotypen i hörn på signage-vyer (vit på mörk bakgrund).
+3. Beige bakgrund (`#FFEBE1`) som default-canvas - högsta igenkänning.
+4. **Vinröd (`#7D0037`) som dominant accent** - status, knappar,
+   rubriker, ikoner. Dominerar i praktiken det grafiska språket.
+5. Mörkgrön/grön kan användas som "öppet"-state om en kontrast mot
+   vinröd "stängt"-state behövs - men säkerställ att vinröd finns
+   med någonstans i vyn (regel: minst en primärfärg).
+6. Undvik ljusrosa/ljuslila för status-text på distans, de är svaga.
+7. Logotypen i hörn på signage-vyer (svart på beige eller vit på mörk
+   bakgrund).
 
 ## TODO
 
