@@ -53,6 +53,11 @@ h1 .subtitle {
   color: var(--wine);
 }
 
+/* details=min: dölj extrasektioner för kompakt signage-zon */
+.details-min .clock,
+.details-min #facilities,
+.details-min #visiting { display: none !important; }
+
 .status {
   display: flex; align-items: center; gap: clamp(24px, 4vw, 64px);
   padding: clamp(8px, 1.5vw, 16px) 0;
@@ -212,6 +217,14 @@ const VIEW_MODE = (() => {
   if (v === 'rolling' || v === 'extended') return v;
   return 'week';
 })();
+
+// "max" (default) visar allt: klocka, faciliteter, kontaktrad.
+// "min" döljer extrasektioner för en kompaktare zon på en signage-skärm.
+const DETAILS_MODE = new URLSearchParams(location.search).get('details') === 'min'
+  ? 'min' : 'max';
+if (DETAILS_MODE === 'min') {
+  document.documentElement.classList.add('details-min');
+}
 
 function buildWeekSchedule(periods, now) {
   const today = new Date(now);
