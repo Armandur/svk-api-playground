@@ -37,15 +37,20 @@ svk-api-playground/
 ## Kör
 
 ```bash
-# Gemensam dev-server (auto-listar dokumentation + alla pilot-projekt)
-uv run scripts/serve.py     # http://localhost:8088/
+# Allt i ett: watcher + server, output speglas till dev.log
+./start.sh                  # http://localhost:8088/
 
-# Engångsbygge av docs
-uv run scripts/build_docs.py
-
-# Watcher under aktiv redigering (bygger om + speglar till vmworkspace)
-uv run scripts/watch_docs.py
+# Eller var för sig:
+uv run scripts/serve.py     # bara servern
+uv run scripts/build_docs.py    # engångsbygge
+uv run scripts/watch_docs.py    # bara watchern (rebuild + sync)
 ```
+
+`./start.sh` skriver all stdout/stderr till `dev.log` i rotmappen
+(trunkeras vid varje uppstart, gitignored). När användaren har testat
+en feature - **läs dev.log först** för runtime-fel innan du börjar
+felsöka. Det är samma konvention som i andra projekt
+(jämför `medvind-mobil-poc/dev.log`).
 
 uv kör skripten med PEP 723-inline-deps - inga andra installationer
 behövs.

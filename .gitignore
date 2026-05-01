@@ -1,6 +1,9 @@
 # Genererad dokumentation - byggs av scripts/build_docs.py
 docs/svk-apis.html
 
+# Runtime-logg från start.sh (trunkeras vid varje uppstart)
+dev.log
+
 # Cachad data från API-utforskning (swagger.json, portal-HTML)
 tmp/
 
