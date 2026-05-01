@@ -126,6 +126,36 @@ header .subtitle {
            font-size: 13px; color: var(--muted);
            font-family: "Spectral", "Times New Roman", serif; font-style: italic; }
 .dry-run input { accent-color: var(--wine); }
+
+.exception-panel, .info-panel {
+  margin: 16px 0; padding: 14px 16px;
+  background: rgba(125, 0, 55, 0.04);
+  border-left: 2px solid var(--gold);
+}
+.exception-panel h3, .info-panel h3 {
+  font-size: 14px; font-weight: 500; color: var(--wine);
+  margin-bottom: 6px; letter-spacing: 0.02em;
+}
+.exception-hint {
+  font-size: 12px; font-family: "Spectral", "Times New Roman", serif;
+  font-style: italic; color: var(--muted); margin-bottom: 10px; line-height: 1.4;
+}
+.exception-input { display: flex; gap: 8px; align-items: center;
+                   flex-wrap: wrap; }
+.exception-input input[type="date"] {
+  font: 14px "DM Sans"; padding: 6px 10px;
+  border: 1px solid var(--black); background: #fff;
+}
+.exception-input input[type="text"] {
+  flex: 1; min-width: 180px;
+  font: 14px "DM Sans"; padding: 6px 10px;
+  border: 1px solid var(--black); background: #fff;
+}
+.info-panel textarea {
+  width: 100%; font: 14px "DM Sans", Arial, sans-serif;
+  padding: 8px 10px; border: 1px solid var(--black); background: #fff;
+  resize: vertical;
+}
 .btn-primary {
   background: var(--wine); color: var(--beige); border: none;
   padding: 12px 28px; font: 500 15px "DM Sans"; cursor: pointer;
@@ -279,6 +309,30 @@ header .subtitle {
 
   <div class="schedule" id="schedule"></div>
 
+  <div class="exception-panel">
+    <h3>Stäng platsen en specifik dag</h3>
+    <p class="exception-hint">
+      Splittrar nuvarande period i tre: originalet fram till dagen innan,
+      en stängd dag, och fortsättning från dagen efter. Anledningen
+      appendas till öppettidsinfo-fältet (synligt på webbplatsen).
+    </p>
+    <div class="exception-input">
+      <input id="exceptionDate" type="date">
+      <input id="exceptionReason" type="text"
+             placeholder="Anledning (valfritt) - t.ex. 'julafton'">
+      <button id="addExceptionBtn" type="button" class="btn-secondary">
+        Stäng denna dag
+      </button>
+    </div>
+    <span id="exceptionResult" class="session-hint"></span>
+  </div>
+
+  <div class="info-panel">
+    <h3>Öppettidsinfo (fritext, visas på webbplatsen)</h3>
+    <textarea id="openHoursInfoInput" rows="3"
+              placeholder="Avvikande öppettider, kommentarer om högtider etc."></textarea>
+  </div>
+
   <div class="actions">
     <input id="updatedBy" type="text" placeholder="Vem ändrar (updatedBy)">
     <label class="dry-run">
@@ -307,6 +361,27 @@ function escapeHtml(s) {
 
 function debounce(fn, ms) {
   let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// Datumhjälpare för 3-perioder-strategin för avvikelser
+function shiftDate(ymd, days) {
+  const d = new Date(ymd + "T12:00:00Z"); // mid-day undviker DST
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function dayKeyForDate(ymd) {
+  const d = new Date(ymd + "T12:00:00Z");
+  return ["su", "mo", "tu", "we", "th", "fr", "sa"][d.getUTCDay()];
+}
+
+function fmtSwedishDate(ymd) {
+  const d = new Date(ymd + "T12:00:00Z");
+  const day = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag",
+               "lördag"][d.getUTCDay()];
+  const m = ["januari", "februari", "mars", "april", "maj", "juni", "juli",
+             "augusti", "september", "oktober", "november", "december"][d.getUTCMonth()];
+  return `${day} ${d.getUTCDate()} ${m} ${d.getUTCFullYear()}`;
 }
 
 async function search(q) {
@@ -358,6 +433,9 @@ function renderEditor() {
   $("placeMeta").textContent =
     `${owner.name || ""}${owner.type ? ` · ${owner.type}` : ""}`;
   $("placeUuid").textContent = currentPlace.id;
+
+  // Spegla info-fältet
+  $("openHoursInfoInput").value = currentPlace.openHours?.info || "";
 
   const sel = $("periodSelect");
   sel.innerHTML = workingPeriods.map((p, i) => {
@@ -455,7 +533,11 @@ async function save() {
   const payload = {
     ...currentPlace,
     updatedBy,
-    openHours: { ...(currentPlace.openHours || {}), periods: cleanPeriods },
+    openHours: {
+      ...(currentPlace.openHours || {}),
+      info: $("openHoursInfoInput").value.trim() || null,
+      periods: cleanPeriods,
+    },
   };
   // Fält som servern sätter själv ska inte skickas tillbaka
   delete payload.created;
@@ -502,6 +584,72 @@ async function save() {
 function showBanner(msg, kind) {
   $("banner").innerHTML = `<div class="banner ${kind}">${escapeHtml(msg)}</div>`;
 }
+
+function addClosedDayException(dateStr, reason) {
+  // Hitta perioden som rymmer datumet (eller är öppen i tid)
+  const idx = workingPeriods.findIndex(p => {
+    const okFrom = !p.validFrom || p.validFrom <= dateStr;
+    const okTo = !p.validTo || p.validTo >= dateStr;
+    return okFrom && okTo;
+  });
+  if (idx === -1) {
+    return { ok: false, error: "Datumet ligger utanför alla nuvarande perioder." };
+  }
+  const target = workingPeriods[idx];
+  const dayBefore = shiftDate(dateStr, -1);
+  const dayAfter = shiftDate(dateStr, +1);
+  const dayKey = dayKeyForDate(dateStr);
+
+  // Bygg de tre delarna - hoppa över A/C om de skulle bli tomma
+  const newPieces = [];
+  if (!target.validFrom || target.validFrom <= dayBefore) {
+    newPieces.push({ ...target, validTo: dayBefore });
+  }
+  // Stängd dag: behåll days-strukturen men sätt aktuell veckodag tom
+  const closedDays = { ...(target.days || {}) };
+  closedDays[dayKey] = [];
+  newPieces.push({ validFrom: dateStr, validTo: dateStr, days: closedDays });
+  if (!target.validTo || target.validTo >= dayAfter) {
+    newPieces.push({
+      ...target,
+      validFrom: dayAfter,
+      validTo: target.validTo || "",
+      days: { ...(target.days || {}) },
+    });
+  }
+
+  workingPeriods.splice(idx, 1, ...newPieces);
+  // Hoppa till perioden som följer den stängda dagen om den finns,
+  // annars stäng-dagen själv.
+  currentPeriodIdx = Math.min(idx + newPieces.length - 1, idx + 2);
+
+  // Appenda anledning till openHours.info
+  if (reason) {
+    const existing = ($("openHoursInfoInput").value || "").trim();
+    const line = `Stängt ${fmtSwedishDate(dateStr)}: ${reason}`;
+    $("openHoursInfoInput").value = existing ? `${existing}\n${line}` : line;
+  }
+  return { ok: true, periodsAdded: newPieces.length };
+}
+
+$("addExceptionBtn").addEventListener("click", () => {
+  const dateStr = $("exceptionDate").value;
+  const reason = $("exceptionReason").value.trim();
+  const out = $("exceptionResult");
+  if (!dateStr) {
+    out.textContent = "Välj ett datum först.";
+    return;
+  }
+  const r = addClosedDayException(dateStr, reason);
+  if (!r.ok) {
+    out.textContent = r.error;
+    return;
+  }
+  out.textContent = `OK - ${r.periodsAdded} perioder skapade. Granska och spara.`;
+  $("exceptionDate").value = "";
+  $("exceptionReason").value = "";
+  renderEditor();
+});
 
 $("saveBtn").addEventListener("click", save);
 $("searchInput").addEventListener("input",
