@@ -126,6 +126,25 @@ Topp-fält (verifierat 2026-05-01 mot prod):
 
 `***` = fält endast synliga för anropare med särskild rättighet.
 
+## openHours - validering
+
+Servern (både publika gatewayen och admin-proxyn) validerar:
+
+- **`validFrom < validTo` strikt** - servern tillåter inte
+  `validFrom == validTo`. Lägsta period-längd är 2 dygn (en dag +
+  dagen efter). Verifierat 2026-05-01: PUT med `validFrom=2025-05-01,
+  validTo=2025-05-01` → HTTP 400 *"The date in validFrom must be a
+  date before validTo"*.
+- **Intervall får inte överlappa inom samma dag** - PUT med t.ex.
+  `mo: [{from:"09:00",to:"17:00"},{from:"10:00",to:"12:00"}]` → HTTP
+  400 *"Times cannot overlap. From: 10:00 To: 12:00, From: 09:00,
+  To: 17:00"*.
+- **Tomma dayKey-arrays strippas** vid PUT/PATCH. Om du skickar
+  `days: {mo: [], tu: [...]}` så returneras vid nästa GET bara
+  `days: {tu: [...]}` - `mo` är borta. Funktionellt samma resultat
+  (saknad nyckel = stängt) men klienter kan inte lita på att tomma
+  arrays finns kvar efter en sparning.
+
 ## openHours - schema
 
 **OBS:** I doc:en beskrivs `openHours` som direkt array, men i alla
@@ -157,6 +176,23 @@ verkliga svar (både live och testdata) är det ett objekt med
 - **Säsongsperioder** - flera period-objekt med olika `validFrom/validTo`.
 - Tider implicit i platsens lokala tidszon.
 - Schema är löst baserat på [schema.org OpeningHoursSpecification](https://schema.org/OpeningHoursSpecification).
+
+### `openHours.info` - generell fritextruta
+
+Inte dokumenterad i den publika `/doc/api/index` men finns i live-
+data och accepteras av admin-flödets PUT. **En enda generell
+fritextruta** för hela platsen - det finns inget per-dag- eller
+per-period-kommentarsfält i schemat.
+
+Vår `platser-edit-app/` skriver datum-prefixade rader när man
+"Stänger en specifik dag" (`Stängt fredag 1 maj 2026: julafton`)
+och appendar till `info`-fältet. `signage-platser/`-vyn renderar
+fältet med `white-space: pre-line` så `\n`-tecken bryter rader
+visuellt.
+
+**Caveat:** att skicka `info: null` eller `info: ""` tolkas av
+admin-servern som "ta bort fältet". Klienter som inte aktivt
+vill rensa info ska utelämna fältet från payloaden helt.
 
 ## placeTypes - enum
 

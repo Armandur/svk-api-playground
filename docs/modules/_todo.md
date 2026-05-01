@@ -5,10 +5,19 @@ egen undermapp i repo-roten (`<projektnamn>/`) med eget README.
 
 ## Projektidéer
 
-### 1. Signage-vy med dynamiska öppettider (`signage-platser/`)
+### 1. Signage-vy med dynamiska öppettider (`signage-platser/`) ✅ Funktionell
 
-**Status:** ✅ Datakälla bekräftad. Härnösands domkyrka har riktiga
-öppettider i Platser-API:t. Klart att starta bygget.
+**Status:** Verifierad mot Härnösands domkyrka. URL-parametrar
+för konfiguration:
+- `?place=<guid>` - hämta valfri plats live via SVK-proxyn
+- `?view=week|rolling|extended` - layoutläge (mån-sön / 7 dagar
+  framåt / idag-till-söndag-nästa-vecka)
+- `?details=max|min` - visa eller dölja klocka, faciliteter,
+  adress och footer-tidstämpel
+
+Veckotabellen vävs ihop från flera perioder (avvikelser visas in-
+line på rätt dag) och `openHours.info` renderas under tabellen
+med radbrytningar bevarade.
 
 **Use-case:** En infällbar webbsida (HTML-vy som körs i en
 signage-miljö) utanför t.ex. **Härnösands domkyrka** som alltid visar
@@ -52,31 +61,42 @@ uppdateras med polling.
 
 Sökflöde + veckoschema-editor + PUT mot CMS:ets interna admin-flöde
 (`admin.svenskakyrkan.se/webapi/api-v2/place/{id}`) via en proxy i
-serve.py. **Verifierat fungerande end-to-end 2026-05-01** efter att
-användaren klistrat in fullständig cookie-header (alla 5 cookies inkl
-HttpOnly `.Prod2.AuthCookie` + `ASP.NET_SessionId`).
+serve.py. End-to-end-verifierad 2026-05-01 mot Härnösands domkyrka.
 
 **Klart:**
 
-- Fritext-sökning via `?q=...` med debounce.
-- Detaljvy: plats-info + period-väljare + redigerbart veckoschema
-  (lägg till/ta bort intervall, ändra tider).
-- Sessions-panel: bookmarklet, manuell DevTools-väg, runtime
-  cookie-input, "Verifiera mot admin (GET)"-knapp för isolering.
+- **Sökning** - fritext via `?q=...` med debounce, klickbar trefflista.
+- **Periodöversikt** - kort per öppettidsperiod med kompakt
+  veckodags-grid, klickbar för att välja period i avancerat-läget.
+- **Sessions-panel** - bookmarklet + DevTools-instruktion för
+  HttpOnly-cookies, runtime-input som sparar i serverns RAM,
+  "Pinga nu"- och "Verifiera plats (GET)"-knappar för isolering.
+  Diagnostik visar last_pinged_at, last_ping_status m.fl. tickande
+  i realtid.
+- **Stäng en specifik dag** - splittar matchande period i upp till
+  tre delar (eller utökar befintlig undantagsperiod om en sådan
+  redan rymmer datumet). Anledning appendas till `openHours.info`.
+- **Skapa anpassad period** - datumintervall + valda veckodagar +
+  egna intervall, t.ex. för sommaröppet eller sportlov.
+- **Validering** klient-sidigt: överlappande intervall fångas
+  innan PUT (servern avvisar annars med HTTP 400).
+- **Sliding-cookie-sniffing** + 30-min keep-alive-tråd håller
+  sessionen vid liv. Hela cookie-headern (5 cookies inkl
+  HttpOnly auth) merge:as när servern roterar någon av dem.
 - PUT (full replace) mot `/api/admin/place/{id}` med ändringar
-  applicerade på fullt place-objekt.
-- Sliding-cookie-sniffing + 30-min keep-alive-tråd för att hålla
-  sessionen vid liv mellan CMS-omloggningar.
+  applicerade på fullt place-objekt. `info`-fältet utelämnas om
+  textarean är tom så servern inte tolkar det som rensning.
 
 **Återstår:**
 
 - Filter på församling specifikt via UnitAPI eller `?owner_id=`
   (`/api/units/*` är förberett i proxyn).
-- Stöd för `validFrom`/`validTo` i editorn (säsongsperioder,
-  skapa/ta bort hela perioder).
-- Editera `openHours.info` (fritextkommentar).
+- Skapa/ta bort hela perioder (idag bara via "Stäng en dag" och
+  "Skapa anpassad period").
 - Bekräftelse-modal innan PUT.
 - Auth-skikt - alla med dev-server-tillgång kan idag skriva.
+- Städa gamla "Stängt YYYY-MM-DD: ..."-rader i `info` när datumen
+  har passerat.
 
 **Öppna frågor (uppdaterade):**
 
