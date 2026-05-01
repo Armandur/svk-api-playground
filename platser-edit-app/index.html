@@ -510,6 +510,7 @@ $("searchInput").addEventListener("input",
 function fmtRelative(ts, now) {
   if (!ts) return "aldrig";
   const sec = Math.round(now - ts);
+  if (sec < 1) return "nyss";
   if (sec < 60) return `${sec} s sedan`;
   const min = Math.round(sec / 60);
   if (min < 60) return `${min} min sedan`;
@@ -517,34 +518,52 @@ function fmtRelative(ts, now) {
   return `${h} h sedan`;
 }
 
+let lastSessionData = null;
+let lastSessionFetchedAt = 0;   // klient-tid (s) när vi hämtade
+
+function renderSessionDiag() {
+  const d = lastSessionData;
+  const tag = $("sessionStatus");
+  const diag = $("sessionDiag");
+  if (!d) return;
+  if (!d.set) {
+    tag.textContent = "Saknas";
+    tag.className = "status-tag unset";
+    diag.hidden = true;
+    $("sessionPanel").open = true;
+    return;
+  }
+  tag.textContent = `Aktiv (${d.preview})`;
+  tag.className = "status-tag set";
+  // Beräkna "now" som server-tid + klient-delta sedan vi hämtade. Då
+  // tickar relativa tider lokalt utan ny serverförfrågan.
+  const clientNow = Date.now() / 1000;
+  const now = d.now + (clientNow - lastSessionFetchedAt);
+  const pingClass = d.last_ping_status?.startsWith("HTTP 2") ? "ok" : "warn";
+  diag.innerHTML = `
+    <span>Senast satt: <b>${fmtRelative(d.updated_at, now)}</b></span>
+    <span>Senast pingad: <b>${fmtRelative(d.last_pinged_at, now)}</b></span>
+    <span>Ping-status: <b class="${pingClass}">${d.last_ping_status || "-"}</b></span>
+    <span>Senast roterad: <b>${fmtRelative(d.last_rotated_at, now)}</b></span>
+    <span>Nästa keep-alive: var <b>${d.keepalive_interval_min} min</b></span>`;
+  diag.hidden = false;
+}
+
 async function refreshSessionStatus() {
   try {
     const r = await fetch("/api/admin/_session", { cache: "no-store" });
-    const d = await r.json();
-    const tag = $("sessionStatus");
-    const diag = $("sessionDiag");
-    if (d.set) {
-      tag.textContent = `Aktiv (${d.preview})`;
-      tag.className = "status-tag set";
-      const now = d.now;
-      const pingClass = d.last_ping_status?.startsWith("HTTP 2") ? "ok" : "warn";
-      diag.innerHTML = `
-        <span>Senast satt: <b>${fmtRelative(d.updated_at, now)}</b></span>
-        <span>Senast pingad: <b>${fmtRelative(d.last_pinged_at, now)}</b></span>
-        <span>Ping-status: <b class="${pingClass}">${d.last_ping_status || "-"}</b></span>
-        <span>Senast roterad: <b>${fmtRelative(d.last_rotated_at, now)}</b></span>
-        <span>Nästa keep-alive: var <b>${d.keepalive_interval_min} min</b></span>`;
-      diag.hidden = false;
-    } else {
-      tag.textContent = "Saknas";
-      tag.className = "status-tag unset";
-      diag.hidden = true;
-      $("sessionPanel").open = true;
-    }
+    lastSessionData = await r.json();
+    lastSessionFetchedAt = Date.now() / 1000;
+    renderSessionDiag();
   } catch (e) {
     $("sessionStatus").textContent = "Fel: " + e.message;
   }
 }
+
+// Lokal timer: rendera diagnostiken varje sekund med inkrementerad
+// "now". Hämta om från server var 30:e sek.
+setInterval(renderSessionDiag, 1000);
+setInterval(refreshSessionStatus, 30000);
 
 async function postSession(value) {
   const r = await fetch("/api/admin/_session", {

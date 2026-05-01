@@ -107,13 +107,14 @@ def admin_ping(source: str) -> tuple[int, str]:
     })
     try:
         with urlopen(req, timeout=15) as resp:
+            data = resp.read()
             new_session = extract_session_from_headers(resp.headers)
             if new_session:
                 update_cs_session(new_session, f"{source} Set-Cookie")
             CS_SESSION_LAST_PING_AT = time.time()
             CS_SESSION_LAST_PING_STATUS = f"HTTP {resp.status}"
-            print(f">> session ping ({source}): HTTP {resp.status}",
-                  flush=True)
+            log_admin_response(f"GET (ping/{source})", ADMIN_KEEPALIVE_URL,
+                               resp.status, resp.headers, len(data))
             return resp.status, CS_SESSION_LAST_PING_STATUS
     except HTTPError as e:
         CS_SESSION_LAST_PING_AT = time.time()
@@ -136,6 +137,39 @@ def extract_session_from_headers(headers) -> str | None:
         if first.startswith("CS_UserSessionId="):
             return first.split("=", 1)[1]
     return None
+
+
+def log_admin_response(method: str, url: str, status: int, headers,
+                       body_size: int) -> None:
+    """Detaljerad logg av admin-svar för att fånga ev. cookie-rotation
+    eller andra header-mönster. Vid Set-Cookie i svaret loggar vi varje
+    cookie-rad med dess attribut (expires/max-age/path/samesite).
+    Skip körlåt logging om allt är trivialt (200 utan Set-Cookie)."""
+    set_cookies = headers.get_all("Set-Cookie") if hasattr(headers, "get_all") else []
+    interesting_headers = ["Location", "WWW-Authenticate",
+                           "X-Proxy-Destination", "Cache-Control",
+                           "api-supported-versions", "Expires"]
+    has_set_cookie = bool(set_cookies)
+    is_error = status >= 400
+    if not has_set_cookie and not is_error and status != 200:
+        return  # tyst för 304 etc utan intressant info
+    if not has_set_cookie and not is_error:
+        # 200 OK utan Set-Cookie - en kort rad räcker
+        print(f">> admin {method} {url} -> {status} ({body_size}b)",
+              flush=True)
+        return
+    # Annars utförlig dump
+    print(f">> admin {method} {url} -> {status} ({body_size}b)", flush=True)
+    for h in interesting_headers:
+        v = headers.get(h) if hasattr(headers, "get") else None
+        if v:
+            print(f"   {h}: {v}", flush=True)
+    for sc in set_cookies or []:
+        # Maskera värdet (visa bara namn + attribut), så loggen kan delas
+        first, _, attrs = sc.partition(";")
+        name, _, value = first.partition("=")
+        masked = (value[:6] + "..." + value[-4:]) if len(value) > 12 else "(kort)"
+        print(f"   Set-Cookie: {name}={masked};{attrs}", flush=True)
 
 
 def keep_session_alive() -> None:
@@ -487,6 +521,8 @@ class Handler(SimpleHTTPRequestHandler):
                 rotated = extract_session_from_headers(resp.headers)
                 if rotated:
                     update_cs_session(rotated, f"admin-proxy {method}")
+                log_admin_response(method, upstream_url, status,
+                                   resp.headers, len(data))
         except HTTPError as e:
             err_body = e.read() if hasattr(e, "read") else b""
             cookie_names = [c.split("=", 1)[0].strip() for c in cookie_header.split(";") if c.strip()]
