@@ -547,10 +547,12 @@ async function loadPlace(id) {
     currentPlace = await r.json();
     workingPeriods = JSON.parse(JSON.stringify(currentPlace.openHours?.periods || []));
     if (!workingPeriods.length) {
-      // Skapa en tom period så användaren kan börja schemalägga
       workingPeriods.push({ days: {} });
     }
     currentPeriodIdx = 0;
+    // Initiera textarean en gång per laddad plats. renderEditor()
+    // rör inte fältet sen, så användarens skrivna anledning bevaras.
+    $("openHoursInfoInput").value = currentPlace.openHours?.info || "";
     renderEditor();
   } catch (e) {
     $("placeName").textContent = "";
@@ -610,7 +612,9 @@ function renderEditor() {
     `${owner.name || ""}${owner.type ? ` · ${owner.type}` : ""}`;
   $("placeUuid").textContent = currentPlace.id;
 
-  $("openHoursInfoInput").value = currentPlace.openHours?.info || "";
+  // OBS: rör inte $("openHoursInfoInput").value här - användarens
+  // textarea-input (inkl appendInfoReason från "Stäng denna dag")
+  // skulle skrivas över. Textarean initieras i loadPlace().
 
   renderPeriodOverview();
 
