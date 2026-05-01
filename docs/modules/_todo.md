@@ -48,30 +48,38 @@ uppdateras med polling.
   i Content Studio? Sannolikt ja eftersom owner.id (`20270`) matchar
   `enhetsid` i andra API:er.
 
-### 2. Mini-app för platsadministration (`platser-edit-app/`)
+### 2. Mini-app för platsadministration (`platser-edit-app/`) ✅ PoC påbörjad
 
-**Use-case:** En enkel webb-app där icke-kommunikatörer (vaktmästare,
-kyrkvärdar) kan ändra öppettider på *en specifik plats*. Idag måste
-detta göras via Svenska kyrkans CMS (Content Studio /
-"platsadministrationen") som är klumpigt för uppgiften.
+Sökflöde + veckoschema-editor + PATCH mot `/place/{id}`. Byggd ovanpå
+en generic SVK-proxy (`/api/platser/*`) i serve.py som lägger till vår
+APIKEY_PROD server-sidigt så klienten aldrig ser nyckeln.
 
-**Tekniskt skelett:**
+**Klart:**
 
-- Auth: troligen samma SVK-API-nyckel-modell, men *skrivande* är
-  begränsat - kolla om Platser-API:t har PUT/PATCH för öppettider.
-- Annars: fall-back till att anropa Content Studio:s interna API om
-  vi kan reverse-engineera det (titta på nätverksflöden i CMS:et,
-  liknande arbetssätt som `medvind-mobil-poc/docs-from-claude-code-chrome/`).
-- UI: en plats per app-instans, knappar för "öppet/stängt nu",
-  förenklat veckoschema.
+- Fritext-sökning via `?q=...` med debounce.
+- Detaljvy: plats-info + period-väljare + redigerbart veckoschema
+  (lägg till/ta bort intervall, ändra tider).
+- PATCH mot `/place/{id}` med `updatedBy` + uppdaterad
+  `openHours.periods`.
 
-**Öppna frågor:**
+**Återstår:**
 
-- Tillåter Platser-API:t skriv för slutkunder, eller bara läsa?
-- Vilket auth-flöde behövs för skrivande mot Content Studio? OAuth?
-- Vilka roller/behörigheter krävs i SVK-organisationen?
-- Är det rätt väg att gå runt CMS:et eller bör vi prata med SVK
-  centralt först?
+- Filter på församling specifikt via UnitAPI eller `?owner_id=`
+  (`/api/units/*` är förberett i proxyn).
+- Stöd för `validFrom`/`validTo` i editorn (säsongsperioder,
+  inkl skapa/ta bort hela perioder).
+- Editera `openHours.info` (fritextkommentar).
+- Bekräftelse-modal innan PATCH.
+- Auth - just nu får alla med dev-server-tillgång skriva. Behöver
+  någon form av magic-link eller liknande för riktigt bruk.
+
+**Öppna frågor (uppdaterade):**
+
+- Tillåter Platser-API:t skriv för slutkunder? **Ja, via PATCH/PUT.**
+  Behöver bara en API-nyckel med rätt scope. Inget Content Studio-
+  reverse-engineering behövs.
+- Vilka roller/behörigheter krävs i SVK-organisationen för att få en
+  skriv-nyckel? - oklart, kontakta SVK när vi vill köra på riktigt.
 
 ### 3. Kyrkoårs-widget (`kyrkoaret-widget/`) ✅ PoC klar
 

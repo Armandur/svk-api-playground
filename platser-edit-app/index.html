@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Redigera öppettider</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --beige:      #FFEBE1;
+  --black:      #000000;
+  --wine:       #7D0037;
+  --pink:       #FFC3AA;
+  --gold:       #BC8E4C;
+  --dark-green: #00554B;
+  --green:      #28A88E;
+  --muted:      #6b5f5a;
+  --line:       rgba(125, 0, 55, 0.2);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font: 16px/1.45 "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--black);
+  padding: clamp(16px, 3vw, 40px);
+  max-width: 880px; margin: 0 auto;
+}
+header {
+  border-bottom: 2px solid var(--wine);
+  padding-bottom: clamp(10px, 1.5vw, 16px);
+  margin-bottom: clamp(16px, 2.5vw, 24px);
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+h1 { font-size: clamp(20px, 2.4vw, 28px); font-weight: 500; color: var(--wine);
+     letter-spacing: -0.01em; }
+header .subtitle {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 0.9em;
+}
+
+/* Search */
+.search {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+.search input {
+  flex: 1; font: 500 18px "DM Sans", Arial, sans-serif;
+  padding: 12px 16px; border: 2px solid var(--black);
+  background: #fff; color: var(--black);
+}
+.search input:focus { outline: none; border-color: var(--wine); }
+.search .hint { font-size: 13px; color: var(--muted); margin-top: 4px;
+                font-family: "Spectral", "Times New Roman", serif; font-style: italic; }
+
+.results {
+  list-style: none; margin-bottom: 24px;
+  border: 1px solid var(--line); background: #fff;
+}
+.results:empty { display: none; }
+.results li { padding: 0; }
+.results button {
+  width: 100%; text-align: left; padding: 12px 16px;
+  background: transparent; border: none; cursor: pointer;
+  font: 400 15px "DM Sans", Arial, sans-serif; color: var(--black);
+  border-bottom: 1px solid var(--line);
+}
+.results li:last-child button { border-bottom: none; }
+.results button:hover { background: var(--pink); }
+.results button .place-name { font-weight: 500; }
+.results button .owner-name {
+  display: block; font-family: "Spectral", "Times New Roman", serif;
+  font-style: italic; color: var(--muted); font-size: 0.85em; margin-top: 2px;
+}
+
+/* Editor */
+.place-info { margin-bottom: 16px; padding: 12px 16px; background: #fff;
+              border-left: 3px solid var(--wine); }
+.place-info .name { font-weight: 500; font-size: 18px; color: var(--wine); }
+.place-info .meta { font-size: 13px; color: var(--muted); margin-top: 4px;
+                    font-family: "Spectral", "Times New Roman", serif;
+                    font-style: italic; }
+.place-info .uuid { font-family: ui-monospace, monospace; font-size: 11px;
+                    color: var(--muted); margin-top: 4px; }
+
+.period-meta { display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+               margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+.period-meta select { font: 14px "DM Sans", sans-serif; padding: 4px 8px;
+                      border: 1px solid var(--black); background: #fff; }
+
+.schedule { display: grid; gap: 8px; margin-bottom: 24px; }
+.schedule-row {
+  display: grid; grid-template-columns: 100px 1fr auto;
+  gap: 12px; align-items: start;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+.schedule-row > .day { font-weight: 500; padding-top: 8px; }
+.intervals { display: flex; flex-direction: column; gap: 6px; }
+.interval { display: flex; align-items: center; gap: 6px; }
+.interval input[type="time"] {
+  font: 14px "DM Sans", monospace; padding: 6px 8px;
+  border: 1px solid var(--black); background: #fff; width: 110px;
+}
+.interval input[type="time"]:focus { outline: 2px solid var(--wine); outline-offset: -1px; }
+.interval .sep { color: var(--muted); }
+.interval .remove {
+  background: transparent; border: none; cursor: pointer; color: var(--wine);
+  font-size: 18px; padding: 4px 8px;
+}
+.add-interval {
+  background: transparent; border: 1px dashed var(--wine); color: var(--wine);
+  padding: 4px 12px; font: 13px "DM Sans"; cursor: pointer; align-self: start;
+}
+.add-interval:hover { background: var(--pink); }
+.closed-tag { font-family: "Spectral", "Times New Roman", serif;
+              font-style: italic; color: var(--muted); padding-top: 8px; }
+
+.actions { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+.actions input[type="text"] {
+  font: 14px "DM Sans"; padding: 8px 12px; border: 1px solid var(--black);
+  background: #fff; flex: 0 0 220px;
+}
+.btn-primary {
+  background: var(--wine); color: var(--beige); border: none;
+  padding: 12px 28px; font: 500 15px "DM Sans"; cursor: pointer;
+  letter-spacing: 0.02em; text-transform: uppercase;
+}
+.btn-primary:hover { background: var(--dark-green); }
+.btn-primary:disabled { background: var(--muted); cursor: not-allowed; }
+
+.banner { padding: 12px 16px; margin: 16px 0; border-left: 3px solid; }
+.banner.ok { background: rgba(40, 168, 142, 0.15); border-color: var(--dark-green); }
+.banner.err { background: var(--wine); color: var(--beige); border-color: var(--wine); }
+
+.loading { color: var(--muted); font-style: italic;
+           font-family: "Spectral", "Times New Roman", serif; padding: 16px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Redigera öppettider</h1>
+    <div class="subtitle">Sök fram en plats och justera veckoschemat</div>
+  </div>
+</header>
+
+<div class="search">
+  <input id="searchInput" type="search" autocomplete="off"
+    placeholder="Sök plats eller församling, t.ex. 'härnösand domkyrka'">
+</div>
+<ul id="results" class="results"></ul>
+
+<div id="editor" hidden>
+  <div class="place-info">
+    <div class="name" id="placeName"></div>
+    <div class="meta" id="placeMeta"></div>
+    <div class="uuid" id="placeUuid"></div>
+  </div>
+
+  <div class="period-meta">
+    <span>Period:</span>
+    <select id="periodSelect"></select>
+    <span id="periodValidity"></span>
+  </div>
+
+  <div class="schedule" id="schedule"></div>
+
+  <div id="banner"></div>
+
+  <div class="actions">
+    <input id="updatedBy" type="text" placeholder="Vem ändrar (updatedBy)">
+    <button id="saveBtn" class="btn-primary">Spara</button>
+  </div>
+</div>
+
+<script>
+const DAY_ORDER = ["mo", "tu", "we", "th", "fr", "sa", "su"];
+const DAY_LABEL = { mo: "Måndag", tu: "Tisdag", we: "Onsdag", th: "Torsdag",
+                    fr: "Fredag", sa: "Lördag", su: "Söndag" };
+
+let currentPlace = null;
+let currentPeriodIdx = 0;
+let workingPeriods = [];   // klonad kopia vi muterar i editorn
+
+const $ = (id) => document.getElementById(id);
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function debounce(fn, ms) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+async function search(q) {
+  const ul = $("results");
+  if (!q || q.length < 2) { ul.innerHTML = ""; return; }
+  try {
+    const r = await fetch(`/api/platser/place?q=${encodeURIComponent(q)}&limit=15`);
+    const d = await r.json();
+    ul.innerHTML = (d.results || []).map(p => `
+      <li><button data-id="${p.id}">
+        <span class="place-name">${escapeHtml(p.name)}</span>
+        <span class="owner-name">${escapeHtml(p.owner?.name || "")}</span>
+      </button></li>
+    `).join("");
+    for (const btn of ul.querySelectorAll("button")) {
+      btn.addEventListener("click", () => loadPlace(btn.dataset.id));
+    }
+  } catch (e) {
+    ul.innerHTML = `<li><div class="loading">Sökfel: ${escapeHtml(e.message)}</div></li>`;
+  }
+}
+
+async function loadPlace(id) {
+  $("results").innerHTML = "";
+  $("editor").hidden = false;
+  $("banner").innerHTML = "";
+  $("placeName").textContent = "Laddar…";
+  try {
+    const r = await fetch(`/api/platser/place/${id}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    currentPlace = await r.json();
+    workingPeriods = JSON.parse(JSON.stringify(currentPlace.openHours?.periods || []));
+    if (!workingPeriods.length) {
+      // Skapa en tom period så användaren kan börja schemalägga
+      workingPeriods.push({ days: {} });
+    }
+    currentPeriodIdx = 0;
+    renderEditor();
+  } catch (e) {
+    $("placeName").textContent = "";
+    showBanner(`Kunde inte hämta plats: ${e.message}`, "err");
+  }
+}
+
+function renderEditor() {
+  $("placeName").textContent = currentPlace.name || "(namn saknas)";
+  const owner = currentPlace.owner || {};
+  $("placeMeta").textContent =
+    `${owner.name || ""}${owner.type ? ` · ${owner.type}` : ""}`;
+  $("placeUuid").textContent = currentPlace.id;
+
+  const sel = $("periodSelect");
+  sel.innerHTML = workingPeriods.map((p, i) => {
+    const range = [p.validFrom || "—", p.validTo || "tills vidare"].join(" → ");
+    return `<option value="${i}">Period ${i + 1} (${range})</option>`;
+  }).join("");
+  sel.value = String(currentPeriodIdx);
+
+  const p = workingPeriods[currentPeriodIdx];
+  $("periodValidity").textContent =
+    `validFrom: ${p.validFrom || "(saknas)"} · validTo: ${p.validTo || "(saknas)"}`;
+
+  const sch = $("schedule");
+  sch.innerHTML = DAY_ORDER.map(day => {
+    const ivs = (p.days?.[day]) || [];
+    const intervalsHtml = ivs.length
+      ? ivs.map((iv, idx) => `
+          <div class="interval">
+            <input type="time" data-day="${day}" data-idx="${idx}" data-field="from"
+                   value="${iv.from || ""}">
+            <span class="sep">–</span>
+            <input type="time" data-day="${day}" data-idx="${idx}" data-field="to"
+                   value="${iv.to || ""}">
+            <button class="remove" data-day="${day}" data-idx="${idx}" title="Ta bort">×</button>
+          </div>`).join("")
+      : `<div class="closed-tag">stängt</div>`;
+    return `
+      <div class="schedule-row">
+        <div class="day">${DAY_LABEL[day]}</div>
+        <div class="intervals">${intervalsHtml}</div>
+        <button class="add-interval" data-day="${day}">+ tid</button>
+      </div>`;
+  }).join("");
+
+  // Bind handlers
+  for (const inp of sch.querySelectorAll('input[type="time"]')) {
+    inp.addEventListener("change", onTimeChange);
+  }
+  for (const btn of sch.querySelectorAll(".remove")) {
+    btn.addEventListener("click", onRemove);
+  }
+  for (const btn of sch.querySelectorAll(".add-interval")) {
+    btn.addEventListener("click", onAdd);
+  }
+}
+
+function onTimeChange(e) {
+  const { day, idx, field } = e.target.dataset;
+  const p = workingPeriods[currentPeriodIdx];
+  p.days[day] = p.days[day] || [];
+  p.days[day][Number(idx)][field] = e.target.value;
+}
+
+function onRemove(e) {
+  const { day, idx } = e.target.dataset;
+  const p = workingPeriods[currentPeriodIdx];
+  p.days[day].splice(Number(idx), 1);
+  if (p.days[day].length === 0) delete p.days[day];
+  renderEditor();
+}
+
+function onAdd(e) {
+  const { day } = e.target.dataset;
+  const p = workingPeriods[currentPeriodIdx];
+  p.days = p.days || {};
+  p.days[day] = p.days[day] || [];
+  p.days[day].push({ from: "09:00", to: "17:00" });
+  renderEditor();
+}
+
+$("periodSelect").addEventListener("change", e => {
+  currentPeriodIdx = Number(e.target.value);
+  renderEditor();
+});
+
+async function save() {
+  const updatedBy = $("updatedBy").value.trim();
+  if (!updatedBy) {
+    showBanner("Fyll i ditt namn i 'Vem ändrar' först.", "err");
+    return;
+  }
+  $("saveBtn").disabled = true;
+  showBanner("Sparar…", "ok");
+  // Rensa eventuella tomma intervall (saknad from eller to)
+  const cleanPeriods = workingPeriods.map(p => {
+    const days = {};
+    for (const [d, ivs] of Object.entries(p.days || {})) {
+      const valid = ivs.filter(i => i.from && i.to);
+      if (valid.length) days[d] = valid;
+    }
+    return { ...p, days };
+  });
+  const payload = {
+    updatedBy,
+    openHours: { ...(currentPlace.openHours || {}), periods: cleanPeriods },
+  };
+  try {
+    const r = await fetch(`/api/platser/place/${currentPlace.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (r.status === 204 || r.ok) {
+      showBanner("Sparat.", "ok");
+      // Ladda om för att se ev. server-bearbetning
+      await loadPlace(currentPlace.id);
+    } else {
+      const text = await r.text();
+      throw new Error(`HTTP ${r.status} ${r.statusText}: ${text.slice(0, 200)}`);
+    }
+  } catch (e) {
+    showBanner(`Sparning misslyckades: ${e.message}`, "err");
+  } finally {
+    $("saveBtn").disabled = false;
+  }
+}
+
+function showBanner(msg, kind) {
+  $("banner").innerHTML = `<div class="banner ${kind}">${escapeHtml(msg)}</div>`;
+}
+
+$("saveBtn").addEventListener("click", save);
+$("searchInput").addEventListener("input",
+  debounce(e => search(e.target.value.trim()), 300));
+</script>
+</body>
+</html>

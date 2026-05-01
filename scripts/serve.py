@@ -35,6 +35,23 @@ CHURCHCALENDAR_API_KEY = "139ff33b-4451-4f0f-b397-1f4ec9307a87"
 PROXY_PREFIX = "/api/churchcalendar"
 PROXY_UPSTREAM = "https://www.svenskakyrkan.se/webapi/api-v2/churchcalendar"
 
+# Generic SVK-API-proxy för pilot-projekt som behöver skrivåtkomst eller
+# undkomma CORS. Nyckeln läses från env (APIKEY_PROD eller APIKEY_TEST
+# beroende på SVK_ENV - prod är default).
+SVK_ENV = os.environ.get("SVK_ENV", "prod").lower()
+SVK_API_KEY = os.environ.get(
+    f"APIKEY_{SVK_ENV.upper()}",
+    os.environ.get("APIKEY_PROD") or os.environ.get("APIKEY_TEST", ""),
+)
+SVK_UPSTREAM = (
+    "https://api.svenskakyrkan.se" if SVK_ENV == "prod"
+    else "https://api-t.svenskakyrkan.se"
+)
+SVK_PROXY_ROUTES = {
+    "/api/platser/": "/platser/v4/",
+    "/api/units/": "/externwebb/api-v2/odata/units",
+}
+
 
 def discover_links() -> list[dict]:
     """Bygg lista av länkar för startsidan."""
@@ -190,8 +207,7 @@ __CARDS__
 
 
 class Handler(SimpleHTTPRequestHandler):
-    def do_GET(self) -> None:  # noqa: N802 - http.server konvention
-        # Auto-genererad startsida på /
+    def do_GET(self) -> None:  # noqa: N802
         if self.path in ("/", "/index.html"):
             body = render_index(discover_links())
             self.send_response(200)
@@ -201,15 +217,36 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        # CORS-proxy mot svenskakyrkan.se/webapi/api-v2/churchcalendar
         if self.path.startswith(PROXY_PREFIX):
             self._proxy_churchcalendar()
             return
+        if self._svk_proxy_match():
+            self._proxy_svk("GET")
+            return
         super().do_GET()
 
+    def do_PATCH(self) -> None:  # noqa: N802
+        if self._svk_proxy_match():
+            self._proxy_svk("PATCH")
+            return
+        self.send_error(405, "Method not allowed")
+
+    def do_PUT(self) -> None:  # noqa: N802
+        if self._svk_proxy_match():
+            self._proxy_svk("PUT")
+            return
+        self.send_error(405, "Method not allowed")
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        if self._svk_proxy_match():
+            self._proxy_svk("DELETE")
+            return
+        self.send_error(405, "Method not allowed")
+
+    def _svk_proxy_match(self) -> bool:
+        return any(self.path.startswith(p) for p in SVK_PROXY_ROUTES)
+
     def _proxy_churchcalendar(self) -> None:
-        # Behåll ev. /<year>-suffix; ignorera klientens query - vi
-        # använder vår egen apiKey.
         suffix = self.path[len(PROXY_PREFIX):].split("?", 1)[0]
         upstream = f"{PROXY_UPSTREAM}{suffix}?{urlencode({'apiKey': CHURCHCALENDAR_API_KEY})}"
         req = Request(upstream, headers={"User-Agent": "svk-api-playground"})
@@ -227,6 +264,61 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=600")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _proxy_svk(self, method: str) -> None:
+        if not SVK_API_KEY:
+            self.send_error(500, "Sätt APIKEY_PROD i .env för SVK-proxy")
+            return
+        # Hitta matchande prefix
+        for prefix, upstream_path in SVK_PROXY_ROUTES.items():
+            if self.path.startswith(prefix):
+                rest = self.path[len(prefix):]
+                break
+        else:
+            self.send_error(404, "Okänd proxy-route")
+            return
+        # Behåll klientens query verbatim (redan URL-encodad) och appendera
+        # vår apikey. Att decoda + re-encoda skulle dubbel-encoda värden.
+        path_part, _, query_part = rest.partition("?")
+        upstream_url = f"{SVK_UPSTREAM}{upstream_path}{path_part}"
+        sep = "?"
+        if query_part:
+            upstream_url += f"?{query_part}"
+            sep = "&"
+        upstream_url += f"{sep}{urlencode({'apikey': SVK_API_KEY})}"
+
+        body = None
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length:
+            body = self.rfile.read(content_length)
+        headers = {"User-Agent": "svk-api-playground"}
+        if body and self.headers.get("Content-Type"):
+            headers["Content-Type"] = self.headers["Content-Type"]
+        req = Request(upstream_url, data=body, method=method, headers=headers)
+        try:
+            with urlopen(req, timeout=20) as resp:
+                data = resp.read()
+                ctype = resp.headers.get("Content-Type", "application/json")
+                status = resp.status
+                location = resp.headers.get("Location")
+        except HTTPError as e:
+            err_body = e.read() if hasattr(e, "read") else b""
+            self.send_response(e.code)
+            self.send_header("Content-Type", e.headers.get("Content-Type", "text/plain"))
+            self.send_header("Content-Length", str(len(err_body)))
+            self.end_headers()
+            self.wfile.write(err_body)
+            return
+        except URLError as e:
+            self.send_error(502, f"Upstream error: {e.reason}")
+            return
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        if location:
+            self.send_header("Location", location)
         self.end_headers()
         self.wfile.write(data)
 
