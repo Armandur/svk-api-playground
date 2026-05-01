@@ -8,14 +8,13 @@ Lekplats och dokumentationskälla för Svenska kyrkans publika API:er.
 sidebar-nav genererad från `docs/modules/*.md`.
 
 ```bash
-# Gemensam dev-server (startsida + auto-discovery av pilot-projekt)
-uv run scripts/serve.py             # http://localhost:8088/
+# Allt i ett: watcher + server (Ctrl+C avslutar båda)
+./start.sh                          # http://localhost:8088/
 
-# Bygg om dokumentationen
-uv run scripts/build_docs.py
-
-# Eller watch-läge under redigering
-uv run scripts/watch_docs.py
+# Eller var för sig:
+uv run scripts/serve.py             # bara servern
+uv run scripts/build_docs.py        # engångsbygge
+uv run scripts/watch_docs.py        # bara watchern (rebuild + sync)
 ```
 
 Källan ligger i `docs/modules/` - en fil per API plus några
