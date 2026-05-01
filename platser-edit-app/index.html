@@ -141,35 +141,64 @@ header .subtitle {
   text-transform: uppercase; letter-spacing: 0.1em;
   margin: 24px 0 8px;
 }
-.exception-panel, .info-panel, .advanced-panel {
+.exception-panel, .info-panel, .advanced-panel, .custom-period-panel {
   margin: 12px 0; background: rgba(125, 0, 55, 0.04);
   border-left: 2px solid var(--gold);
 }
-.exception-panel summary, .info-panel summary, .advanced-panel summary {
+.exception-panel summary, .info-panel summary,
+.advanced-panel summary, .custom-period-panel summary {
   list-style: none; cursor: pointer; padding: 12px 16px;
   display: flex; align-items: center; justify-content: space-between;
 }
 .exception-panel summary::-webkit-details-marker,
 .info-panel summary::-webkit-details-marker,
-.advanced-panel summary::-webkit-details-marker { display: none; }
+.advanced-panel summary::-webkit-details-marker,
+.custom-period-panel summary::-webkit-details-marker { display: none; }
 .exception-panel summary::after,
 .info-panel summary::after,
-.advanced-panel summary::after {
+.advanced-panel summary::after,
+.custom-period-panel summary::after {
   content: "›"; color: var(--muted); font-size: 18px;
   transition: transform 0.15s;
 }
 .exception-panel[open] summary::after,
 .info-panel[open] summary::after,
-.advanced-panel[open] summary::after { transform: rotate(90deg); }
-.exception-panel summary h3, .info-panel summary h3, .advanced-panel summary h3 {
+.advanced-panel[open] summary::after,
+.custom-period-panel[open] summary::after { transform: rotate(90deg); }
+.exception-panel summary h3, .info-panel summary h3,
+.advanced-panel summary h3, .custom-period-panel summary h3 {
   font-size: 14px; font-weight: 500; color: var(--wine);
   margin: 0; letter-spacing: 0.02em;
 }
 .exception-panel > *:not(summary), .info-panel > *:not(summary),
-.advanced-panel > *:not(summary) { padding: 0 16px; }
+.advanced-panel > *:not(summary), .custom-period-panel > *:not(summary) {
+  padding: 0 16px;
+}
 .exception-panel > *:not(summary):last-child,
 .info-panel > *:not(summary):last-child,
-.advanced-panel > *:not(summary):last-child { padding-bottom: 14px; }
+.advanced-panel > *:not(summary):last-child,
+.custom-period-panel > *:not(summary):last-child { padding-bottom: 14px; }
+
+.cp-row { display: flex; gap: 12px; align-items: center;
+          flex-wrap: wrap; margin: 8px 0; }
+.cp-row label { display: flex; align-items: center; gap: 6px;
+                font-size: 13px; color: var(--muted); }
+.cp-row input[type="date"] {
+  font: 14px "DM Sans"; padding: 6px 10px;
+  border: 1px solid var(--black); background: #fff;
+}
+.cp-day-toggle { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.cp-day-toggle label {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border: 1px solid var(--line); cursor: pointer;
+  font-size: 13px; user-select: none;
+}
+.cp-day-toggle label:has(input:checked) {
+  background: var(--wine); color: var(--beige); border-color: var(--wine);
+}
+.cp-day-toggle input { accent-color: var(--wine); }
+.cp-intervals { display: flex; flex-direction: column; gap: 6px;
+                margin: 8px 0; }
 
 /* Periodöversikt - kort som visar varje öppettidsuppsättning */
 .period-overview {
@@ -376,6 +405,29 @@ header .subtitle {
 
   <h3 class="section-h">Öppettidsperioder</h3>
   <div id="periodOverview" class="period-overview"></div>
+
+  <details class="custom-period-panel">
+    <summary><h3>Skapa anpassad öppettidsperiod</h3></summary>
+    <p class="exception-hint">
+      Sätter öppettider för specifika veckodagar mellan två datum.
+      Skapar en ny period (rör inte befintliga). Användbart för t.ex.
+      sommarsäsong, sportlov, julvecka. Bocka av dagar som ska vara
+      stängda.
+    </p>
+    <div class="cp-row">
+      <label>Från: <input id="cpFrom" type="date"></label>
+      <label>Till: <input id="cpTo" type="date"></label>
+    </div>
+    <div class="cp-day-toggle" id="cpDayToggle"></div>
+    <div class="cp-intervals" id="cpIntervals"></div>
+    <div class="cp-row">
+      <button id="cpAddIntervalBtn" type="button" class="add-interval">+ tid</button>
+      <button id="cpCreatePeriodBtn" type="button" class="btn-secondary">
+        Skapa period
+      </button>
+      <span id="cpResult" class="session-hint"></span>
+    </div>
+  </details>
 
   <details class="exception-panel" open>
     <summary><h3>Stäng platsen en specifik dag</h3></summary>
@@ -850,6 +902,101 @@ function appendInfoReason(dateStr, reason) {
   const line = `Stängt ${fmtSwedishDate(dateStr)}: ${reason}`;
   $("openHoursInfoInput").value = existing ? `${existing}\n${line}` : line;
 }
+
+// Anpassad period - lokal state
+const cpDaysSelected = new Set(["mo", "tu", "we", "th", "fr"]);
+let cpIntervals = [{ from: "10:00", to: "12:00" }];
+
+function renderCpDayToggle() {
+  const el = $("cpDayToggle");
+  el.innerHTML = DAY_ORDER.map(k => `
+    <label>
+      <input type="checkbox" data-day="${k}" ${cpDaysSelected.has(k) ? "checked" : ""}>
+      ${DAY_LABEL[k].slice(0, 3)}
+    </label>`).join("");
+  for (const cb of el.querySelectorAll("input")) {
+    cb.addEventListener("change", () => {
+      const d = cb.dataset.day;
+      if (cb.checked) cpDaysSelected.add(d); else cpDaysSelected.delete(d);
+    });
+  }
+}
+
+function renderCpIntervals() {
+  const el = $("cpIntervals");
+  el.innerHTML = cpIntervals.map((iv, idx) => `
+    <div class="interval">
+      <input type="time" data-idx="${idx}" data-field="from" value="${iv.from || ""}">
+      <span class="sep">–</span>
+      <input type="time" data-idx="${idx}" data-field="to" value="${iv.to || ""}">
+      <button class="remove" data-idx="${idx}" title="Ta bort">×</button>
+    </div>`).join("");
+  for (const inp of el.querySelectorAll('input[type="time"]')) {
+    inp.addEventListener("change", e => {
+      cpIntervals[Number(e.target.dataset.idx)][e.target.dataset.field] = e.target.value;
+    });
+  }
+  for (const btn of el.querySelectorAll(".remove")) {
+    btn.addEventListener("click", e => {
+      cpIntervals.splice(Number(e.target.dataset.idx), 1);
+      if (!cpIntervals.length) cpIntervals.push({ from: "", to: "" });
+      renderCpIntervals();
+    });
+  }
+}
+
+function createCustomPeriod() {
+  const out = $("cpResult");
+  const from = $("cpFrom").value;
+  const to = $("cpTo").value;
+  if (!from || !to) {
+    out.textContent = "Fyll i båda datumen.";
+    return;
+  }
+  if (from >= to) {
+    out.textContent = "Från-datum måste vara före till-datum (servern kräver strikt <).";
+    return;
+  }
+  if (!cpDaysSelected.size) {
+    out.textContent = "Välj minst en veckodag.";
+    return;
+  }
+  const validIvs = cpIntervals
+    .filter(iv => iv.from && iv.to)
+    .map(iv => ({ from: iv.from, to: iv.to }));
+  if (!validIvs.length) {
+    out.textContent = "Lägg till minst ett tidsintervall.";
+    return;
+  }
+  // Bygg days-objekt: valda dagar får intervallen, övriga blir tomma
+  const days = {};
+  for (const k of DAY_ORDER) {
+    days[k] = cpDaysSelected.has(k) ? [...validIvs] : [];
+  }
+  // Validera intervallen för överlapp på de valda dagarna
+  const issues = validateDayIntervals(days);
+  if (issues.length) {
+    out.textContent = "Fel i intervall: " + issues.join("; ");
+    return;
+  }
+  const newPeriod = { validFrom: from, validTo: to, days };
+  workingPeriods.push(newPeriod);
+  // Sortera så översikten visar dem i kronologisk ordning
+  workingPeriods.sort((a, b) =>
+    (a.validFrom || "").localeCompare(b.validFrom || ""));
+  currentPeriodIdx = workingPeriods.indexOf(newPeriod);
+  out.textContent = `OK - period skapad (${from} → ${to}, ${cpDaysSelected.size} dagar).`;
+  renderEditor();
+}
+
+renderCpDayToggle();
+renderCpIntervals();
+
+$("cpAddIntervalBtn").addEventListener("click", () => {
+  cpIntervals.push({ from: "13:00", to: "15:00" });
+  renderCpIntervals();
+});
+$("cpCreatePeriodBtn").addEventListener("click", createCustomPeriod);
 
 $("addExceptionBtn").addEventListener("click", () => {
   const dateStr = $("exceptionDate").value;
