@@ -390,8 +390,9 @@ class Handler(SimpleHTTPRequestHandler):
         if not new_session:
             CS_SESSION = ""
             body = b'{"ok":true,"cleared":true}'
-        elif len(new_session) < 50:
-            self.send_error(400, "För kort - CS_UserSessionId är 124 tecken")
+        elif len(new_session) < 30:
+            self.send_error(400, "För kort - antingen CS_UserSessionId-värdet "
+                                 "eller en full cookie-header")
             return
         else:
             CS_SESSION = new_session
@@ -416,8 +417,16 @@ class Handler(SimpleHTTPRequestHandler):
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length:
             body = self.rfile.read(content_length)
+        # CS_SESSION kan vara antingen bara värdet av CS_UserSessionId
+        # eller en fullständig cookie-header med flera cookies
+        # ("name1=v1; name2=v2; ..."). Det senare behövs när auth-
+        # cookien är HttpOnly och måste kopieras manuellt från DevTools.
+        cookie_header = (
+            CS_SESSION if "=" in CS_SESSION and ";" in CS_SESSION
+            else f"CS_UserSessionId={CS_SESSION}"
+        )
         headers = {
-            "Cookie": f"CS_UserSessionId={CS_SESSION}",
+            "Cookie": cookie_header,
             "Origin": "https://admin.svenskakyrkan.se",
             "Referer": "https://admin.svenskakyrkan.se/",
             "User-Agent": "svk-api-playground",
@@ -442,9 +451,11 @@ class Handler(SimpleHTTPRequestHandler):
                     update_cs_session(rotated, f"admin-proxy {method}")
         except HTTPError as e:
             err_body = e.read() if hasattr(e, "read") else b""
+            cookie_names = [c.split("=", 1)[0].strip() for c in cookie_header.split(";") if c.strip()]
             print(
                 f"!! admin-proxy {method} {upstream_url} -> "
-                f"HTTP {e.code} ({len(err_body)}b body)",
+                f"HTTP {e.code} ({len(err_body)}b body, "
+                f"cookies skickade: {cookie_names})",
                 flush=True,
             )
             preview = err_body[:500].decode("utf-8", errors="replace")

@@ -199,24 +199,29 @@ header .subtitle {
     <span id="sessionStatus" class="status-tag">laddar…</span>
   </summary>
   <div class="session-body">
-    <p>För att <b>spara</b> ändringar mot CMS:ets interna API behövs en
-       <code>CS_UserSessionId</code>-cookie från en inloggad
-       admin.svenskakyrkan.se-session. Hämta den med bookmarkleten
-       nedan eller från DevTools.</p>
+    <p>För att <b>spara</b> ändringar mot CMS:ets interna API behövs
+       cookies från en inloggad admin.svenskakyrkan.se-session.
+       <b>Auth-cookien är troligen HttpOnly</b> och kan därför inte läsas
+       via JS - kopiera då manuellt från DevTools.</p>
     <ol>
       <li>Logga in på
           <a href="https://admin.svenskakyrkan.se/" target="_blank">admin.svenskakyrkan.se</a>.</li>
-      <li>Dra denna länk till bokmärkesraden:
+      <li><b>Snabbväg (om cookies syns för JS):</b> dra länken till
+          bokmärkesraden, klicka den på admin-fliken, klistra sedan in
+          nedan:
           <a class="bookmarklet"
-             href="javascript:(function(){var c=document.cookie.split(';').map(function(s){return s.trim()}).find(function(s){return s.indexOf('CS_UserSessionId=')===0});if(!c){alert('Hittade ingen CS_UserSessionId. Är du inloggad?');return}var v=c.split('=')[1];if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(function(){alert('CS_UserSessionId kopierad ('+v.length+'%20tecken)')},function(){prompt('Kopiera%20manuellt:',v)})}else{prompt('Kopiera%20manuellt:',v)}})();"
-             >Kopiera CS_UserSessionId</a></li>
-      <li>Klicka bokmärket på admin-fliken - cookie kopieras till
-          urklipp.</li>
-      <li>Klistra in nedan och spara:</li>
+             href="javascript:(function(){var c=document.cookie;if(!c){alert('Inga%20cookies%20syns%20via%20JS%20-%20kopiera%20manuellt%20fr%C3%A5n%20DevTools');return}var f=c.split(';').map(function(s){return s.trim()}).filter(function(s){return s%26%26!s.startsWith('ai_')}).join('; ');navigator.clipboard.writeText(f).then(function(){alert('Cookies%20kopierade%20('+f.length+'%20tecken,%20'+f.split(';').length+'%20st)')},function(){prompt('Kopiera%20manuellt:',f)})})();"
+             >Kopiera alla cookies</a></li>
+      <li><b>Manuell väg (HttpOnly-cookies):</b> öppna DevTools
+          (F12) → Application → Cookies → admin.svenskakyrkan.se,
+          markera alla rader, högerklicka och kopiera. Klistra in
+          som <code>name1=val1; name2=val2; ...</code> nedan.</li>
+      <li>Klistra in cookies nedan (bara CS_UserSessionId-värdet eller
+          en fullständig cookie-header) och tryck Använd:</li>
     </ol>
     <div class="session-input">
       <input id="sessionInput" type="password" autocomplete="off"
-             placeholder="Klistra in CS_UserSessionId här (124 tecken)">
+             placeholder="CS_UserSessionId-värde eller hela cookie-headern">
       <button id="setSessionBtn" class="btn-primary">Använd</button>
       <button id="clearSessionBtn" type="button" class="btn-secondary">Rensa</button>
     </div>
