@@ -201,20 +201,31 @@ function activePeriod(periods, d) {
   return periods[0]; // fallback
 }
 
-// Bygger 7-dagars-vy. View "week" startar på måndag i innevarande
-// vecka, "rolling" startar på idag och går 7 dagar framåt. Sätts
-// via URL-param ?view=rolling (default: week).
-// För varje dag plockas intervals från den period vars validFrom/validTo
-// täcker just det datumet - schemat kan alltså väva ihop flera perioder.
-const VIEW_MODE = new URLSearchParams(location.search).get('view') === 'rolling'
-  ? 'rolling' : 'week';
+// Bygger schedulvy, valbart format via ?view=:
+//   week     (default) - måndag i innevarande vecka, 7 dagar
+//   rolling  - idag och 6 dagar framåt
+//   extended - idag fram till och med söndag i NÄSTA vecka:
+//              söndag→8d, måndag→14d, fredag→10d osv. Ger alltid
+//              minst en hel kommande vecka synlig.
+const VIEW_MODE = (() => {
+  const v = new URLSearchParams(location.search).get('view');
+  if (v === 'rolling' || v === 'extended') return v;
+  return 'week';
+})();
 
 function buildWeekSchedule(periods, now) {
   const today = new Date(now);
   today.setHours(12, 0, 0, 0);
   let start;
+  let count = 7;
   if (VIEW_MODE === 'rolling') {
     start = new Date(today);
+  } else if (VIEW_MODE === 'extended') {
+    start = new Date(today);
+    const dow = today.getDay();
+    // Antal dagar att visa: idag + alla dagar till och med söndag i
+    // nästa vecka. Söndag (0) ger 8 dagar, måndag (1) ger 14, osv.
+    count = dow === 0 ? 8 : 15 - dow;
   } else {
     const dow = today.getDay();
     const daysToMonday = dow === 0 ? -6 : 1 - dow;
@@ -224,7 +235,7 @@ function buildWeekSchedule(periods, now) {
 
   const todayYmd = ymdLocal(today);
   const result = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < count; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     const ymd = ymdLocal(d);
