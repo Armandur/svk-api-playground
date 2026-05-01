@@ -34,8 +34,7 @@ body {
 
 header {
   display: flex; justify-content: space-between; align-items: baseline;
-  padding-bottom: clamp(12px, 2vw, 24px);
-  border-bottom: 2px solid var(--wine);
+  padding-bottom: clamp(8px, 1.5vw, 16px);
   margin-bottom: clamp(20px, 3vw, 36px);
 }
 h1 {
@@ -56,12 +55,10 @@ h1 .subtitle {
 
 .status {
   display: flex; align-items: center; gap: clamp(24px, 4vw, 64px);
-  padding: clamp(24px, 4vw, 56px) clamp(28px, 5vw, 72px);
-  border: 3px solid var(--wine);
+  padding: clamp(8px, 1.5vw, 16px) 0;
   margin-bottom: clamp(20px, 3vw, 36px);
   background: transparent;
 }
-.status.open { border-color: var(--dark-green); }
 .status .badge {
   font-size: clamp(48px, 9vw, 130px); font-weight: 600;
   letter-spacing: -0.03em; line-height: 0.95;
@@ -185,7 +182,6 @@ footer {
 <div id="visiting" class="visiting" hidden></div>
 
 <footer>
-  <span id="periodInfo"></span>
   <span>Uppdaterad: <span id="updatedAt">-</span></span>
 </footer>
 
@@ -290,25 +286,73 @@ function fmtSwedishDate(ymd) {
   return `${d.getUTCDate()} ${SV_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
+const DAY_KEYS_BY_INDEX = ['su','mo','tu','we','th','fr','sa'];
+
+function getClosedDays(period) {
+  // Returnerar lista YYYY-MM-DD inom perioden där days[veckodag] är []
+  if (!period.validFrom || !period.validTo) return [];
+  const start = new Date(period.validFrom + 'T12:00:00Z');
+  const end = new Date(period.validTo + 'T12:00:00Z');
+  const days = period.days || {};
+  const closed = [];
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const key = DAY_KEYS_BY_INDEX[d.getUTCDay()];
+    if (Array.isArray(days[key]) && days[key].length === 0) {
+      closed.push(d.toISOString().slice(0, 10));
+    }
+  }
+  return closed;
+}
+
+function fmtDateRange(fromYmd, toYmd) {
+  if (fromYmd === toYmd) return fmtSwedishDate(fromYmd);
+  // Samma månad och år: kortare format "24-25 december 2026"
+  const a = new Date(fromYmd + 'T12:00:00Z');
+  const b = new Date(toYmd + 'T12:00:00Z');
+  if (a.getUTCMonth() === b.getUTCMonth() &&
+      a.getUTCFullYear() === b.getUTCFullYear()) {
+    return `${a.getUTCDate()}-${b.getUTCDate()} ${SV_MONTHS[a.getUTCMonth()]} ${a.getUTCFullYear()}`;
+  }
+  return `${fmtSwedishDate(fromYmd)} - ${fmtSwedishDate(toYmd)}`;
+}
+
+function describeActivePeriod(period) {
+  if (!period || !period.validTo) return null;
+  const totalDays = Math.round(
+    (new Date(period.validTo + 'T12:00:00Z') -
+     new Date(period.validFrom + 'T12:00:00Z')) / 86400000) + 1;
+  const closed = getClosedDays(period);
+  if (closed.length === 0) {
+    // Säsongsperiod utan stängningar
+    return {
+      label: 'Öppettider gäller',
+      detail: fmtDateRange(period.validFrom, period.validTo),
+    };
+  }
+  if (closed.length === totalDays) {
+    // Hela perioden stängd
+    return {
+      label: 'Stängt',
+      detail: closed.length === 1
+        ? fmtSwedishDate(closed[0])
+        : fmtDateRange(closed[0], closed[closed.length - 1]),
+    };
+  }
+  if (closed.length === 1) {
+    return { label: 'Stängt', detail: fmtSwedishDate(closed[0]) };
+  }
+  // Flera (men ej alla) dagar stängda
+  return {
+    label: 'Stängt',
+    detail: closed.map(fmtSwedishDate).join(', '),
+  };
+}
+
 function renderValidityBanner(period) {
   const el = document.getElementById('validityBanner');
-  // Visa bara när perioden har en slutgräns (säsongs- eller avvikelseperiod).
-  // Permanent period (validTo saknas) = ordinarie öppettider, ingen banner.
-  if (!period || !period.validTo) {
-    el.hidden = true;
-    return;
-  }
-  const from = period.validFrom ? fmtSwedishDate(period.validFrom) : null;
-  const to = fmtSwedishDate(period.validTo);
-  let html;
-  if (period.validFrom === period.validTo) {
-    html = `<em>Öppettider gäller</em> ${to}`;
-  } else if (from) {
-    html = `<em>Öppettider gäller</em> ${from} - ${to}`;
-  } else {
-    html = `<em>Öppettider gäller fram till</em> ${to}`;
-  }
-  el.innerHTML = html;
+  const desc = describeActivePeriod(period);
+  if (!desc) { el.hidden = true; return; }
+  el.innerHTML = `<em>${desc.label}</em> ${desc.detail}`;
   el.hidden = false;
 }
 
@@ -364,14 +408,6 @@ function renderVisiting(place) {
   el.hidden = false;
 }
 
-function renderPeriodInfo(period) {
-  const el = document.getElementById('periodInfo');
-  if (!period) { el.textContent = ''; return; }
-  const parts = [];
-  if (period.validFrom) parts.push(`från ${period.validFrom}`);
-  if (period.validTo) parts.push(`till ${period.validTo}`);
-  el.textContent = parts.length ? `Period: ${parts.join(' ')}` : 'Standardperiod';
-}
 
 function render(now) {
   if (!cachedData) return;
@@ -383,7 +419,6 @@ function render(now) {
     : '-';
 
   const period = activePeriod(place.openHours?.periods, now);
-  renderPeriodInfo(period);
   renderValidityBanner(period);
   renderSchedule(period, now);
   renderHoursInfo(place);
