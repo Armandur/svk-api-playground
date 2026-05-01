@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
+import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -60,7 +62,71 @@ SVK_PROXY_ROUTES = {
 # Se docs-from-claude-code-chrome/platser-edit-flow-2026-05-01.md.
 ADMIN_PROXY_PREFIX = "/api/admin/"
 ADMIN_UPSTREAM = "https://admin.svenskakyrkan.se/webapi/api-v2/"
+ADMIN_KEEPALIVE_URL = "https://admin.svenskakyrkan.se/churchcontext"
+KEEPALIVE_INTERVAL = int(os.environ.get("ADMIN_KEEPALIVE_MIN", "30")) * 60
 CS_SESSION = os.environ.get("CS_SESSION", "")
+CS_SESSION_UPDATED_AT = 0.0    # unix timestamp för senast lyckad refresh
+CS_SESSION_LOCK = threading.Lock()
+
+
+def update_cs_session(new_value: str, source: str) -> bool:
+    """Uppdatera global CS_SESSION om värdet är giltigt och nytt.
+    Returnerar True om något ändrades."""
+    global CS_SESSION, CS_SESSION_UPDATED_AT
+    if not new_value or len(new_value) < 50:
+        return False
+    with CS_SESSION_LOCK:
+        if new_value == CS_SESSION:
+            CS_SESSION_UPDATED_AT = time.time()
+            return False
+        CS_SESSION = new_value
+        CS_SESSION_UPDATED_AT = time.time()
+    print(f">> CS_SESSION uppdaterad från {source} ({len(new_value)} tecken)",
+          flush=True)
+    return True
+
+
+def extract_session_from_headers(headers) -> str | None:
+    """Plocka ut CS_UserSessionId från ev. Set-Cookie-headers."""
+    cookies = headers.get_all("Set-Cookie") if hasattr(headers, "get_all") else []
+    for raw in cookies or []:
+        first = raw.split(";", 1)[0].strip()
+        if first.startswith("CS_UserSessionId="):
+            return first.split("=", 1)[1]
+    return None
+
+
+def keep_session_alive() -> None:
+    """Bakgrundsloop som pingar admin-domänen var KEEPALIVE_INTERVAL
+    sekund för att hålla CS_UserSessionId-sessionen vid liv (90 min
+    idle timeout). Sniffar även Set-Cookie för ev. roterad cookie.
+    Skip om sessionen är tom."""
+    while True:
+        time.sleep(KEEPALIVE_INTERVAL)
+        if not CS_SESSION:
+            continue
+        try:
+            req = Request(ADMIN_KEEPALIVE_URL, headers={
+                "Cookie": f"CS_UserSessionId={CS_SESSION}",
+                "User-Agent": "svk-api-playground/keepalive",
+            })
+            with urlopen(req, timeout=15) as resp:
+                new_session = extract_session_from_headers(resp.headers)
+                if new_session:
+                    update_cs_session(new_session, "keepalive Set-Cookie")
+                else:
+                    # Aktivitets-ping räcker - servern flyttar fram
+                    # idle-timern även utan cookie-rotation
+                    global CS_SESSION_UPDATED_AT
+                    CS_SESSION_UPDATED_AT = time.time()
+                    print(f">> session keep-alive: HTTP {resp.status}",
+                          flush=True)
+        except HTTPError as e:
+            print(f"!! session keep-alive: HTTP {e.code} - sessionen "
+                  f"kan ha löpt ut, ny SSO-inloggning krävs",
+                  flush=True)
+        except Exception as e:
+            print(f"!! session keep-alive misslyckades: {e}", flush=True)
 
 
 def discover_links() -> list[dict]:
@@ -366,6 +432,11 @@ class Handler(SimpleHTTPRequestHandler):
                 data = resp.read()
                 ctype = resp.headers.get("Content-Type", "application/json")
                 status = resp.status
+                # Sliding-expiration: om upstream roterar cookien
+                # så fångar vi den och uppdaterar vår lagrade.
+                rotated = extract_session_from_headers(resp.headers)
+                if rotated:
+                    update_cs_session(rotated, f"admin-proxy {method}")
         except HTTPError as e:
             err_body = e.read() if hasattr(e, "read") else b""
             self.send_response(e.code)
@@ -458,7 +529,10 @@ def main() -> int:
     url = f"http://localhost:{PORT}/"
     print(f">> svk-api-playground servar på {url}", flush=True)
     print(f">> root: {ROOT}", flush=True)
+    print(f">> session keep-alive var {KEEPALIVE_INTERVAL // 60} min "
+          f"mot {ADMIN_KEEPALIVE_URL}", flush=True)
     print(f">> Ctrl+C för att avsluta", flush=True)
+    threading.Thread(target=keep_session_alive, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
