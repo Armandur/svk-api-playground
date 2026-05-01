@@ -208,7 +208,8 @@ async function search(q) {
   const ul = $("results");
   if (!q || q.length < 2) { ul.innerHTML = ""; return; }
   try {
-    const r = await fetch(`/api/platser/place?q=${encodeURIComponent(q)}&limit=15`);
+    const r = await fetch(`/api/platser/place?q=${encodeURIComponent(q)}&limit=15`,
+                          { cache: "no-store" });
     const d = await r.json();
     ul.innerHTML = (d.results || []).map(p => `
       <li><button data-id="${p.id}">
@@ -230,7 +231,7 @@ async function loadPlace(id) {
   $("banner").innerHTML = "";
   $("placeName").textContent = "Laddar…";
   try {
-    const r = await fetch(`/api/platser/place/${id}`);
+    const r = await fetch(`/api/platser/place/${id}`, { cache: "no-store" });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     currentPlace = await r.json();
     workingPeriods = JSON.parse(JSON.stringify(currentPlace.openHours?.periods || []));

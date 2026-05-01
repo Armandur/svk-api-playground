@@ -317,6 +317,11 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        # Aldrig cacha SVK-API-svar - vi vill alltid se senaste data
+        # under utveckling. Upstream sätter ev. egna cache-headers,
+        # men vi överrider dem här.
+        self.send_header("Cache-Control", "no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
         if location:
             self.send_header("Location", location)
         self.end_headers()
