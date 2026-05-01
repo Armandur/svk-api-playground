@@ -108,19 +108,6 @@ table.schedule tr.today td {
   white-space: pre-line;  /* respektera \n från CMS-fältet */
 }
 
-.validity-banner {
-  margin-bottom: clamp(14px, 2vw, 22px);
-  padding: clamp(10px, 1.4vw, 16px) clamp(14px, 2vw, 22px);
-  background: var(--wine); color: var(--beige);
-  font-size: clamp(15px, 1.9vw, 24px);
-  font-weight: 500; letter-spacing: 0.01em; line-height: 1.3;
-}
-.validity-banner em {
-  font-family: "Spectral", "Times New Roman", serif;
-  font-style: italic; font-weight: 400; opacity: 0.9;
-  margin-right: 6px;
-}
-
 .facilities {
   margin-top: clamp(16px, 2vw, 22px);
   display: flex; flex-wrap: wrap; gap: clamp(10px, 1.5vw, 16px);
@@ -167,8 +154,6 @@ footer {
   <div class="badge" id="statusBadge">…</div>
   <div class="detail" id="statusDetail"></div>
 </div>
-
-<div id="validityBanner" class="validity-banner" hidden></div>
 
 <table class="schedule" id="schedule">
   <thead><tr><th>Dag</th><th>Öppet</th></tr></thead>
@@ -237,11 +222,6 @@ function buildWeekSchedule(periods, now) {
     start.setDate(today.getDate() + daysToMonday);
   }
 
-  // För avvikelse-detektering: hitta "ordinarie" period (utan validTo)
-  // - en dag räknas som avvikelse bara om en kortare period stänger
-  // den, och den enligt ordinarie skulle varit öppen.
-  const ordinary = (periods || []).find(p => !p.validTo);
-
   const todayYmd = ymdLocal(today);
   const result = [];
   for (let i = 0; i < 7; i++) {
@@ -251,15 +231,11 @@ function buildWeekSchedule(periods, now) {
     const dayKey = DAY_KEYS[d.getDay()];
     const period = activePeriod(periods, d);
     const intervals = period?.days?.[dayKey] || [];
-    const ordinaryIntervals = ordinary?.days?.[dayKey] || [];
-    const isAvvikelseStangt = intervals.length === 0
-      && ordinaryIntervals.length > 0;
     result.push({
       date: ymd,
       dayKey,
       intervals,
       isToday: ymd === todayYmd,
-      isAvvikelseStangt,
     });
   }
   return result;
@@ -307,7 +283,7 @@ function renderWeekSchedule(weekDays) {
     if (wd.isToday) tr.classList.add('today');
     const cells = wd.intervals.length
       ? wd.intervals.map(iv => `${fmtHHMM(iv.from)}–${fmtHHMM(iv.to)}`).join(', ')
-      : '<span class="closed-cell">stängt</span>';
+      : '<span class="closed-cell">Stängt</span>';
     const d = new Date(wd.date + 'T12:00:00');
     const dayLabel = `${DAY_LABEL[wd.dayKey]} ${d.getDate()} ${SV_MONTHS_SHORT[d.getMonth()]}`;
     tr.innerHTML = `<td>${dayLabel}</td><td>${cells}</td>`;
@@ -329,65 +305,6 @@ function renderHoursInfo(place) {
   } else {
     el.hidden = true;
   }
-}
-
-const SV_MONTHS = ['januari','februari','mars','april','maj','juni',
-                   'juli','augusti','september','oktober','november','december'];
-
-function fmtSwedishDate(ymd) {
-  if (!ymd) return '';
-  const d = new Date(ymd + 'T12:00:00Z');
-  return `${d.getUTCDate()} ${SV_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-}
-
-const DAY_KEYS_BY_INDEX = ['su','mo','tu','we','th','fr','sa'];
-
-function getClosedDays(period) {
-  // Returnerar lista YYYY-MM-DD inom perioden där days[veckodag] är []
-  if (!period.validFrom || !period.validTo) return [];
-  const start = new Date(period.validFrom + 'T12:00:00Z');
-  const end = new Date(period.validTo + 'T12:00:00Z');
-  const days = period.days || {};
-  const closed = [];
-  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-    const key = DAY_KEYS_BY_INDEX[d.getUTCDay()];
-    if (Array.isArray(days[key]) && days[key].length === 0) {
-      closed.push(d.toISOString().slice(0, 10));
-    }
-  }
-  return closed;
-}
-
-function fmtDateRange(fromYmd, toYmd) {
-  if (fromYmd === toYmd) return fmtSwedishDate(fromYmd);
-  // Samma månad och år: kortare format "24-25 december 2026"
-  const a = new Date(fromYmd + 'T12:00:00Z');
-  const b = new Date(toYmd + 'T12:00:00Z');
-  if (a.getUTCMonth() === b.getUTCMonth() &&
-      a.getUTCFullYear() === b.getUTCFullYear()) {
-    return `${a.getUTCDate()}-${b.getUTCDate()} ${SV_MONTHS[a.getUTCMonth()]} ${a.getUTCFullYear()}`;
-  }
-  return `${fmtSwedishDate(fromYmd)} - ${fmtSwedishDate(toYmd)}`;
-}
-
-function renderValidityBanner(weekDays) {
-  // Visa bara dagar som ÄR avvikelser - dvs stängda av en kort period
-  // trots att ordinarie schema säger öppet.
-  const el = document.getElementById('validityBanner');
-  const closedDays = weekDays.filter(d => d.isAvvikelseStangt);
-  if (!closedDays.length) {
-    el.hidden = true;
-    return;
-  }
-  const formatted = closedDays.map(d => {
-    const dt = new Date(d.date + 'T12:00:00');
-    return `${dt.getDate()} ${SV_MONTHS_SHORT[dt.getMonth()]}`;
-  });
-  const scope = VIEW_MODE === 'rolling' ? 'kommande dagar' : 'denna vecka';
-  const label = closedDays.length === 1
-    ? `Avvikelse ${scope}` : `Avvikelser ${scope}`;
-  el.innerHTML = `<em>${label}:</em> stängt ${formatted.join(', ')}`;
-  el.hidden = false;
 }
 
 const FACILITY_LABELS = {
@@ -454,8 +371,6 @@ function render(now) {
 
   const periods = place.openHours?.periods;
   const weekDays = buildWeekSchedule(periods, now);
-  const todayPeriod = activePeriod(periods, now);
-  renderValidityBanner(weekDays);
   renderWeekSchedule(weekDays);
   renderHoursInfo(place);
   renderFacilities(place);
