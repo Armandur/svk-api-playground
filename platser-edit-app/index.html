@@ -127,15 +127,74 @@ header .subtitle {
            font-family: "Spectral", "Times New Roman", serif; font-style: italic; }
 .dry-run input { accent-color: var(--wine); }
 
-.exception-panel, .info-panel {
-  margin: 16px 0; padding: 14px 16px;
-  background: rgba(125, 0, 55, 0.04);
+.section-h {
+  font-size: 13px; font-weight: 500; color: var(--wine);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin: 24px 0 8px;
+}
+.exception-panel, .info-panel, .advanced-panel {
+  margin: 12px 0; background: rgba(125, 0, 55, 0.04);
   border-left: 2px solid var(--gold);
 }
-.exception-panel h3, .info-panel h3 {
-  font-size: 14px; font-weight: 500; color: var(--wine);
-  margin-bottom: 6px; letter-spacing: 0.02em;
+.exception-panel summary, .info-panel summary, .advanced-panel summary {
+  list-style: none; cursor: pointer; padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
 }
+.exception-panel summary::-webkit-details-marker,
+.info-panel summary::-webkit-details-marker,
+.advanced-panel summary::-webkit-details-marker { display: none; }
+.exception-panel summary::after,
+.info-panel summary::after,
+.advanced-panel summary::after {
+  content: "›"; color: var(--muted); font-size: 18px;
+  transition: transform 0.15s;
+}
+.exception-panel[open] summary::after,
+.info-panel[open] summary::after,
+.advanced-panel[open] summary::after { transform: rotate(90deg); }
+.exception-panel summary h3, .info-panel summary h3, .advanced-panel summary h3 {
+  font-size: 14px; font-weight: 500; color: var(--wine);
+  margin: 0; letter-spacing: 0.02em;
+}
+.exception-panel > *:not(summary), .info-panel > *:not(summary),
+.advanced-panel > *:not(summary) { padding: 0 16px; }
+.exception-panel > *:not(summary):last-child,
+.info-panel > *:not(summary):last-child,
+.advanced-panel > *:not(summary):last-child { padding-bottom: 14px; }
+
+/* Periodöversikt - kort som visar varje öppettidsuppsättning */
+.period-overview {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px; margin-bottom: 8px;
+}
+.period-card {
+  border: 2px solid var(--line); background: #fff;
+  padding: 10px 12px; cursor: pointer; transition: all 0.1s;
+}
+.period-card:hover { border-color: var(--wine); }
+.period-card.active { border-color: var(--wine); background: rgba(125, 0, 55, 0.06); }
+.period-card .pc-title {
+  font-size: 12px; font-weight: 600; color: var(--wine);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+}
+.period-card .pc-range {
+  font-size: 13px; font-family: ui-monospace, monospace;
+  color: var(--black); margin-bottom: 8px;
+}
+.period-card .pc-days {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.period-card .pc-day {
+  text-align: center; font-size: 10px; padding: 4px 2px;
+  border-radius: 2px; font-family: ui-monospace, monospace;
+  font-weight: 500;
+}
+.period-card .pc-day-name { font-size: 9px; color: var(--muted);
+                            text-align: center; margin-bottom: 2px;
+                            font-family: "DM Sans", sans-serif;
+                            text-transform: uppercase; letter-spacing: 0.04em; }
+.period-card .pc-day.open { background: var(--light-green); color: var(--dark-green); }
+.period-card .pc-day.closed { background: var(--pink); color: var(--wine); font-style: italic; }
 .exception-hint {
   font-size: 12px; font-family: "Spectral", "Times New Roman", serif;
   font-style: italic; color: var(--muted); margin-bottom: 10px; line-height: 1.4;
@@ -301,20 +360,16 @@ header .subtitle {
     <div class="uuid" id="placeUuid"></div>
   </div>
 
-  <div class="period-meta">
-    <span>Period:</span>
-    <select id="periodSelect"></select>
-    <span id="periodValidity"></span>
-  </div>
+  <h3 class="section-h">Öppettidsperioder</h3>
+  <div id="periodOverview" class="period-overview"></div>
 
-  <div class="schedule" id="schedule"></div>
-
-  <div class="exception-panel">
-    <h3>Stäng platsen en specifik dag</h3>
+  <details class="exception-panel" open>
+    <summary><h3>Stäng platsen en specifik dag</h3></summary>
     <p class="exception-hint">
-      Splittrar nuvarande period i tre: originalet fram till dagen innan,
-      en stängd dag, och fortsättning från dagen efter. Anledningen
-      appendas till öppettidsinfo-fältet (synligt på webbplatsen).
+      Splittrar matchande period i upp till tre delar (originalet fram
+      till dagen innan, en stängd dag, fortsättning efter). Vid
+      ytterligare stängning i samma korta period utökas den istället.
+      Anledningen appendas till öppettidsinfo-fältet.
     </p>
     <div class="exception-input">
       <input id="exceptionDate" type="date">
@@ -325,13 +380,23 @@ header .subtitle {
       </button>
     </div>
     <span id="exceptionResult" class="session-hint"></span>
-  </div>
+  </details>
 
-  <div class="info-panel">
-    <h3>Öppettidsinfo (fritext, visas på webbplatsen)</h3>
+  <details class="info-panel" open>
+    <summary><h3>Öppettidsinfo (fritext, visas på webbplatsen)</h3></summary>
     <textarea id="openHoursInfoInput" rows="3"
               placeholder="Avvikande öppettider, kommentarer om högtider etc."></textarea>
-  </div>
+  </details>
+
+  <details class="advanced-panel">
+    <summary><h3>Avancerat: redigera schema per period</h3></summary>
+    <div class="period-meta">
+      <span>Period:</span>
+      <select id="periodSelect"></select>
+      <span id="periodValidity"></span>
+    </div>
+    <div class="schedule" id="schedule"></div>
+  </details>
 
   <div class="actions">
     <input id="updatedBy" type="text" placeholder="Vem ändrar (updatedBy)">
@@ -427,6 +492,41 @@ async function loadPlace(id) {
   }
 }
 
+function renderPeriodOverview() {
+  const ov = $("periodOverview");
+  const fmtDay = (ivs) => {
+    if (!ivs || ivs.length === 0) return { cls: "closed", text: "—" };
+    const summary = ivs
+      .map(iv => `${iv.from?.slice(0, 5)}-${iv.to?.slice(0, 5)}`)
+      .join(",");
+    return { cls: "open", text: summary };
+  };
+  ov.innerHTML = workingPeriods.map((p, i) => {
+    const range = `${p.validFrom || "—"} → ${p.validTo || "tills vidare"}`;
+    const dayCells = DAY_ORDER.map(k => {
+      const { cls, text } = fmtDay(p.days?.[k]);
+      return `<div class="pc-day ${cls}" title="${DAY_LABEL[k]}: ${text}">${text === "—" ? "—" : text.split(",")[0]}</div>`;
+    }).join("");
+    const dayNames = DAY_ORDER.map(k => `<div class="pc-day-name">${DAY_LABEL[k].slice(0,3)}</div>`).join("");
+    return `<div class="period-card ${i === currentPeriodIdx ? "active" : ""}"
+                 data-idx="${i}">
+      <div class="pc-title">Period ${i + 1}</div>
+      <div class="pc-range">${range}</div>
+      <div class="pc-days">${dayNames}</div>
+      <div class="pc-days">${dayCells}</div>
+    </div>`;
+  }).join("");
+  for (const card of ov.querySelectorAll(".period-card")) {
+    card.addEventListener("click", () => {
+      currentPeriodIdx = Number(card.dataset.idx);
+      // Öppna avancerat-sektionen så användaren ser detaljer
+      const advanced = document.querySelector(".advanced-panel");
+      if (advanced) advanced.open = true;
+      renderEditor();
+    });
+  }
+}
+
 function renderEditor() {
   $("placeName").textContent = currentPlace.name || "(namn saknas)";
   const owner = currentPlace.owner || {};
@@ -434,8 +534,9 @@ function renderEditor() {
     `${owner.name || ""}${owner.type ? ` · ${owner.type}` : ""}`;
   $("placeUuid").textContent = currentPlace.id;
 
-  // Spegla info-fältet
   $("openHoursInfoInput").value = currentPlace.openHours?.info || "";
+
+  renderPeriodOverview();
 
   const sel = $("periodSelect");
   sel.innerHTML = workingPeriods.map((p, i) => {
@@ -585,8 +686,24 @@ function showBanner(msg, kind) {
   $("banner").innerHTML = `<div class="banner ${kind}">${escapeHtml(msg)}</div>`;
 }
 
+function periodLengthDays(p) {
+  if (!p.validFrom || !p.validTo) return Infinity;
+  const a = new Date(p.validFrom + "T12:00:00Z");
+  const b = new Date(p.validTo + "T12:00:00Z");
+  return Math.round((b - a) / 86400000);
+}
+
+function isExceptionPeriod(p) {
+  // Heuristik: kort period (≤14 dygn) som redan har minst en tom
+  // dayKey-array. Då är det troligen en avvikelseperiod vi själva
+  // skapat - utöka den istället för att splittra.
+  if (periodLengthDays(p) > 14) return false;
+  return Object.values(p.days || {}).some(
+    v => Array.isArray(v) && v.length === 0
+  );
+}
+
 function addClosedDayException(dateStr, reason) {
-  // Hitta perioden som rymmer datumet (eller är öppen i tid)
   const idx = workingPeriods.findIndex(p => {
     const okFrom = !p.validFrom || p.validFrom <= dateStr;
     const okTo = !p.validTo || p.validTo >= dateStr;
@@ -596,40 +713,58 @@ function addClosedDayException(dateStr, reason) {
     return { ok: false, error: "Datumet ligger utanför alla nuvarande perioder." };
   }
   const target = workingPeriods[idx];
-  const dayBefore = shiftDate(dateStr, -1);
-  const dayAfter = shiftDate(dateStr, +1);
   const dayKey = dayKeyForDate(dateStr);
 
-  // Bygg de tre delarna - hoppa över A/C om de skulle bli tomma
+  // Specialfall 1: perioden är redan en undantagsperiod som rymmer
+  // dateStr - lägg bara till dayKey=[] i dess days istället för att
+  // splittra (skulle annars ge 0-dygnsfragment som servern avvisar).
+  if (isExceptionPeriod(target)) {
+    if ((target.days?.[dayKey] || []).length === 0
+        && Object.prototype.hasOwnProperty.call(target.days || {}, dayKey)) {
+      // Redan stängd den veckodagen
+    } else {
+      workingPeriods[idx] = {
+        ...target,
+        days: { ...(target.days || {}), [dayKey]: [] },
+      };
+    }
+    currentPeriodIdx = idx;
+    if (reason) appendInfoReason(dateStr, reason);
+    return { ok: true, periodsAdded: 0, mode: "merged" };
+  }
+
+  // Vanligt fall: splitta perioden i upp till 3 delar.
+  // Servern kräver strikt validFrom < validTo, så minsta period-
+  // längd är 2 dygn (dateStr → dateStr+1).
+  const dayBefore = shiftDate(dateStr, -1);
+  const dayAfter = shiftDate(dateStr, +1);
+  const dayAfterAfter = shiftDate(dateStr, +2);
   const newPieces = [];
   if (!target.validFrom || target.validFrom <= dayBefore) {
     newPieces.push({ ...target, validTo: dayBefore });
   }
-  // Stängd dag: behåll days-strukturen men sätt aktuell veckodag tom
   const closedDays = { ...(target.days || {}) };
   closedDays[dayKey] = [];
-  newPieces.push({ validFrom: dateStr, validTo: dateStr, days: closedDays });
-  if (!target.validTo || target.validTo >= dayAfter) {
+  newPieces.push({ validFrom: dateStr, validTo: dayAfter, days: closedDays });
+  if (!target.validTo || target.validTo >= dayAfterAfter) {
     newPieces.push({
       ...target,
-      validFrom: dayAfter,
+      validFrom: dayAfterAfter,
       validTo: target.validTo || "",
       days: { ...(target.days || {}) },
     });
   }
 
   workingPeriods.splice(idx, 1, ...newPieces);
-  // Hoppa till perioden som följer den stängda dagen om den finns,
-  // annars stäng-dagen själv.
   currentPeriodIdx = Math.min(idx + newPieces.length - 1, idx + 2);
+  if (reason) appendInfoReason(dateStr, reason);
+  return { ok: true, periodsAdded: newPieces.length, mode: "split" };
+}
 
-  // Appenda anledning till openHours.info
-  if (reason) {
-    const existing = ($("openHoursInfoInput").value || "").trim();
-    const line = `Stängt ${fmtSwedishDate(dateStr)}: ${reason}`;
-    $("openHoursInfoInput").value = existing ? `${existing}\n${line}` : line;
-  }
-  return { ok: true, periodsAdded: newPieces.length };
+function appendInfoReason(dateStr, reason) {
+  const existing = ($("openHoursInfoInput").value || "").trim();
+  const line = `Stängt ${fmtSwedishDate(dateStr)}: ${reason}`;
+  $("openHoursInfoInput").value = existing ? `${existing}\n${line}` : line;
 }
 
 $("addExceptionBtn").addEventListener("click", () => {
