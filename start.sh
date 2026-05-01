@@ -29,6 +29,13 @@ else
   echo ">> ingen .env hittad - SVK-proxyn kommer ge 500"
 fi
 
+# Refresh signage-platser/place.json om APIKEY_PROD finns. signage-platser
+# läser statisk fil (refresh.py kan annars schemaläggas via cron i prod).
+if [[ -f signage-platser/refresh.py && -n "${APIKEY_PROD:-}" ]]; then
+  PLACE_ID="${PLACE_ID:-5dab016f-18f3-4973-92d8-69779653a1ef}" \
+    uv run signage-platser/refresh.py || echo ">> signage refresh misslyckades (icke-blockerande)"
+fi
+
 uv run scripts/watch_docs.py &
 WATCH_PID=$!
 trap 'kill "$WATCH_PID" 2>/dev/null || true' EXIT INT TERM
