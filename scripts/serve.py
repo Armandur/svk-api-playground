@@ -39,16 +39,28 @@ def discover_links() -> list[dict]:
             "kind": "docs",
         })
 
-    # OpenAPI-specs i docs/specs/.
+    # OpenAPI-specs i docs/specs/. Föredra HTML-wrapper (Swagger UI) framför
+    # rå JSON eftersom det ger en användbar interaktiv vy.
     specs_dir = ROOT / "docs" / "specs"
     if specs_dir.is_dir():
+        html_wrappers = {p.stem for p in specs_dir.glob("*.html")}
         for spec in sorted(specs_dir.glob("*.json")):
-            links.append({
-                "title": spec.stem,
-                "subtitle": f"OpenAPI-spec ({spec.stat().st_size // 1024} KB)",
-                "url": f"/docs/specs/{spec.name}",
-                "kind": "spec",
-            })
+            base = spec.stem.replace(".openapi", "")
+            size_kb = spec.stat().st_size // 1024
+            if base in html_wrappers:
+                links.append({
+                    "title": base,
+                    "subtitle": f"OpenAPI-spec via Swagger UI ({size_kb} KB)",
+                    "url": f"/docs/specs/{base}.html",
+                    "kind": "spec",
+                })
+            else:
+                links.append({
+                    "title": spec.stem,
+                    "subtitle": f"OpenAPI-spec ({size_kb} KB) - rå JSON",
+                    "url": f"/docs/specs/{spec.name}",
+                    "kind": "spec",
+                })
 
     # Pilot-projekt: undermappar med index.html på rotnivå.
     for entry in sorted(ROOT.iterdir()):
