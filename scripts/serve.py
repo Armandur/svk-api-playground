@@ -108,7 +108,8 @@ def admin_ping(source: str) -> tuple[int, str]:
     try:
         with urlopen(req, timeout=15) as resp:
             data = resp.read()
-            new_session = extract_session_from_headers(resp.headers)
+            sc_list = resp.headers.get_all("Set-Cookie") or []
+            new_session = apply_set_cookies(CS_SESSION, sc_list)
             if new_session:
                 update_cs_session(new_session, f"{source} Set-Cookie")
             CS_SESSION_LAST_PING_AT = time.time()
@@ -129,10 +130,52 @@ def admin_ping(source: str) -> tuple[int, str]:
         return 0, CS_SESSION_LAST_PING_STATUS
 
 
-def extract_session_from_headers(headers) -> str | None:
-    """Plocka ut CS_UserSessionId från ev. Set-Cookie-headers."""
-    cookies = headers.get_all("Set-Cookie") if hasattr(headers, "get_all") else []
-    for raw in cookies or []:
+def parse_cookie_header(s: str) -> dict[str, str]:
+    """Parsar 'name1=v1; name2=v2; ...' till en dict, bevarar ordning."""
+    out: dict[str, str] = {}
+    if not s:
+        return out
+    for pair in s.split(";"):
+        pair = pair.strip()
+        if not pair or "=" not in pair:
+            continue
+        name, _, value = pair.partition("=")
+        out[name.strip()] = value
+    return out
+
+
+def apply_set_cookies(current: str, set_cookie_headers: list[str]) -> str | None:
+    """Applicera ev. Set-Cookie-headers på current cookie-header.
+
+    Två lägen beroende på vad current är:
+    - Full header ("name1=v1; name2=v2; ..."): merge ALL Set-Cookie:s
+      som matchar cookies vi redan hade. Returnerar uppdaterad header
+      om något ändrades.
+    - Bara CS_UserSessionId-värde: returnera nytt CS_UserSessionId-
+      värde om servern roterat det.
+
+    Returnerar None om inget relevant ändrades.
+    """
+    if not set_cookie_headers:
+        return None
+    if "=" in current and ";" in current:
+        # Full header-läge: merga
+        cookies = parse_cookie_header(current)
+        changed = False
+        for raw in set_cookie_headers:
+            first = raw.split(";", 1)[0].strip()
+            name, _, value = first.partition("=")
+            name = name.strip()
+            if not name or name not in cookies:
+                continue  # ignorera cookies vi inte hade från början
+            if cookies[name] != value:
+                cookies[name] = value
+                changed = True
+        if not changed:
+            return None
+        return "; ".join(f"{k}={v}" for k, v in cookies.items())
+    # Enkel-värdes-läge: bara CS_UserSessionId
+    for raw in set_cookie_headers:
         first = raw.split(";", 1)[0].strip()
         if first.startswith("CS_UserSessionId="):
             return first.split("=", 1)[1]
@@ -518,7 +561,8 @@ class Handler(SimpleHTTPRequestHandler):
                 data = resp.read()
                 ctype = resp.headers.get("Content-Type", "application/json")
                 status = resp.status
-                rotated = extract_session_from_headers(resp.headers)
+                sc_list = resp.headers.get_all("Set-Cookie") or []
+                rotated = apply_set_cookies(CS_SESSION, sc_list)
                 if rotated:
                     update_cs_session(rotated, f"admin-proxy {method}")
                 log_admin_response(method, upstream_url, status,
