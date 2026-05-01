@@ -452,21 +452,15 @@ async function save() {
     if (r.ok) {
       showBanner("Sparat.", "ok");
       await loadPlace(currentPlace.id);
-    } else if (r.status === 401) {
-      throw new Error(
-        "401 Unauthorized: CS_SESSION saknas eller är utgången (90 min timeout). " +
-        "Hämta ny CS_UserSessionId-cookie från admin.svenskakyrkan.se efter inloggning."
-      );
-    } else if (r.status === 403) {
-      throw new Error(
-        "403 Forbidden: ditt SSO-konto saknar skrivbehörighet på denna plats. " +
-        "Skrivbehörighet styrs av AD-grupper - testa en plats du faktiskt äger."
-      );
-    } else if (r.status === 404) {
-      throw new Error("404: platsen finns inte (eller är borttagen).");
     } else {
       const text = await r.text();
-      throw new Error(`HTTP ${r.status} ${r.statusText}: ${text.slice(0, 300)}`);
+      const hints = {
+        401: " (CS_SESSION saknas eller är utgången - hämta ny via bookmarkleten)",
+        403: " (ditt SSO-konto saknar skrivbehörighet på denna plats - styrs av AD-grupper)",
+        404: " (platsen finns inte eller är borttagen)",
+      };
+      const hint = hints[r.status] || "";
+      throw new Error(`HTTP ${r.status} ${r.statusText}${hint} - upstream: ${text.slice(0, 400)}`);
     }
   } catch (e) {
     showBanner(`Sparning misslyckades: ${e.message}`, "err");

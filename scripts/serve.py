@@ -432,13 +432,18 @@ class Handler(SimpleHTTPRequestHandler):
                 data = resp.read()
                 ctype = resp.headers.get("Content-Type", "application/json")
                 status = resp.status
-                # Sliding-expiration: om upstream roterar cookien
-                # så fångar vi den och uppdaterar vår lagrade.
                 rotated = extract_session_from_headers(resp.headers)
                 if rotated:
                     update_cs_session(rotated, f"admin-proxy {method}")
         except HTTPError as e:
             err_body = e.read() if hasattr(e, "read") else b""
+            print(
+                f"!! admin-proxy {method} {upstream_url} -> "
+                f"HTTP {e.code} ({len(err_body)}b body)",
+                flush=True,
+            )
+            preview = err_body[:500].decode("utf-8", errors="replace")
+            print(f"   body: {preview!r}", flush=True)
             self.send_response(e.code)
             self.send_header(
                 "Content-Type", e.headers.get("Content-Type", "text/plain"),
@@ -449,6 +454,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(err_body)
             return
         except URLError as e:
+            print(f"!! admin-proxy upstream-fel mot {upstream_url}: {e.reason}",
+                  flush=True)
             self.send_error(502, f"Upstream error: {e.reason}")
             return
         self.send_response(status)
