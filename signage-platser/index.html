@@ -100,6 +100,35 @@ table.schedule tr.today td {
 .closed-cell { color: var(--muted); font-style: italic;
                font-family: "Spectral", "Times New Roman", serif; }
 
+.hours-info {
+  margin-top: clamp(16px, 2vw, 24px);
+  padding: clamp(12px, 1.8vw, 18px) clamp(16px, 2vw, 22px);
+  border-left: 3px solid var(--wine);
+  background: rgba(125, 0, 55, 0.05);
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  font-size: clamp(14px, 1.6vw, 19px); line-height: 1.45;
+}
+
+.facilities {
+  margin-top: clamp(16px, 2vw, 22px);
+  display: flex; flex-wrap: wrap; gap: clamp(10px, 1.5vw, 16px);
+  font-size: clamp(12px, 1.3vw, 15px);
+}
+.facility {
+  padding: 4px 12px; border: 1px solid var(--wine); color: var(--wine);
+  font-weight: 500; letter-spacing: 0.02em;
+}
+
+.visiting {
+  margin-top: clamp(12px, 1.5vw, 18px);
+  font-size: clamp(13px, 1.4vw, 16px); color: var(--muted);
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  display: flex; flex-wrap: wrap; gap: clamp(10px, 2vw, 24px);
+}
+.visiting .label { color: var(--wine); font-style: normal; font-weight: 500;
+                   font-family: "DM Sans", sans-serif; margin-right: 6px;
+                   text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.85em; }
+
 footer {
   margin-top: auto; padding-top: clamp(12px, 2vw, 20px);
   border-top: 1px solid rgba(0,0,0,0.15);
@@ -131,6 +160,12 @@ footer {
   <thead><tr><th>Dag</th><th>Öppet</th></tr></thead>
   <tbody></tbody>
 </table>
+
+<div id="openHoursInfo" class="hours-info" hidden></div>
+
+<div id="facilities" class="facilities" hidden></div>
+
+<div id="visiting" class="visiting" hidden></div>
 
 <footer>
   <span id="periodInfo"></span>
@@ -213,6 +248,74 @@ function renderSchedule(period, d) {
   }
 }
 
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function renderHoursInfo(place) {
+  const el = document.getElementById('openHoursInfo');
+  const info = place.openHours?.info?.trim();
+  if (info) {
+    el.textContent = info;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
+
+const FACILITY_LABELS = {
+  hasToilet: 'Toalett',
+  hasWifi: 'Wi-Fi',
+  hasCafe: 'Café',
+  hasChargingStation: 'Laddstation',
+  hasParking: 'Parkering',
+};
+const ACCESS_LABELS = {
+  toiletAccessible: 'Tillgänglig toalett',
+  hasHearingLoop: 'Hörselslinga',
+  hasRamp: 'Ramp',
+};
+
+function renderFacilities(place) {
+  const el = document.getElementById('facilities');
+  const pd = place.placeDetails || {};
+  const acc = pd.accessibility || {};
+  const tags = [];
+  for (const [k, label] of Object.entries(FACILITY_LABELS)) if (pd[k]) tags.push(label);
+  for (const [k, label] of Object.entries(ACCESS_LABELS)) if (acc[k]) tags.push(label);
+  if (!tags.length) { el.hidden = true; return; }
+  el.innerHTML = tags.map(t => `<span class="facility">${escapeHtml(t)}</span>`).join('');
+  el.hidden = false;
+}
+
+function fmtPhone(p) {
+  if (!p) return null;
+  const { countryCode, areaCode, number } = p;
+  if (!number) return null;
+  const parts = [];
+  if (countryCode) parts.push(`+${countryCode}`);
+  if (areaCode) parts.push(String(areaCode));
+  parts.push(String(number));
+  return parts.join(' ');
+}
+
+function renderVisiting(place) {
+  const el = document.getElementById('visiting');
+  const v = place.visitingInfo || {};
+  const c = place.contactInfo || {};
+  const items = [];
+  const addr = [v.address, [v.postalCode, v.city].filter(Boolean).join(' ')]
+    .filter(Boolean).join(', ');
+  if (addr) items.push(`<span><span class="label">Adress</span>${escapeHtml(addr)}</span>`);
+  const phone = fmtPhone(c.phone);
+  if (phone) items.push(`<span><span class="label">Tel</span>${escapeHtml(phone)}</span>`);
+  if (c.email) items.push(`<span><span class="label">E-post</span>${escapeHtml(c.email)}</span>`);
+  if (!items.length) { el.hidden = true; return; }
+  el.innerHTML = items.join('');
+  el.hidden = false;
+}
+
 function renderPeriodInfo(period) {
   const el = document.getElementById('periodInfo');
   if (!period) { el.textContent = ''; return; }
@@ -234,6 +337,9 @@ function render(now) {
   const period = activePeriod(place.openHours?.periods, now);
   renderPeriodInfo(period);
   renderSchedule(period, now);
+  renderHoursInfo(place);
+  renderFacilities(place);
+  renderVisiting(place);
 
   const status = computeStatus(period, now);
   const card = document.getElementById('statusCard');
