@@ -200,25 +200,32 @@ header .subtitle {
   </summary>
   <div class="session-body">
     <p>För att <b>spara</b> ändringar mot CMS:ets interna API behövs
-       cookies från en inloggad admin.svenskakyrkan.se-session.
-       <b>Auth-cookien är troligen HttpOnly</b> och kan därför inte läsas
-       via JS - kopiera då manuellt från DevTools.</p>
+       cookies från en inloggad admin.svenskakyrkan.se-session. De
+       viktigaste är <b>HttpOnly</b> och måste kopieras manuellt från
+       DevTools (osynliga för JS).</p>
     <ol>
       <li>Logga in på
           <a href="https://admin.svenskakyrkan.se/" target="_blank">admin.svenskakyrkan.se</a>.</li>
-      <li><b>Snabbväg (om cookies syns för JS):</b> dra länken till
-          bokmärkesraden, klicka den på admin-fliken, klistra sedan in
-          nedan:
-          <a class="bookmarklet"
-             href="javascript:(function(){var c=document.cookie;if(!c){alert('Inga%20cookies%20syns%20via%20JS%20-%20kopiera%20manuellt%20fr%C3%A5n%20DevTools');return}var f=c.split(';').map(function(s){return s.trim()}).filter(function(s){return s%26%26!s.startsWith('ai_')}).join('; ');navigator.clipboard.writeText(f).then(function(){alert('Cookies%20kopierade%20('+f.length+'%20tecken,%20'+f.split(';').length+'%20st)')},function(){prompt('Kopiera%20manuellt:',f)})})();"
-             >Kopiera alla cookies</a></li>
-      <li><b>Manuell väg (HttpOnly-cookies):</b> öppna DevTools
-          (F12) → Application → Cookies → admin.svenskakyrkan.se,
-          markera alla rader, högerklicka och kopiera. Klistra in
-          som <code>name1=val1; name2=val2; ...</code> nedan.</li>
-      <li>Klistra in cookies nedan (bara CS_UserSessionId-värdet eller
-          en fullständig cookie-header) och tryck Använd:</li>
+      <li>Öppna DevTools (F12) → <b>Application</b> → Cookies →
+          <code>https://admin.svenskakyrkan.se</code>.</li>
+      <li>Notera värdet för dessa cookies (HttpOnly = bock):
+          <ul>
+            <li><code>.Prod2.AuthCookie</code> - auth-cookien (HttpOnly, kritisk)</li>
+            <li><code>ASP.NET_SessionId</code> - sessionscookie (HttpOnly)</li>
+            <li><code>CS_UserSessionId</code> - applikations-session</li>
+            <li><code>TS0174741b</code> - F5 BIG-IP WAF-cookie</li>
+            <li><code>AdminWebId</code> - användar-id</li>
+          </ul></li>
+      <li>Klistra in dem som en sammanslagen rad nedan:
+          <code>.Prod2.AuthCookie=...; ASP.NET_SessionId=...; CS_UserSessionId=...; TS0174741b=...; AdminWebId=...</code></li>
+      <li>Tryck Använd. Klicka sen "Verifiera mot admin (GET)" på en
+          vald plats för att kontrollera att cookies fungerar.</li>
     </ol>
+    <p class="session-hint">Snabbväg som hämtar bara JS-synliga cookies
+       (utan auth) - bra för felsökning men <b>räcker inte</b> för att
+       spara: <a class="bookmarklet"
+       href="javascript:(function(){var c=document.cookie;if(!c){alert('Inga%20cookies%20syns%20via%20JS');return}var f=c.split(';').map(function(s){return s.trim()}).filter(function(s){return s%26%26!s.startsWith('ai_')}).join('; ');navigator.clipboard.writeText(f).then(function(){alert('Kopierat%20('+f.split(';').length+'%20cookies)%20-%20men%20HttpOnly-cookies%20saknas')})})();"
+       >Kopiera JS-synliga</a></p>
     <div class="session-input">
       <input id="sessionInput" type="password" autocomplete="off"
              placeholder="CS_UserSessionId-värde eller hela cookie-headern">

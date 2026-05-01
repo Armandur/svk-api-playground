@@ -18,6 +18,31 @@ Platsadministrationens sparfunktion anropar **inte** den publika API-gatewayen (
 
 ---
 
+## Errata 2026-05-01 (efter live-test)
+
+Rapportens första cookie-inventering missade två kritiska HttpOnly-cookies
+som upptäcktes via DevTools → Application → Cookies vid implementations-
+testning:
+
+- **`.Prod2.AuthCookie`** - HttpOnly, **detta är den faktiska
+  auth-cookien**. Utan den får server-till-server-anrop 401 + redirect
+  till `/Account/Login` (verifierat).
+- **`ASP.NET_SessionId`** - HttpOnly, klassisk ASP.NET-sessionscookie.
+
+`CS_UserSessionId` (som rapporten ursprungligen lyfte fram som
+"primär sessions-token") är en applikations-session som **inte räcker
+själv** för auth - den är ett komplement. Rapporten kunde inte
+upptäcka detta eftersom HttpOnly-cookies är osynliga för
+`document.cookie` och bookmarklet-flödet.
+
+För server-till-server-anrop behöver alltså hela cookie-headern
+skickas: `.Prod2.AuthCookie=...; ASP.NET_SessionId=...;
+CS_UserSessionId=...; TS0174741b=...; AdminWebId=...`. `serve.py`
+accepterar detta format i `CS_SESSION`-env / `POST
+/api/admin/_session`.
+
+---
+
 ## Sektion 1: API-nyckel-/token-extraktion
 
 ### Cookies
