@@ -421,6 +421,11 @@ class Handler(SimpleHTTPRequestHandler):
             "Origin": "https://admin.svenskakyrkan.se",
             "Referer": "https://admin.svenskakyrkan.se/",
             "User-Agent": "svk-api-playground",
+            # ASP.NET avvisar ofta icke-XHR-requests för auth-skyddade
+            # endpoints med generell 401. Browser-flödet sätter detta
+            # automatiskt; vi måste explicit.
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json, text/plain, */*",
         }
         if method in ("PUT", "POST", "PATCH"):
             headers["Prefer"] = "return=representation"
@@ -444,6 +449,12 @@ class Handler(SimpleHTTPRequestHandler):
             )
             preview = err_body[:500].decode("utf-8", errors="replace")
             print(f"   body: {preview!r}", flush=True)
+            # Logga relevanta upstream-headers för diagnostik
+            for h in ("Location", "WWW-Authenticate", "Set-Cookie",
+                      "X-Proxy-Destination"):
+                v = e.headers.get(h) if e.headers else None
+                if v:
+                    print(f"   {h}: {v}", flush=True)
             self.send_response(e.code)
             self.send_header(
                 "Content-Type", e.headers.get("Content-Type", "text/plain"),

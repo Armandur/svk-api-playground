@@ -223,6 +223,12 @@ header .subtitle {
     <p class="session-hint">Cookien är giltig 90 minuter inaktivitet.
        Den lagras i serverns RAM (inte på disk) tills du startar om
        eller rensar.</p>
+    <div class="session-input">
+      <button id="testSessionBtn" type="button" class="btn-secondary">
+        Verifiera mot admin (GET)
+      </button>
+      <span id="testSessionResult" class="session-hint"></span>
+    </div>
   </div>
 </details>
 
@@ -529,6 +535,27 @@ $("clearSessionBtn").addEventListener("click", async () => {
     await refreshSessionStatus();
   } catch (e) {
     showBanner(`Kunde inte rensa: ${e.message}`, "err");
+  }
+});
+
+$("testSessionBtn").addEventListener("click", async () => {
+  const out = $("testSessionResult");
+  out.textContent = "testar…";
+  if (!currentPlace) {
+    out.textContent = "(välj en plats först - vi GET:ar mot dess admin-endpoint)";
+    return;
+  }
+  try {
+    const r = await fetch(`/api/admin/place/${currentPlace.id}`,
+                          { cache: "no-store" });
+    const text = await r.text();
+    if (r.ok) {
+      out.textContent = `OK: HTTP ${r.status}, ${text.length} byte body`;
+    } else {
+      out.textContent = `FEL: HTTP ${r.status} - ${text.slice(0, 120)}`;
+    }
+  } catch (e) {
+    out.textContent = `Fel: ${e.message}`;
   }
 });
 
