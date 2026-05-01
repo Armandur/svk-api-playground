@@ -48,30 +48,35 @@ uppdateras med polling.
   i Content Studio? Sannolikt ja eftersom owner.id (`20270`) matchar
   `enhetsid` i andra API:er.
 
-### 2. Mini-app för platsadministration (`platser-edit-app/`) ✅ PoC påbörjad
+### 2. Mini-app för platsadministration (`platser-edit-app/`) ✅ Funktionell
 
-Sökflöde + veckoschema-editor + PATCH mot `/place/{id}`. Byggd ovanpå
-en generic SVK-proxy (`/api/platser/*`) i serve.py som lägger till vår
-APIKEY_PROD server-sidigt så klienten aldrig ser nyckeln.
+Sökflöde + veckoschema-editor + PUT mot CMS:ets interna admin-flöde
+(`admin.svenskakyrkan.se/webapi/api-v2/place/{id}`) via en proxy i
+serve.py. **Verifierat fungerande end-to-end 2026-05-01** efter att
+användaren klistrat in fullständig cookie-header (alla 5 cookies inkl
+HttpOnly `.Prod2.AuthCookie` + `ASP.NET_SessionId`).
 
 **Klart:**
 
 - Fritext-sökning via `?q=...` med debounce.
 - Detaljvy: plats-info + period-väljare + redigerbart veckoschema
   (lägg till/ta bort intervall, ändra tider).
-- PATCH mot `/place/{id}` med `updatedBy` + uppdaterad
-  `openHours.periods`.
+- Sessions-panel: bookmarklet, manuell DevTools-väg, runtime
+  cookie-input, "Verifiera mot admin (GET)"-knapp för isolering.
+- PUT (full replace) mot `/api/admin/place/{id}` med ändringar
+  applicerade på fullt place-objekt.
+- Sliding-cookie-sniffing + 30-min keep-alive-tråd för att hålla
+  sessionen vid liv mellan CMS-omloggningar.
 
 **Återstår:**
 
 - Filter på församling specifikt via UnitAPI eller `?owner_id=`
   (`/api/units/*` är förberett i proxyn).
 - Stöd för `validFrom`/`validTo` i editorn (säsongsperioder,
-  inkl skapa/ta bort hela perioder).
+  skapa/ta bort hela perioder).
 - Editera `openHours.info` (fritextkommentar).
-- Bekräftelse-modal innan PATCH.
-- Auth - just nu får alla med dev-server-tillgång skriva. Behöver
-  någon form av magic-link eller liknande för riktigt bruk.
+- Bekräftelse-modal innan PUT.
+- Auth-skikt - alla med dev-server-tillgång kan idag skriva.
 
 **Öppna frågor (uppdaterade):**
 
