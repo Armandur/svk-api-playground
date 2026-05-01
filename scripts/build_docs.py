@@ -35,6 +35,7 @@ ORDER = [
     "AMNESOMRADEN",
     "_deprecated",
     "_todo",
+    # Pilot-projekt-sektioner appendas dynamiskt av discover_pilots()
 ]
 
 # Sektioner som ligger utanför docs/modules/. Mappar sektions-id till
@@ -42,6 +43,11 @@ ORDER = [
 EXTRA_SOURCES = {
     "_readme": (ROOT / "README.md", "README.md"),
     "_claude": (ROOT / "CLAUDE.md", "CLAUDE.md"),
+}
+
+# Mappar som inte ska scanneras som pilot-projekt även om de har README.md
+EXCLUDE_PILOT_DIRS = {
+    "docs", "scripts", "tmp", "docs-from-claude-code-chrome", "prompts",
 }
 
 LABELS = {
@@ -62,6 +68,26 @@ LABELS = {
     "_deprecated": "Ersatt / saknas publikt",
     "_todo": "TODO + projektidéer",
 }
+
+
+def discover_pilots() -> list[str]:
+    """Hitta pilot-projekt på rotnivån (mappar med README.md som inte
+    är i EXCLUDE_PILOT_DIRS). Lägger till deras README som sektioner
+    och returnerar sektions-id:n i ORDER-format."""
+    section_ids = []
+    for entry in sorted(ROOT.iterdir()):
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue
+        if entry.name in EXCLUDE_PILOT_DIRS:
+            continue
+        readme = entry / "README.md"
+        if not readme.exists():
+            continue
+        section_id = f"proj_{entry.name.replace('-', '_')}"
+        EXTRA_SOURCES[section_id] = (readme, f"{entry.name}/README.md")
+        LABELS[section_id] = f"Projekt: {entry.name}"
+        section_ids.append(section_id)
+    return section_ids
 
 MD_EXTENSIONS = ["fenced_code", "tables", "codehilite"]
 MD_CONFIG = {"codehilite": {"guess_lang": False, "css_class": "highlight"}}
@@ -104,7 +130,8 @@ def render_section(name: str) -> tuple[str, str, str]:
 
 
 def main() -> None:
-    sections = [(n, *render_section(n)) for n in ORDER]
+    order = ORDER + discover_pilots()
+    sections = [(n, *render_section(n)) for n in order]
     nav = "\n".join(
         f'<li><a href="#{n}"><span class="lbl">{LABELS.get(n, n)}</span>'
         f'<span class="t">{title}</span></a></li>'
