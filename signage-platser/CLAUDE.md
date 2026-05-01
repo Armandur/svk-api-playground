@@ -41,10 +41,9 @@ PLACE_ID=5dab016f-18f3-4973-92d8-69779653a1ef
 # 1. Hämta data
 APIKEY_PROD=... PLACE_ID=... uv run refresh.py
 
-# 2. Servera index.html på en lokal webbserver (annars blockerar
-#    browsers fetch() av filsystem-paths)
-python3 -m http.server 8000
-# -> http://localhost:8000/
+# 2. Servera via repots gemensamma server (auto-listar alla pilot-projekt)
+uv run ../scripts/serve.py
+# -> http://localhost:8088/signage-platser/
 
 # 3. Stega om data
 uv run refresh.py    # uppdaterar place.json

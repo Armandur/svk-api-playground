@@ -14,9 +14,9 @@ export PLACE_ID=5dab016f-18f3-4973-92d8-69779653a1ef   # Härnösands domkyrka
 # Hämta data
 uv run refresh.py
 
-# Servera sidan
-python3 -m http.server 8000
-# Öppna http://localhost:8000/
+# Servera via repots gemensamma server
+uv run ../scripts/serve.py
+# Öppna http://localhost:8088/signage-platser/
 ```
 
 Se [`CLAUDE.md`](CLAUDE.md) för full kontext, datakontrakt och

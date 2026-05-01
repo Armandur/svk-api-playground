@@ -37,15 +37,25 @@ svk-api-playground/
 ## Kör
 
 ```bash
-# Engångsbygge
+# Gemensam dev-server (auto-listar dokumentation + alla pilot-projekt)
+uv run scripts/serve.py     # http://localhost:8088/
+
+# Engångsbygge av docs
 uv run scripts/build_docs.py
 
-# Watcher under aktiv redigering
+# Watcher under aktiv redigering (bygger om + speglar till vmworkspace)
 uv run scripts/watch_docs.py
 ```
 
 uv kör skripten med PEP 723-inline-deps - inga andra installationer
 behövs.
+
+`scripts/serve.py` lyssnar på port **8088** (övriga `~/workspace`-projekt
+använder 5002, 6789, 8000, 8001, 8765, 9222 - 8088 är ledigt).
+Auto-detekterar pilot-projekt (undermappar med `index.html`) och listar
+dem på startsidan tillsammans med dokumentationen och OpenAPI-speccarna
+i `docs/specs/`. Inga byggsteg per nytt projekt - lägg till en mapp
+med `index.html` så syns det på `/`.
 
 ## Hur jag (Claude) ska använda detta
 
