@@ -182,17 +182,22 @@ header .subtitle {
   color: var(--black); margin-bottom: 8px;
 }
 .period-card .pc-days {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;
 }
 .period-card .pc-day {
   text-align: center; font-size: 10px; padding: 4px 2px;
   border-radius: 2px; font-family: ui-monospace, monospace;
-  font-weight: 500;
+  font-weight: 500; min-width: 0;
+  display: flex; flex-direction: column; gap: 1px;
+  align-items: center; justify-content: flex-start;
+  line-height: 1.15;
 }
+.period-card .pc-day .iv { display: block; white-space: nowrap; }
 .period-card .pc-day-name { font-size: 9px; color: var(--muted);
                             text-align: center; margin-bottom: 2px;
                             font-family: "DM Sans", sans-serif;
-                            text-transform: uppercase; letter-spacing: 0.04em; }
+                            text-transform: uppercase; letter-spacing: 0.04em;
+                            min-width: 0; }
 .period-card .pc-day.open { background: var(--light-green); color: var(--dark-green); }
 .period-card .pc-day.closed { background: var(--pink); color: var(--wine); font-style: italic; }
 .exception-hint {
@@ -492,22 +497,33 @@ async function loadPlace(id) {
   }
 }
 
+function compactTime(t) {
+  // "08:00" -> "08", "13:30" -> "13:30", "13:00" -> "13"
+  if (!t) return "?";
+  const [h, m] = t.split(":");
+  return m === "00" ? h : `${h}:${m}`;
+}
+
 function renderPeriodOverview() {
   const ov = $("periodOverview");
   const fmtDay = (ivs) => {
-    if (!ivs || ivs.length === 0) return { cls: "closed", text: "—" };
-    const summary = ivs
-      .map(iv => `${iv.from?.slice(0, 5)}-${iv.to?.slice(0, 5)}`)
-      .join(",");
-    return { cls: "open", text: summary };
+    if (!ivs || ivs.length === 0) {
+      return { cls: "closed", html: "—", title: "stängt" };
+    }
+    const html = ivs.map(iv =>
+      `<span class="iv">${compactTime(iv.from)}–${compactTime(iv.to)}</span>`
+    ).join("");
+    const title = ivs.map(iv => `${iv.from}–${iv.to}`).join(", ");
+    return { cls: "open", html, title };
   };
   ov.innerHTML = workingPeriods.map((p, i) => {
     const range = `${p.validFrom || "—"} → ${p.validTo || "tills vidare"}`;
     const dayCells = DAY_ORDER.map(k => {
-      const { cls, text } = fmtDay(p.days?.[k]);
-      return `<div class="pc-day ${cls}" title="${DAY_LABEL[k]}: ${text}">${text === "—" ? "—" : text.split(",")[0]}</div>`;
+      const { cls, html, title } = fmtDay(p.days?.[k]);
+      return `<div class="pc-day ${cls}" title="${DAY_LABEL[k]}: ${title}">${html}</div>`;
     }).join("");
-    const dayNames = DAY_ORDER.map(k => `<div class="pc-day-name">${DAY_LABEL[k].slice(0,3)}</div>`).join("");
+    const dayNames = DAY_ORDER.map(k =>
+      `<div class="pc-day-name">${DAY_LABEL[k].slice(0,3)}</div>`).join("");
     return `<div class="period-card ${i === currentPeriodIdx ? "active" : ""}"
                  data-idx="${i}">
       <div class="pc-title">Period ${i + 1}</div>
@@ -519,7 +535,6 @@ function renderPeriodOverview() {
   for (const card of ov.querySelectorAll(".period-card")) {
     card.addEventListener("click", () => {
       currentPeriodIdx = Number(card.dataset.idx);
-      // Öppna avancerat-sektionen så användaren ser detaljer
       const advanced = document.querySelector(".advanced-panel");
       if (advanced) advanced.open = true;
       renderEditor();
