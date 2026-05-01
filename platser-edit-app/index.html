@@ -116,11 +116,16 @@ header .subtitle {
 .closed-tag { font-family: "Spectral", "Times New Roman", serif;
               font-style: italic; color: var(--muted); padding-top: 8px; }
 
-.actions { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+.actions { display: flex; gap: 12px; margin-top: 16px; align-items: center;
+           flex-wrap: wrap; }
 .actions input[type="text"] {
   font: 14px "DM Sans"; padding: 8px 12px; border: 1px solid var(--black);
   background: #fff; flex: 0 0 220px;
 }
+.dry-run { display: flex; align-items: center; gap: 6px;
+           font-size: 13px; color: var(--muted);
+           font-family: "Spectral", "Times New Roman", serif; font-style: italic; }
+.dry-run input { accent-color: var(--wine); }
 .btn-primary {
   background: var(--wine); color: var(--beige); border: none;
   padding: 12px 28px; font: 500 15px "DM Sans"; cursor: pointer;
@@ -171,6 +176,10 @@ header .subtitle {
 
   <div class="actions">
     <input id="updatedBy" type="text" placeholder="Vem ändrar (updatedBy)">
+    <label class="dry-run">
+      <input id="dryRun" type="checkbox" checked>
+      <span>Dry-run (logga payload, skicka inte)</span>
+    </label>
     <button id="saveBtn" class="btn-primary">Spara</button>
   </div>
 </div>
@@ -339,6 +348,15 @@ async function save() {
     updatedBy,
     openHours: { ...(currentPlace.openHours || {}), periods: cleanPeriods },
   };
+  if ($("dryRun").checked) {
+    console.log("DRY-RUN payload för PATCH /place/" + currentPlace.id, payload);
+    showBanner(
+      "Dry-run: payload loggad i konsolen. Avmarkera 'Dry-run' för att faktiskt PATCH:a.",
+      "ok",
+    );
+    $("saveBtn").disabled = false;
+    return;
+  }
   try {
     const r = await fetch(`/api/platser/place/${currentPlace.id}`, {
       method: "PATCH",
@@ -347,11 +365,18 @@ async function save() {
     });
     if (r.status === 204 || r.ok) {
       showBanner("Sparat.", "ok");
-      // Ladda om för att se ev. server-bearbetning
       await loadPlace(currentPlace.id);
+    } else if (r.status === 403) {
+      throw new Error(
+        "403 Forbidden: din API-nyckel saknar skrivbehörighet på denna plats. " +
+        "Skrivbehörighet på Platser-API:t är ofta skopad per organisation - " +
+        "be SVK om en skriv-nyckel eller testa mot en plats ägd av din egen enhet."
+      );
+    } else if (r.status === 404) {
+      throw new Error("404: platsen finns inte (eller är borttagen).");
     } else {
       const text = await r.text();
-      throw new Error(`HTTP ${r.status} ${r.statusText}: ${text.slice(0, 200)}`);
+      throw new Error(`HTTP ${r.status} ${r.statusText}: ${text.slice(0, 300)}`);
     }
   } catch (e) {
     showBanner(`Sparning misslyckades: ${e.message}`, "err");

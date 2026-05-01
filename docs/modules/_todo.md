@@ -76,10 +76,12 @@ APIKEY_PROD server-sidigt så klienten aldrig ser nyckeln.
 **Öppna frågor (uppdaterade):**
 
 - Tillåter Platser-API:t skriv för slutkunder? **Ja, via PATCH/PUT.**
-  Behöver bara en API-nyckel med rätt scope. Inget Content Studio-
-  reverse-engineering behövs.
-- Vilka roller/behörigheter krävs i SVK-organisationen för att få en
-  skriv-nyckel? - oklart, kontakta SVK när vi vill köra på riktigt.
+  Inget Content Studio-reverse-engineering behövs.
+- **Skrivbehörighet är skopad** - vår APIKEY_PROD har read men inte
+  write (verifierat 2026-05-01: PATCH /place/{Härnösands domkyrka}
+  → 403 Access denied). Skriv är troligen begränsat till platser
+  ägda av enheten som äger nyckeln. Kontakta SVK för en skriv-nyckel
+  eller testa mot egen enhets platser.
 
 ### 3. Kyrkoårs-widget (`kyrkoaret-widget/`) ✅ PoC klar
 
