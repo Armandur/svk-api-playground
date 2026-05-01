@@ -140,6 +140,48 @@ header .subtitle {
 
 .loading { color: var(--muted); font-style: italic;
            font-family: "Spectral", "Times New Roman", serif; padding: 16px 0; }
+
+.session-panel { margin-bottom: 16px; border: 1px solid var(--line);
+                 background: #fff; }
+.session-panel summary {
+  padding: 10px 14px; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  list-style: none;
+}
+.session-panel summary::-webkit-details-marker { display: none; }
+.session-panel summary::after {
+  content: "›"; color: var(--muted); transition: transform 0.15s;
+}
+.session-panel[open] summary::after { transform: rotate(90deg); }
+.status-tag {
+  font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 3px 10px; border-radius: 2px;
+}
+.status-tag.set { background: rgba(40, 168, 142, 0.2); color: var(--dark-green); }
+.status-tag.unset { background: var(--pink); color: var(--wine); }
+.session-body { padding: 4px 14px 14px; font-size: 14px; line-height: 1.5; }
+.session-body ol { margin-left: 20px; }
+.session-body li { margin-bottom: 6px; }
+.bookmarklet {
+  display: inline-block; padding: 4px 12px; margin-left: 4px;
+  background: var(--wine); color: var(--beige);
+  text-decoration: none; font-weight: 500; font-size: 13px;
+  border-radius: 2px; cursor: grab;
+}
+.bookmarklet:hover { background: var(--dark-green); }
+.session-input { display: flex; gap: 8px; margin: 10px 0;
+                 flex-wrap: wrap; align-items: center; }
+.session-input input { flex: 1; min-width: 240px; padding: 8px 12px;
+                       border: 1px solid var(--black); background: #fff;
+                       font: 13px ui-monospace, monospace; }
+.btn-secondary {
+  background: transparent; color: var(--wine); border: 1px solid var(--wine);
+  padding: 8px 16px; font: 500 14px "DM Sans"; cursor: pointer;
+}
+.btn-secondary:hover { background: var(--pink); }
+.session-hint { font-size: 12px; color: var(--muted);
+                font-family: "Spectral", "Times New Roman", serif;
+                font-style: italic; }
 </style>
 </head>
 <body>
@@ -150,6 +192,41 @@ header .subtitle {
     <div class="subtitle">Sök fram en plats och justera veckoschemat</div>
   </div>
 </header>
+
+<details class="session-panel" id="sessionPanel">
+  <summary>
+    Sessions-cookie:
+    <span id="sessionStatus" class="status-tag">laddar…</span>
+  </summary>
+  <div class="session-body">
+    <p>För att <b>spara</b> ändringar mot CMS:ets interna API behövs en
+       <code>CS_UserSessionId</code>-cookie från en inloggad
+       admin.svenskakyrkan.se-session. Hämta den med bookmarkleten
+       nedan eller från DevTools.</p>
+    <ol>
+      <li>Logga in på
+          <a href="https://admin.svenskakyrkan.se/" target="_blank">admin.svenskakyrkan.se</a>.</li>
+      <li>Dra denna länk till bokmärkesraden:
+          <a class="bookmarklet"
+             href="javascript:(function(){var c=document.cookie.split(';').map(function(s){return s.trim()}).find(function(s){return s.indexOf('CS_UserSessionId=')===0});if(!c){alert('Hittade ingen CS_UserSessionId. Är du inloggad?');return}var v=c.split('=')[1];if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(function(){alert('CS_UserSessionId kopierad ('+v.length+'%20tecken)')},function(){prompt('Kopiera%20manuellt:',v)})}else{prompt('Kopiera%20manuellt:',v)}})();"
+             >Kopiera CS_UserSessionId</a></li>
+      <li>Klicka bokmärket på admin-fliken - cookie kopieras till
+          urklipp.</li>
+      <li>Klistra in nedan och spara:</li>
+    </ol>
+    <div class="session-input">
+      <input id="sessionInput" type="password" autocomplete="off"
+             placeholder="Klistra in CS_UserSessionId här (124 tecken)">
+      <button id="setSessionBtn" class="btn-primary">Använd</button>
+      <button id="clearSessionBtn" type="button" class="btn-secondary">Rensa</button>
+    </div>
+    <p class="session-hint">Cookien är giltig 90 minuter inaktivitet.
+       Den lagras i serverns RAM (inte på disk) tills du startar om
+       eller rensar.</p>
+  </div>
+</details>
+
+<div id="banner"></div>
 
 <div class="search">
   <input id="searchInput" type="search" autocomplete="off"
@@ -171,8 +248,6 @@ header .subtitle {
   </div>
 
   <div class="schedule" id="schedule"></div>
-
-  <div id="banner"></div>
 
   <div class="actions">
     <input id="updatedBy" type="text" placeholder="Vem ändrar (updatedBy)">
@@ -407,6 +482,63 @@ function showBanner(msg, kind) {
 $("saveBtn").addEventListener("click", save);
 $("searchInput").addEventListener("input",
   debounce(e => search(e.target.value.trim()), 300));
+
+async function refreshSessionStatus() {
+  try {
+    const r = await fetch("/api/admin/_session", { cache: "no-store" });
+    const d = await r.json();
+    const tag = $("sessionStatus");
+    if (d.set) {
+      tag.textContent = `Aktiv (${d.preview})`;
+      tag.className = "status-tag set";
+      $("sessionPanel").open = false;
+    } else {
+      tag.textContent = "Saknas";
+      tag.className = "status-tag unset";
+      $("sessionPanel").open = true;
+    }
+  } catch (e) {
+    $("sessionStatus").textContent = "Fel: " + e.message;
+  }
+}
+
+async function postSession(value) {
+  const r = await fetch("/api/admin/_session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session: value }),
+  });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`HTTP ${r.status}: ${text.slice(0, 100)}`);
+  }
+  return r.json();
+}
+
+$("setSessionBtn").addEventListener("click", async () => {
+  const v = $("sessionInput").value.trim();
+  if (!v) { showBanner("Inget värde att spara.", "err"); return; }
+  try {
+    await postSession(v);
+    $("sessionInput").value = "";
+    showBanner("Sessions-cookie sparad i serverns minne.", "ok");
+    await refreshSessionStatus();
+  } catch (e) {
+    showBanner(`Kunde inte spara cookie: ${e.message}`, "err");
+  }
+});
+
+$("clearSessionBtn").addEventListener("click", async () => {
+  try {
+    await postSession("");
+    showBanner("Sessions-cookie rensad.", "ok");
+    await refreshSessionStatus();
+  } catch (e) {
+    showBanner(`Kunde inte rensa: ${e.message}`, "err");
+  }
+});
+
+refreshSessionStatus();
 </script>
 </body>
 </html>

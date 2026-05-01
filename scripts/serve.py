@@ -12,6 +12,7 @@ Kör: `uv run scripts/serve.py` -> http://localhost:8088/
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -226,6 +227,9 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path == "/api/admin/_session":
+            self._get_admin_session_status()
+            return
         if self.path.startswith(PROXY_PREFIX):
             self._proxy_churchcalendar()
             return
@@ -264,6 +268,12 @@ class Handler(SimpleHTTPRequestHandler):
             return
         self.send_error(405, "Method not allowed")
 
+    def do_POST(self) -> None:  # noqa: N802
+        if self.path == "/api/admin/_session":
+            self._set_admin_session()
+            return
+        self.send_error(405, "Method not allowed")
+
     def _svk_proxy_match(self) -> bool:
         return any(self.path.startswith(p) for p in SVK_PROXY_ROUTES)
 
@@ -287,6 +297,45 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "public, max-age=600")
         self.end_headers()
         self.wfile.write(data)
+
+    def _get_admin_session_status(self) -> None:
+        body = json.dumps({
+            "set": bool(CS_SESSION),
+            "length": len(CS_SESSION),
+            "preview": (CS_SESSION[:6] + "..." + CS_SESSION[-4:]) if CS_SESSION else "",
+        }).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _set_admin_session(self) -> None:
+        global CS_SESSION
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_length).decode("utf-8") if content_length else ""
+        try:
+            data = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            self.send_error(400, "Ogiltig JSON")
+            return
+        new_session = (data.get("session") or "").strip()
+        if not new_session:
+            CS_SESSION = ""
+            body = b'{"ok":true,"cleared":true}'
+        elif len(new_session) < 50:
+            self.send_error(400, "För kort - CS_UserSessionId är 124 tecken")
+            return
+        else:
+            CS_SESSION = new_session
+            body = json.dumps({"ok": True, "length": len(new_session)}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _proxy_admin(self, method: str) -> None:
         if not CS_SESSION:
