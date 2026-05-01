@@ -16,6 +16,9 @@ import os
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
 PORT = int(os.environ.get("SVK_PORT", "8088"))
@@ -24,6 +27,13 @@ HOST = os.environ.get("SVK_HOST", "0.0.0.0")
 # Mappar som inte ska listas som pilot-projekt även om de har index.html.
 EXCLUDE_DIRS = {"docs", "scripts", "tmp", ".git", ".claude", ".venv",
                 "__pycache__"}
+
+# CORS-kringgående proxies. svenskakyrkan.se/webapi/api-v2/churchcalendar
+# är ett internt webb-API som inte sätter CORS-headers - vi proxar det
+# här så pilot-projekt kan hämta data från samma origin som dev-servern.
+CHURCHCALENDAR_API_KEY = "139ff33b-4451-4f0f-b397-1f4ec9307a87"
+PROXY_PREFIX = "/api/churchcalendar"
+PROXY_UPSTREAM = "https://www.svenskakyrkan.se/webapi/api-v2/churchcalendar"
 
 
 def discover_links() -> list[dict]:
@@ -191,7 +201,34 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        # CORS-proxy mot svenskakyrkan.se/webapi/api-v2/churchcalendar
+        if self.path.startswith(PROXY_PREFIX):
+            self._proxy_churchcalendar()
+            return
         super().do_GET()
+
+    def _proxy_churchcalendar(self) -> None:
+        # Behåll ev. /<year>-suffix; ignorera klientens query - vi
+        # använder vår egen apiKey.
+        suffix = self.path[len(PROXY_PREFIX):].split("?", 1)[0]
+        upstream = f"{PROXY_UPSTREAM}{suffix}?{urlencode({'apiKey': CHURCHCALENDAR_API_KEY})}"
+        req = Request(upstream, headers={"User-Agent": "svk-api-playground"})
+        try:
+            with urlopen(req, timeout=15) as resp:
+                data = resp.read()
+                ctype = resp.headers.get("Content-Type", "application/json")
+        except HTTPError as e:
+            self.send_error(e.code, f"Upstream HTTP {e.code}: {e.reason}")
+            return
+        except URLError as e:
+            self.send_error(502, f"Upstream error: {e.reason}")
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=600")
+        self.end_headers()
+        self.wfile.write(data)
 
     def log_message(self, fmt: str, *args) -> None:
         # Mer kompakt loggning
