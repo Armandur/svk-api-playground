@@ -18,6 +18,17 @@ exec > >(tee -a "$LOG") 2>&1
 
 echo "=== $(date -Is) start.sh ==="
 
+# Ladda API-nycklar från .env om den finns. Variablerna behövs av
+# scripts/serve.py för dess SVK-proxy. .env är gitignored.
+if [[ -f .env ]]; then
+  set -a
+  source .env
+  set +a
+  echo ">> .env laddad (APIKEY_PROD=${APIKEY_PROD:+set}, AZURE_KEY_PROD=${AZURE_KEY_PROD:+set})"
+else
+  echo ">> ingen .env hittad - SVK-proxyn kommer ge 500"
+fi
+
 uv run scripts/watch_docs.py &
 WATCH_PID=$!
 trap 'kill "$WATCH_PID" 2>/dev/null || true' EXIT INT TERM
