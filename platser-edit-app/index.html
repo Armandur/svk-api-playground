@@ -182,6 +182,14 @@ header .subtitle {
 .session-hint { font-size: 12px; color: var(--muted);
                 font-family: "Spectral", "Times New Roman", serif;
                 font-style: italic; }
+.session-diag { margin: 8px 0; padding: 8px 12px;
+                background: rgba(125, 0, 55, 0.04);
+                border-left: 2px solid var(--gold);
+                font-size: 12px; line-height: 1.5;
+                font-family: ui-monospace, monospace; }
+.session-diag span { display: inline-block; margin-right: 16px; }
+.session-diag .ok { color: var(--dark-green); }
+.session-diag .warn { color: var(--wine); }
 </style>
 </head>
 <body>
@@ -235,9 +243,13 @@ header .subtitle {
     <p class="session-hint">Cookien är giltig 90 minuter inaktivitet.
        Den lagras i serverns RAM (inte på disk) tills du startar om
        eller rensar.</p>
+    <div id="sessionDiag" class="session-diag" hidden></div>
     <div class="session-input">
+      <button id="pingSessionBtn" type="button" class="btn-secondary">
+        Pinga nu (verifiera och förläng)
+      </button>
       <button id="testSessionBtn" type="button" class="btn-secondary">
-        Verifiera mot admin (GET)
+        Verifiera plats (GET)
       </button>
       <span id="testSessionResult" class="session-hint"></span>
     </div>
@@ -495,18 +507,38 @@ $("saveBtn").addEventListener("click", save);
 $("searchInput").addEventListener("input",
   debounce(e => search(e.target.value.trim()), 300));
 
+function fmtRelative(ts, now) {
+  if (!ts) return "aldrig";
+  const sec = Math.round(now - ts);
+  if (sec < 60) return `${sec} s sedan`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} min sedan`;
+  const h = Math.round(min / 60);
+  return `${h} h sedan`;
+}
+
 async function refreshSessionStatus() {
   try {
     const r = await fetch("/api/admin/_session", { cache: "no-store" });
     const d = await r.json();
     const tag = $("sessionStatus");
+    const diag = $("sessionDiag");
     if (d.set) {
       tag.textContent = `Aktiv (${d.preview})`;
       tag.className = "status-tag set";
-      $("sessionPanel").open = false;
+      const now = d.now;
+      const pingClass = d.last_ping_status?.startsWith("HTTP 2") ? "ok" : "warn";
+      diag.innerHTML = `
+        <span>Senast satt: <b>${fmtRelative(d.updated_at, now)}</b></span>
+        <span>Senast pingad: <b>${fmtRelative(d.last_pinged_at, now)}</b></span>
+        <span>Ping-status: <b class="${pingClass}">${d.last_ping_status || "-"}</b></span>
+        <span>Senast roterad: <b>${fmtRelative(d.last_rotated_at, now)}</b></span>
+        <span>Nästa keep-alive: var <b>${d.keepalive_interval_min} min</b></span>`;
+      diag.hidden = false;
     } else {
       tag.textContent = "Saknas";
       tag.className = "status-tag unset";
+      diag.hidden = true;
       $("sessionPanel").open = true;
     }
   } catch (e) {
@@ -547,6 +579,19 @@ $("clearSessionBtn").addEventListener("click", async () => {
     await refreshSessionStatus();
   } catch (e) {
     showBanner(`Kunde inte rensa: ${e.message}`, "err");
+  }
+});
+
+$("pingSessionBtn").addEventListener("click", async () => {
+  const out = $("testSessionResult");
+  out.textContent = "pingar…";
+  try {
+    const r = await fetch("/api/admin/_session/ping", { method: "POST" });
+    const d = await r.json();
+    out.textContent = `${d.text} (${d.status === 200 ? "OK" : "fel"})`;
+    await refreshSessionStatus();
+  } catch (e) {
+    out.textContent = `Fel: ${e.message}`;
   }
 });
 

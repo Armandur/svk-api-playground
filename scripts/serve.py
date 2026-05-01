@@ -66,13 +66,16 @@ ADMIN_KEEPALIVE_URL = "https://admin.svenskakyrkan.se/churchcontext"
 KEEPALIVE_INTERVAL = int(os.environ.get("ADMIN_KEEPALIVE_MIN", "30")) * 60
 CS_SESSION = os.environ.get("CS_SESSION", "")
 CS_SESSION_UPDATED_AT = 0.0    # unix timestamp för senast lyckad refresh
+CS_SESSION_LAST_PING_AT = 0.0  # senaste keep-alive-ping eller manuell
+CS_SESSION_LAST_PING_STATUS = ""  # "HTTP 200", "HTTP 401", "error: ..."
+CS_SESSION_LAST_ROTATED_AT = 0.0  # senaste Set-Cookie-rotation från upstream
 CS_SESSION_LOCK = threading.Lock()
 
 
 def update_cs_session(new_value: str, source: str) -> bool:
     """Uppdatera global CS_SESSION om värdet är giltigt och nytt.
     Returnerar True om något ändrades."""
-    global CS_SESSION, CS_SESSION_UPDATED_AT
+    global CS_SESSION, CS_SESSION_UPDATED_AT, CS_SESSION_LAST_ROTATED_AT
     if not new_value or len(new_value) < 50:
         return False
     with CS_SESSION_LOCK:
@@ -81,9 +84,48 @@ def update_cs_session(new_value: str, source: str) -> bool:
             return False
         CS_SESSION = new_value
         CS_SESSION_UPDATED_AT = time.time()
+        CS_SESSION_LAST_ROTATED_AT = time.time()
     print(f">> CS_SESSION uppdaterad från {source} ({len(new_value)} tecken)",
           flush=True)
     return True
+
+
+def admin_ping(source: str) -> tuple[int, str]:
+    """Gör en GET mot ADMIN_KEEPALIVE_URL för att verifiera/förlänga
+    sessionen. Uppdaterar CS_SESSION_LAST_PING_AT/_STATUS. Returnerar
+    (http-status, status-text)."""
+    global CS_SESSION_LAST_PING_AT, CS_SESSION_LAST_PING_STATUS
+    if not CS_SESSION:
+        return 0, "no-session"
+    cookie_header = (
+        CS_SESSION if "=" in CS_SESSION and ";" in CS_SESSION
+        else f"CS_UserSessionId={CS_SESSION}"
+    )
+    req = Request(ADMIN_KEEPALIVE_URL, headers={
+        "Cookie": cookie_header,
+        "User-Agent": "svk-api-playground/keepalive",
+    })
+    try:
+        with urlopen(req, timeout=15) as resp:
+            new_session = extract_session_from_headers(resp.headers)
+            if new_session:
+                update_cs_session(new_session, f"{source} Set-Cookie")
+            CS_SESSION_LAST_PING_AT = time.time()
+            CS_SESSION_LAST_PING_STATUS = f"HTTP {resp.status}"
+            print(f">> session ping ({source}): HTTP {resp.status}",
+                  flush=True)
+            return resp.status, CS_SESSION_LAST_PING_STATUS
+    except HTTPError as e:
+        CS_SESSION_LAST_PING_AT = time.time()
+        CS_SESSION_LAST_PING_STATUS = f"HTTP {e.code}"
+        print(f"!! session ping ({source}): HTTP {e.code} - sessionen "
+              f"kan ha löpt ut", flush=True)
+        return e.code, CS_SESSION_LAST_PING_STATUS
+    except Exception as e:
+        CS_SESSION_LAST_PING_AT = time.time()
+        CS_SESSION_LAST_PING_STATUS = f"error: {e}"
+        print(f"!! session ping ({source}) misslyckades: {e}", flush=True)
+        return 0, CS_SESSION_LAST_PING_STATUS
 
 
 def extract_session_from_headers(headers) -> str | None:
@@ -98,35 +140,12 @@ def extract_session_from_headers(headers) -> str | None:
 
 def keep_session_alive() -> None:
     """Bakgrundsloop som pingar admin-domänen var KEEPALIVE_INTERVAL
-    sekund för att hålla CS_UserSessionId-sessionen vid liv (90 min
-    idle timeout). Sniffar även Set-Cookie för ev. roterad cookie.
+    sekund för att hålla sessionen vid liv (90 min idle timeout).
     Skip om sessionen är tom."""
     while True:
         time.sleep(KEEPALIVE_INTERVAL)
-        if not CS_SESSION:
-            continue
-        try:
-            req = Request(ADMIN_KEEPALIVE_URL, headers={
-                "Cookie": f"CS_UserSessionId={CS_SESSION}",
-                "User-Agent": "svk-api-playground/keepalive",
-            })
-            with urlopen(req, timeout=15) as resp:
-                new_session = extract_session_from_headers(resp.headers)
-                if new_session:
-                    update_cs_session(new_session, "keepalive Set-Cookie")
-                else:
-                    # Aktivitets-ping räcker - servern flyttar fram
-                    # idle-timern även utan cookie-rotation
-                    global CS_SESSION_UPDATED_AT
-                    CS_SESSION_UPDATED_AT = time.time()
-                    print(f">> session keep-alive: HTTP {resp.status}",
-                          flush=True)
-        except HTTPError as e:
-            print(f"!! session keep-alive: HTTP {e.code} - sessionen "
-                  f"kan ha löpt ut, ny SSO-inloggning krävs",
-                  flush=True)
-        except Exception as e:
-            print(f"!! session keep-alive misslyckades: {e}", flush=True)
+        if CS_SESSION:
+            admin_ping("keepalive")
 
 
 def discover_links() -> list[dict]:
@@ -338,7 +357,20 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == "/api/admin/_session":
             self._set_admin_session()
             return
+        if self.path == "/api/admin/_session/ping":
+            self._manual_ping()
+            return
         self.send_error(405, "Method not allowed")
+
+    def _manual_ping(self) -> None:
+        status, text = admin_ping("manual")
+        body = json.dumps({"status": status, "text": text}).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _svk_proxy_match(self) -> bool:
         return any(self.path.startswith(p) for p in SVK_PROXY_ROUTES)
@@ -369,6 +401,12 @@ class Handler(SimpleHTTPRequestHandler):
             "set": bool(CS_SESSION),
             "length": len(CS_SESSION),
             "preview": (CS_SESSION[:6] + "..." + CS_SESSION[-4:]) if CS_SESSION else "",
+            "updated_at": CS_SESSION_UPDATED_AT or None,
+            "last_pinged_at": CS_SESSION_LAST_PING_AT or None,
+            "last_ping_status": CS_SESSION_LAST_PING_STATUS or None,
+            "last_rotated_at": CS_SESSION_LAST_ROTATED_AT or None,
+            "keepalive_interval_min": KEEPALIVE_INTERVAL // 60,
+            "now": time.time(),
         }).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
