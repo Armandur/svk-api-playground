@@ -1,0 +1,27 @@
+# Genererad dokumentation - byggs av scripts/build_docs.py
+docs/svk-apis.html
+
+# Cachad data från API-utforskning (swagger.json, portal-HTML)
+tmp/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Claude Code lokal konfig
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env-filer med riktiga API-nycklar
+.env
+.env.local
