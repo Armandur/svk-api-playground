@@ -107,6 +107,20 @@ table.schedule tr.today td {
   background: rgba(125, 0, 55, 0.05);
   font-family: "Spectral", "Times New Roman", serif; font-style: italic;
   font-size: clamp(14px, 1.6vw, 19px); line-height: 1.45;
+  white-space: pre-line;  /* respektera \n från CMS-fältet */
+}
+
+.validity-banner {
+  margin-bottom: clamp(14px, 2vw, 22px);
+  padding: clamp(10px, 1.4vw, 16px) clamp(14px, 2vw, 22px);
+  background: var(--wine); color: var(--beige);
+  font-size: clamp(15px, 1.9vw, 24px);
+  font-weight: 500; letter-spacing: 0.01em; line-height: 1.3;
+}
+.validity-banner em {
+  font-family: "Spectral", "Times New Roman", serif;
+  font-style: italic; font-weight: 400; opacity: 0.9;
+  margin-right: 6px;
 }
 
 .facilities {
@@ -155,6 +169,8 @@ footer {
   <div class="badge" id="statusBadge">…</div>
   <div class="detail" id="statusDetail"></div>
 </div>
+
+<div id="validityBanner" class="validity-banner" hidden></div>
 
 <table class="schedule" id="schedule">
   <thead><tr><th>Dag</th><th>Öppet</th></tr></thead>
@@ -264,6 +280,37 @@ function renderHoursInfo(place) {
   }
 }
 
+const SV_MONTHS = ['januari','februari','mars','april','maj','juni',
+                   'juli','augusti','september','oktober','november','december'];
+
+function fmtSwedishDate(ymd) {
+  if (!ymd) return '';
+  const d = new Date(ymd + 'T12:00:00Z');
+  return `${d.getUTCDate()} ${SV_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function renderValidityBanner(period) {
+  const el = document.getElementById('validityBanner');
+  // Visa bara när perioden har en slutgräns (säsongs- eller avvikelseperiod).
+  // Permanent period (validTo saknas) = ordinarie öppettider, ingen banner.
+  if (!period || !period.validTo) {
+    el.hidden = true;
+    return;
+  }
+  const from = period.validFrom ? fmtSwedishDate(period.validFrom) : null;
+  const to = fmtSwedishDate(period.validTo);
+  let html;
+  if (period.validFrom === period.validTo) {
+    html = `<em>Öppettider gäller</em> ${to}`;
+  } else if (from) {
+    html = `<em>Öppettider gäller</em> ${from} - ${to}`;
+  } else {
+    html = `<em>Öppettider gäller fram till</em> ${to}`;
+  }
+  el.innerHTML = html;
+  el.hidden = false;
+}
+
 const FACILITY_LABELS = {
   hasToilet: 'Toalett',
   hasWifi: 'Wi-Fi',
@@ -336,6 +383,7 @@ function render(now) {
 
   const period = activePeriod(place.openHours?.periods, now);
   renderPeriodInfo(period);
+  renderValidityBanner(period);
   renderSchedule(period, now);
   renderHoursInfo(place);
   renderFacilities(place);
