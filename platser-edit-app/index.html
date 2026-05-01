@@ -96,6 +96,15 @@ header .subtitle {
   padding: 10px 0; border-bottom: 1px solid var(--line);
 }
 .schedule-row > .day { font-weight: 500; padding-top: 8px; }
+.schedule-row.has-issue { background: rgba(125, 0, 55, 0.06); }
+.schedule-row.has-issue > .day { color: var(--wine); }
+.schedule-issues {
+  margin: 8px 0; padding: 10px 14px;
+  background: var(--pink); color: var(--wine);
+  border-left: 3px solid var(--wine); font-size: 13px;
+}
+.schedule-issues b { display: block; margin-bottom: 4px; }
+.schedule-issues ul { margin-left: 18px; }
 .intervals { display: flex; flex-direction: column; gap: 6px; }
 .interval { display: flex; align-items: center; gap: 6px; }
 .interval input[type="time"] {
@@ -564,9 +573,18 @@ function renderEditor() {
   $("periodValidity").textContent =
     `validFrom: ${p.validFrom || "(saknas)"} · validTo: ${p.validTo || "(saknas)"}`;
 
+  // Bygg en set av problemiska intervall-index per dag (för markering)
+  const dayIssues = validateDayIntervals(p.days || {});
+  const dayWithIssues = new Set();
+  for (const issue of dayIssues) {
+    const m = issue.match(/^([^:]+):/);
+    if (m) dayWithIssues.add(m[1]);
+  }
+
   const sch = $("schedule");
   sch.innerHTML = DAY_ORDER.map(day => {
     const ivs = (p.days?.[day]) || [];
+    const hasIssue = dayWithIssues.has(DAY_LABEL[day]);
     const intervalsHtml = ivs.length
       ? ivs.map((iv, idx) => `
           <div class="interval">
@@ -579,12 +597,24 @@ function renderEditor() {
           </div>`).join("")
       : `<div class="closed-tag">stängt</div>`;
     return `
-      <div class="schedule-row">
+      <div class="schedule-row${hasIssue ? " has-issue" : ""}">
         <div class="day">${DAY_LABEL[day]}</div>
         <div class="intervals">${intervalsHtml}</div>
         <button class="add-interval" data-day="${day}">+ tid</button>
       </div>`;
   }).join("");
+
+  // Visa valideringsfel under schedule om något hittas
+  const issueBanner = document.getElementById("scheduleIssues");
+  if (issueBanner) issueBanner.remove();
+  if (dayIssues.length) {
+    const banner = document.createElement("div");
+    banner.id = "scheduleIssues";
+    banner.className = "schedule-issues";
+    banner.innerHTML = "<b>Överlapp/fel hittade:</b><ul>" +
+      dayIssues.map(msg => `<li>${escapeHtml(msg)}</li>`).join("") + "</ul>";
+    sch.parentNode.insertBefore(banner, sch.nextSibling);
+  }
 
   // Bind handlers
   for (const inp of sch.querySelectorAll('input[type="time"]')) {
@@ -627,6 +657,32 @@ $("periodSelect").addEventListener("change", e => {
   renderEditor();
 });
 
+function validateDayIntervals(days) {
+  const issues = [];
+  for (const [day, ivs] of Object.entries(days || {})) {
+    if (!ivs || !ivs.length) continue;
+    const sorted = ivs
+      .filter(iv => iv.from && iv.to)
+      .map((iv, idx) => ({ ...iv, _origIdx: idx }))
+      .sort((a, b) => a.from.localeCompare(b.from));
+    for (let i = 0; i < sorted.length; i++) {
+      const iv = sorted[i];
+      if (iv.from >= iv.to) {
+        issues.push(`${DAY_LABEL[day]}: ${iv.from}–${iv.to} (slut måste vara efter start)`);
+      }
+      if (i > 0) {
+        const prev = sorted[i - 1];
+        if (iv.from < prev.to) {
+          issues.push(
+            `${DAY_LABEL[day]}: ${prev.from}–${prev.to} och ${iv.from}–${iv.to} överlappar`
+          );
+        }
+      }
+    }
+  }
+  return issues;
+}
+
 async function save() {
   const updatedBy = $("updatedBy").value.trim();
   if (!updatedBy) {
@@ -635,7 +691,7 @@ async function save() {
   }
   $("saveBtn").disabled = true;
   showBanner("Sparar…", "ok");
-  // Rensa eventuella tomma intervall (saknad from eller to)
+  // Rensa tomma intervall + validera
   const cleanPeriods = workingPeriods.map(p => {
     const days = {};
     for (const [d, ivs] of Object.entries(p.days || {})) {
@@ -644,6 +700,19 @@ async function save() {
     }
     return { ...p, days };
   });
+  const allIssues = [];
+  cleanPeriods.forEach((p, i) => {
+    const issues = validateDayIntervals(p.days);
+    issues.forEach(msg => allIssues.push(`Period ${i + 1}: ${msg}`));
+  });
+  if (allIssues.length) {
+    showBanner(
+      `Sparning blockerad - rätta överlapp/tider först:\n· ${allIssues.join("\n· ")}`,
+      "err",
+    );
+    $("saveBtn").disabled = false;
+    return;
+  }
   // Admin-flödet vill ha hela Place-objektet (full replace via PUT), inte
   // bara delta. Vi mergar våra ändringar in i currentPlace och skickar.
   const payload = {
