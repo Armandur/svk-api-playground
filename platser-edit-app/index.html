@@ -770,11 +770,16 @@ async function save() {
   const payload = {
     ...currentPlace,
     updatedBy,
-    openHours: {
-      ...(currentPlace.openHours || {}),
-      info: $("openHoursInfoInput").value.trim() || null,
-      periods: cleanPeriods,
-    },
+    openHours: (() => {
+      // Bygg openHours utan info-fältet om textarean är tom, så servern
+      // inte tolkar null som "rensa". Skicka info bara när användaren
+      // faktiskt skrivit något.
+      const oh = { ...(currentPlace.openHours || {}), periods: cleanPeriods };
+      const info = $("openHoursInfoInput").value.trim();
+      if (info) oh.info = info;
+      else delete oh.info;
+      return oh;
+    })(),
   };
   // Fält som servern sätter själv ska inte skickas tillbaka
   delete payload.created;
@@ -830,13 +835,11 @@ function periodLengthDays(p) {
 }
 
 function isExceptionPeriod(p) {
-  // Heuristik: kort period (≤14 dygn) som redan har minst en tom
-  // dayKey-array. Då är det troligen en avvikelseperiod vi själva
-  // skapat - utöka den istället för att splittra.
-  if (periodLengthDays(p) > 14) return false;
-  return Object.values(p.days || {}).some(
-    v => Array.isArray(v) && v.length === 0
-  );
+  // Heuristik: kort period (≤14 dygn) med validTo. Tomma dayKey-
+  // arrays kan ha strippats av servern vid en tidigare PUT, så vi
+  // kan inte lita på att de syns i client-side data. Kort period =
+  // troligen en avvikelseperiod vi själva skapat.
+  return p.validTo && periodLengthDays(p) <= 14;
 }
 
 function addClosedDayException(dateStr, reason) {
