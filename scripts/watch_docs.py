@@ -26,6 +26,10 @@ WATCH_PATHS = [
 BUILD_CMD = ["uv", "run", str(ROOT / "scripts" / "build_docs.py")]
 SYNC_DEST = Path("/mnt/vmworkspace/svk-api-playground")
 # Spegla hela projektmappen utom secrets och lokala konfigfiler.
+# `--filter=P` (Protect) gör att filer i docs-from-claude-code-chrome/
+# på destinationen bevaras även om de inte finns i source - tänkt för
+# rapporter som användaren laddar upp dit från andra enheter via
+# Tailscale (Chrome-extension-flödet).
 RSYNC_CMDS = [
     [
         "rsync", "-a", "--delete",
@@ -33,6 +37,7 @@ RSYNC_CMDS = [
         "--exclude=.claude/",
         "--exclude=__pycache__/", "--exclude=.venv/",
         "--exclude=.git/",
+        "--filter=P docs-from-claude-code-chrome/***",
         f"{ROOT}/", f"{SYNC_DEST}/",
     ],
 ]
