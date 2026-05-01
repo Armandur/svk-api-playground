@@ -79,9 +79,13 @@ APIKEY_PROD server-sidigt så klienten aldrig ser nyckeln.
   Inget Content Studio-reverse-engineering behövs.
 - **Skrivbehörighet är skopad** - vår APIKEY_PROD har read men inte
   write (verifierat 2026-05-01: PATCH /place/{Härnösands domkyrka}
-  → 403 Access denied). Skriv är troligen begränsat till platser
-  ägda av enheten som äger nyckeln. Kontakta SVK för en skriv-nyckel
-  eller testa mot egen enhets platser.
+  → 403 Access denied).
+- **Lösning hittad via reverse-engineering:** CMS:et använder en
+  intern proxy `admin.svenskakyrkan.se/webapi/api-v2/place/{id}` med
+  `CS_UserSessionId`-cookie istället för API-nyckel. Vår serve.py har
+  nu en `/api/admin/`-proxy som låter platser-edit-app skriva via
+  CMS-flödet, med `CS_SESSION` från `.env`. Se
+  `docs-from-claude-code-chrome/platser-edit-flow-2026-05-01.md`.
 
 ### 3. Kyrkoårs-widget (`kyrkoaret-widget/`) ✅ PoC klar
 

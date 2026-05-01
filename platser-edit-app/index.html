@@ -345,33 +345,47 @@ async function save() {
     }
     return { ...p, days };
   });
+  // Admin-flödet vill ha hela Place-objektet (full replace via PUT), inte
+  // bara delta. Vi mergar våra ändringar in i currentPlace och skickar.
   const payload = {
+    ...currentPlace,
     updatedBy,
     openHours: { ...(currentPlace.openHours || {}), periods: cleanPeriods },
   };
+  // Fält som servern sätter själv ska inte skickas tillbaka
+  delete payload.created;
+  delete payload.updated;
+  delete payload.createdBy;
+  delete payload.publishedBy;
+  delete payload.depublishedBy;
+
   if ($("dryRun").checked) {
-    console.log("DRY-RUN payload för PATCH /place/" + currentPlace.id, payload);
+    console.log("DRY-RUN payload för PUT /api/admin/place/" + currentPlace.id, payload);
     showBanner(
-      "Dry-run: payload loggad i konsolen. Avmarkera 'Dry-run' för att faktiskt PATCH:a.",
+      "Dry-run: payload loggad i konsolen. Avmarkera 'Dry-run' för att faktiskt skicka.",
       "ok",
     );
     $("saveBtn").disabled = false;
     return;
   }
   try {
-    const r = await fetch(`/api/platser/place/${currentPlace.id}`, {
-      method: "PATCH",
+    const r = await fetch(`/api/admin/place/${currentPlace.id}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (r.status === 204 || r.ok) {
+    if (r.ok) {
       showBanner("Sparat.", "ok");
       await loadPlace(currentPlace.id);
+    } else if (r.status === 401) {
+      throw new Error(
+        "401 Unauthorized: CS_SESSION saknas eller är utgången (90 min timeout). " +
+        "Hämta ny CS_UserSessionId-cookie från admin.svenskakyrkan.se efter inloggning."
+      );
     } else if (r.status === 403) {
       throw new Error(
-        "403 Forbidden: din API-nyckel saknar skrivbehörighet på denna plats. " +
-        "Skrivbehörighet på Platser-API:t är ofta skopad per organisation - " +
-        "be SVK om en skriv-nyckel eller testa mot en plats ägd av din egen enhet."
+        "403 Forbidden: ditt SSO-konto saknar skrivbehörighet på denna plats. " +
+        "Skrivbehörighet styrs av AD-grupper - testa en plats du faktiskt äger."
       );
     } else if (r.status === 404) {
       throw new Error("404: platsen finns inte (eller är borttagen).");

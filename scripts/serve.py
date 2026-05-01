@@ -52,6 +52,15 @@ SVK_PROXY_ROUTES = {
     "/api/units/": "/externwebb/api-v2/odata/units",
 }
 
+# Admin-proxy mot CMS:ets interna /webapi/api-v2/. Auth = sessionscookie
+# CS_UserSessionId från en inloggad browser. Server-till-server kringgår
+# CORS. Stödjer skrivande operationer (PUT med full replace) som den
+# publika gatewayen inte tillåter med vår nyckel.
+# Se docs-from-claude-code-chrome/platser-edit-flow-2026-05-01.md.
+ADMIN_PROXY_PREFIX = "/api/admin/"
+ADMIN_UPSTREAM = "https://admin.svenskakyrkan.se/webapi/api-v2/"
+CS_SESSION = os.environ.get("CS_SESSION", "")
+
 
 def discover_links() -> list[dict]:
     """Bygg lista av länkar för startsidan."""
@@ -220,24 +229,36 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith(PROXY_PREFIX):
             self._proxy_churchcalendar()
             return
+        if self.path.startswith(ADMIN_PROXY_PREFIX):
+            self._proxy_admin("GET")
+            return
         if self._svk_proxy_match():
             self._proxy_svk("GET")
             return
         super().do_GET()
 
     def do_PATCH(self) -> None:  # noqa: N802
+        if self.path.startswith(ADMIN_PROXY_PREFIX):
+            self._proxy_admin("PATCH")
+            return
         if self._svk_proxy_match():
             self._proxy_svk("PATCH")
             return
         self.send_error(405, "Method not allowed")
 
     def do_PUT(self) -> None:  # noqa: N802
+        if self.path.startswith(ADMIN_PROXY_PREFIX):
+            self._proxy_admin("PUT")
+            return
         if self._svk_proxy_match():
             self._proxy_svk("PUT")
             return
         self.send_error(405, "Method not allowed")
 
     def do_DELETE(self) -> None:  # noqa: N802
+        if self.path.startswith(ADMIN_PROXY_PREFIX):
+            self._proxy_admin("DELETE")
+            return
         if self._svk_proxy_match():
             self._proxy_svk("DELETE")
             return
@@ -264,6 +285,56 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=600")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _proxy_admin(self, method: str) -> None:
+        if not CS_SESSION:
+            self.send_error(
+                500,
+                "Sätt CS_SESSION i .env (CS_UserSessionId från admin.svenskakyrkan.se)",
+            )
+            return
+        rest = self.path[len(ADMIN_PROXY_PREFIX):]
+        upstream_url = f"{ADMIN_UPSTREAM}{rest}"
+        body = None
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length:
+            body = self.rfile.read(content_length)
+        headers = {
+            "Cookie": f"CS_UserSessionId={CS_SESSION}",
+            "Origin": "https://admin.svenskakyrkan.se",
+            "Referer": "https://admin.svenskakyrkan.se/",
+            "User-Agent": "svk-api-playground",
+        }
+        if method in ("PUT", "POST", "PATCH"):
+            headers["Prefer"] = "return=representation"
+            if self.headers.get("Content-Type"):
+                headers["Content-Type"] = self.headers["Content-Type"]
+        req = Request(upstream_url, data=body, method=method, headers=headers)
+        try:
+            with urlopen(req, timeout=20) as resp:
+                data = resp.read()
+                ctype = resp.headers.get("Content-Type", "application/json")
+                status = resp.status
+        except HTTPError as e:
+            err_body = e.read() if hasattr(e, "read") else b""
+            self.send_response(e.code)
+            self.send_header(
+                "Content-Type", e.headers.get("Content-Type", "text/plain"),
+            )
+            self.send_header("Content-Length", str(len(err_body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(err_body)
+            return
+        except URLError as e:
+            self.send_error(502, f"Upstream error: {e.reason}")
+            return
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(data)
 

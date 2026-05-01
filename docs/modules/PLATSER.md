@@ -242,6 +242,35 @@ curl -s -X PATCH "${BASE}/place/<id>?apikey=${APIKEY}" \
 curl -s -X DELETE "${BASE}/place/<id>?apikey=${APIKEY}&deletedby=rasmus"
 ```
 
+## Intern admin-väg (CMS reverse-proxy)
+
+Förutom den publika gatewayen finns ett **internt admin-API** på samma
+domän som platsadministrationen (Content Studio):
+
+- **Bas-URL:** `https://admin.svenskakyrkan.se/webapi/api-v2/place/{id}`
+- **Auth:** sessionscookie `CS_UserSessionId` (124 tecken opaque,
+  ASP.NET-session). Ingen API-nyckel.
+- **Method:** `PUT` med **full replace** (hela Place-objektet, inte
+  bara delta).
+- **Header:** `Prefer: return=representation` ger uppdaterat objekt i
+  svar (status 200).
+- **Behörighet:** styrs av AD-grupper kopplade till SSO-användaren -
+  cookien ger bara åtkomst till platser användaren äger.
+- **CORS:** låst till `https://admin.svenskakyrkan.se` - browser
+  cross-origin blockas, men server-till-server (vår dev-proxy)
+  fungerar.
+- **Timeout:** 90 minuter inaktivitet, ingen automatisk refresh.
+  Ny cookie kräver ny SSO-inloggning i browser.
+
+Detta är vägen som CMS:et själv använder för att spara öppettider när
+du är inloggad. Det är **inte** en officiellt dokumenterad endpoint -
+upptäcktes via reverse-engineering, se
+[`docs-from-claude-code-chrome/platser-edit-flow-2026-05-01.md`](../../docs-from-claude-code-chrome/platser-edit-flow-2026-05-01.md).
+
+`scripts/serve.py` i denna repo har en `/api/admin/`-proxy som lägger
+till cookien från `CS_SESSION` i `.env` server-sidigt - se
+[`platser-edit-app/`](../../platser-edit-app/).
+
 ## Skriv-operationer (PATCH/PUT/DELETE)
 
 - **PATCH `/place/{id}`** - partiell uppdatering. Sätt fält till `null`

@@ -24,7 +24,7 @@ if [[ -f .env ]]; then
   set -a
   source .env
   set +a
-  echo ">> .env laddad (APIKEY_PROD=${APIKEY_PROD:+set}, AZURE_KEY_PROD=${AZURE_KEY_PROD:+set})"
+  echo ">> .env laddad (APIKEY_PROD=${APIKEY_PROD:+set}, AZURE_KEY_PROD=${AZURE_KEY_PROD:+set}, CS_SESSION=${CS_SESSION:+set})"
 else
   echo ">> ingen .env hittad - SVK-proxyn kommer ge 500"
 fi
