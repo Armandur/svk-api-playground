@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kyrkoåret idag</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+/* SVK:s grafiska profil - se docs/modules/_brand.md */
+:root {
+  --beige:      #FFEBE1;
+  --black:      #000000;
+  --wine:       #7D0037;
+  --pink:       #FFC3AA;
+  --gold:       #BC8E4C;
+  --dark-green: #00554B;
+  --muted:      #6b5f5a;
+
+  /* Liturgiska färger - traditionella, inte mappade till brand-paletten */
+  --lit-white:  #f5f0e6;
+  --lit-violet: #6b3aa0;
+  --lit-red:    #c8102e;
+  --lit-green:  #2a8c3a;
+  --lit-black:  #111111;
+  --lit-blue:   #2c5aa0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font: 18px/1.45 "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--black);
+  padding: clamp(20px, 4vw, 56px);
+  max-width: 720px; margin: 0 auto;
+}
+
+header {
+  border-bottom: 2px solid var(--wine);
+  padding-bottom: clamp(12px, 2vw, 20px);
+  margin-bottom: clamp(20px, 3vw, 32px);
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 16px;
+}
+header .date { font-size: clamp(14px, 1.6vw, 18px); color: var(--muted);
+               font-family: "Spectral", "Times New Roman", serif;
+               font-style: italic; }
+header .label { font-size: clamp(11px, 1.3vw, 13px);
+                text-transform: uppercase; letter-spacing: 0.12em;
+                color: var(--wine); font-weight: 500; }
+
+.feast {
+  display: flex; gap: clamp(16px, 2.5vw, 24px);
+  margin-bottom: clamp(24px, 3vw, 36px);
+}
+.feast .swatch {
+  flex: 0 0 auto; width: clamp(40px, 6vw, 60px); border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+.feast .body { flex: 1; min-width: 0; }
+.feast h1 {
+  font-size: clamp(26px, 4vw, 44px); font-weight: 500;
+  letter-spacing: -0.02em; line-height: 1.05; color: var(--wine);
+  margin-bottom: 6px;
+}
+.feast .heading {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  font-size: clamp(15px, 1.7vw, 19px); color: var(--black);
+  margin-bottom: 12px;
+}
+.feast .text {
+  font-size: clamp(15px, 1.7vw, 18px); line-height: 1.5;
+  color: var(--black);
+}
+.feast .meta {
+  margin-top: clamp(14px, 2vw, 20px);
+  font-size: clamp(13px, 1.4vw, 15px); color: var(--muted);
+  display: flex; flex-wrap: wrap; gap: 16px;
+}
+.feast .meta span::before { content: "· "; color: var(--wine); margin-right: 4px; }
+.feast .meta span:first-child::before { content: ""; margin: 0; }
+
+.upcoming-note {
+  background: var(--pink); padding: 12px 18px;
+  margin-bottom: clamp(20px, 3vw, 28px);
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  border-left: 3px solid var(--wine);
+}
+
+.readings h2 {
+  font-size: clamp(13px, 1.4vw, 15px); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--wine); margin-bottom: clamp(12px, 1.5vw, 16px);
+  border-bottom: 2px solid var(--wine); padding-bottom: 8px;
+}
+.reading {
+  margin-bottom: clamp(20px, 2.5vw, 28px);
+  padding-bottom: clamp(16px, 2vw, 22px);
+  border-bottom: 1px solid rgba(125, 0, 55, 0.15);
+}
+.reading:last-child { border-bottom: none; }
+.reading .ref {
+  font-family: "Spectral", "Times New Roman", serif;
+  font-size: clamp(13px, 1.5vw, 15px); color: var(--muted); font-style: italic;
+  margin-bottom: 4px;
+}
+.reading .acro {
+  font-size: clamp(15px, 1.8vw, 19px); font-weight: 500;
+  color: var(--black); margin-bottom: 10px;
+}
+.reading .text {
+  font-family: "Spectral", "Times New Roman", serif;
+  font-size: clamp(15px, 1.7vw, 18px); line-height: 1.55;
+  color: var(--black); white-space: pre-line;
+  /* Klipp långa texter med en mjuk fade */
+  max-height: 18em; overflow: hidden; position: relative;
+}
+.reading .text::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3em;
+  background: linear-gradient(transparent, var(--beige));
+  pointer-events: none;
+}
+.reading.expanded .text { max-height: none; }
+.reading.expanded .text::after { display: none; }
+
+footer {
+  margin-top: clamp(24px, 3vw, 36px);
+  padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.15);
+  font-size: 13px; color: var(--muted);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+
+.error {
+  background: var(--wine); color: var(--beige);
+  padding: 16px 22px; font-weight: 500;
+}
+.loading { color: var(--muted); font-style: italic;
+           font-family: "Spectral", "Times New Roman", serif; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="label">Kyrkoåret idag</div>
+    <div class="date" id="dateLabel">…</div>
+  </div>
+  <div class="label" id="yearPartLabel"></div>
+</header>
+
+<div id="upcoming" class="upcoming-note" hidden></div>
+
+<div id="root"><p class="loading">Laddar dagens högtid…</p></div>
+
+<footer>
+  <span>Källa: svenskakyrkan.se</span>
+  <span>Uppdaterad: <span id="updatedAt">-</span></span>
+</footer>
+
+<script>
+const API_KEY = "139ff33b-4451-4f0f-b397-1f4ec9307a87"; // publik klientside-nyckel
+const API_BASE = "https://www.svenskakyrkan.se/webapi/api-v2/churchcalendar";
+
+const COLOR_HEX = {
+  White: "var(--lit-white)",
+  Violet: "var(--lit-violet)",
+  Red: "var(--lit-red)",
+  Green: "var(--lit-green)",
+  Black: "var(--lit-black)",
+  Blue: "var(--lit-blue)",
+  VioletOrBlue: "var(--lit-violet)",
+  GreenOrBlue: "var(--lit-green)",
+  GreenOrWhite: "var(--lit-green)",
+};
+
+const WEEKDAYS = ["söndag", "måndag", "tisdag", "onsdag", "torsdag",
+                  "fredag", "lördag"];
+const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni",
+                "juli", "augusti", "september", "oktober", "november",
+                "december"];
+
+function fmtSwedish(d) {
+  return `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Hitta entry vars startDate <= now <= endDate, eller nästa framtida
+function findCurrentOrUpcoming(entries, now) {
+  const sorted = [...entries].sort(
+    (a, b) => a.startDate.localeCompare(b.startDate)
+  );
+  for (const e of sorted) {
+    const start = new Date(e.startDate);
+    const end = new Date(e.endDate);
+    if (now >= start && now <= end) {
+      return { entry: e, isUpcoming: false };
+    }
+  }
+  for (const e of sorted) {
+    const start = new Date(e.startDate);
+    if (start > now) return { entry: e, isUpcoming: true };
+  }
+  return { entry: null, isUpcoming: false };
+}
+
+function renderFeast(entry, isUpcoming, now) {
+  const root = document.getElementById("root");
+  const upcoming = document.getElementById("upcoming");
+  const yearPart = document.getElementById("yearPartLabel");
+
+  if (!entry) {
+    root.innerHTML = `<p class="loading">Inga kommande högtider hittades.</p>`;
+    return;
+  }
+
+  if (isUpcoming) {
+    const start = new Date(entry.startDate);
+    upcoming.hidden = false;
+    upcoming.textContent = `Närmast kommande högtid är ${fmtSwedish(start)}.`;
+  } else {
+    upcoming.hidden = true;
+  }
+
+  yearPart.textContent = entry.churchYearPart?.name || "";
+
+  const swatchColor = COLOR_HEX[entry.liturgicalColor] || "var(--muted)";
+  const colorTooltip = entry.liturgicalColorDisplay || entry.liturgicalColor || "";
+
+  const meta = [];
+  if (entry.annualText) meta.push(entry.annualText);
+  if (entry.churchYearPart?.name) meta.push(entry.churchYearPart.name);
+  if (entry.liturgicalColorDisplay) meta.push(entry.liturgicalColorDisplay);
+
+  const readings = entry.readings?.readings || [];
+  const readingsHtml = readings.map(r => `
+    <div class="reading">
+      <div class="ref">${escapeHtml(r.readingType || "")}${r.årgång ? ` · årgång ${r.årgång}` : ""}</div>
+      <div class="acro">${escapeHtml(r.acronymeFull || r.acronyme || "")}</div>
+      <div class="text">${escapeHtml(r.text || "")}</div>
+    </div>
+  `).join("");
+
+  root.innerHTML = `
+    <div class="feast">
+      <div class="swatch" style="background:${swatchColor}" title="${escapeHtml(colorTooltip)}"></div>
+      <div class="body">
+        <h1>${escapeHtml(entry.feastName || "")}</h1>
+        ${entry.feastHeading ? `<div class="heading">${escapeHtml(entry.feastHeading)}</div>` : ""}
+        ${entry.feastText ? `<div class="text">${escapeHtml(entry.feastText)}</div>` : ""}
+        <div class="meta">${meta.map(m => `<span>${escapeHtml(m)}</span>`).join("")}</div>
+      </div>
+    </div>
+    ${readings.length ? `<section class="readings"><h2>Bibeltexter</h2>${readingsHtml}</section>` : ""}
+  `;
+
+  // Klick på en reading expanderar fade-cliplockad text
+  for (const el of root.querySelectorAll(".reading")) {
+    el.addEventListener("click", () => el.classList.toggle("expanded"));
+  }
+}
+
+async function load() {
+  const now = new Date();
+  document.getElementById("dateLabel").textContent = fmtSwedish(now);
+  try {
+    const r = await fetch(`${API_BASE}?apiKey=${API_KEY}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const entries = await r.json();
+    const { entry, isUpcoming } = findCurrentOrUpcoming(entries, now);
+    renderFeast(entry, isUpcoming, now);
+    document.getElementById("updatedAt").textContent =
+      now.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+  } catch (e) {
+    document.getElementById("root").innerHTML =
+      `<div class="error">Kunde inte ladda kyrkoåret: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+load();
+// Auto-refresh varje timme - högtider byts sällan, ingen brådska
+setInterval(load, 60 * 60 * 1000);
+</script>
+</body>
+</html>

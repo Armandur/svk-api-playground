@@ -73,15 +73,18 @@ detta göras via Svenska kyrkans CMS (Content Studio /
 - Är det rätt väg att gå runt CMS:et eller bör vi prata med SVK
   centralt först?
 
-### 3. Kyrkoårs-widget (`kyrkoaret-widget/`)
+### 3. Kyrkoårs-widget (`kyrkoaret-widget/`) ✅ PoC klar
 
-Lättviktig widget eller webbkomponent som visar dagens högtid,
-liturgiska färg och dagens bibeltexter. Drivs av
-[CHURCHCALENDAR](#CHURCHCALENDAR). Kan embeddas i församlingars
-hemsidor eller köras på signage.
+Visar dagens högtid (eller närmast kommande), liturgisk färg som swatch,
+kyrkoårsdel, högtidsbeskrivning och dagens bibeltexter. Drivs av
+[CHURCHCALENDAR](#CHURCHCALENDAR) - öppet API, ingen nyckelhantering
+behövs på klientsidan. SVK-stylad (beige + vinröd, DM Sans + Spectral).
 
-Lågt hängande frukt eftersom API:t är öppet och datan är komplett
-(text, färg, datum, årgång).
+Återstår:
+- Embed-läge (`?embed=1`) för iframe-användning på församlingshemsidor.
+- localStorage-cache för offline-fallback.
+- Variant som visar veckans events från CalendarAPI ihop med dagens
+  högtid (kräver Azure-key + cors-proxy om det körs klient-sidigt).
 
 ### 4. Församlingssök-formulär (`forsamlingssok-form/`)
 
