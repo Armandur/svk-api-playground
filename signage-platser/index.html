@@ -63,21 +63,22 @@ h1 .subtitle {
 }
 .status.open { border-color: var(--dark-green); }
 .status .badge {
-  font-size: clamp(56px, 11vw, 160px); font-weight: 700;
-  letter-spacing: -0.04em; line-height: 0.95;
+  font-size: clamp(48px, 9vw, 130px); font-weight: 600;
+  letter-spacing: -0.03em; line-height: 0.95;
   color: var(--wine);
 }
 .status.open .badge { color: var(--dark-green); }
 .status .detail {
-  font-size: clamp(20px, 2.6vw, 36px);
-  font-weight: 500; line-height: 1.15;
+  font-size: clamp(18px, 2.4vw, 32px);
+  font-weight: 400; line-height: 1.2;
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--black);
 }
-.status .detail .when {
-  display: block; margin-top: 6px;
-  font-family: "Spectral", "Times New Roman", serif;
-  font-style: italic; font-weight: 400; font-size: 0.65em;
-  color: var(--muted);
+.status .detail strong {
+  font-family: "DM Sans", Arial, sans-serif; font-style: normal;
+  font-weight: 500; color: var(--wine);
 }
+.status.open .detail strong { color: var(--dark-green); }
 
 table.schedule {
   width: 100%; border-collapse: collapse;
@@ -397,16 +398,15 @@ function render(now) {
   card.classList.toggle('closed', !status.open);
 
   if (status.open) {
-    badge.textContent = 'ÖPPET';
-    detail.innerHTML = `Stänger kl. ${status.openUntil}
-      <span class="when">just nu öppet</span>`;
+    badge.textContent = 'Öppet';
+    detail.innerHTML = `Stänger <strong>kl. ${status.openUntil}</strong>`;
   } else {
-    badge.textContent = 'STÄNGT';
+    badge.textContent = 'Stängt';
     if (status.nextOpen) {
-      detail.innerHTML = `Öppnar ${status.nextOpen.dayLabel} kl. ${status.nextOpen.time}
-        <span class="when">stängt just nu</span>`;
+      detail.innerHTML =
+        `Öppnar ${status.nextOpen.dayLabel} <strong>kl. ${status.nextOpen.time}</strong>`;
     } else {
-      detail.innerHTML = `<span class="when">Inga kommande öppettider.</span>`;
+      detail.textContent = 'Inga kommande öppettider';
     }
   }
 }
