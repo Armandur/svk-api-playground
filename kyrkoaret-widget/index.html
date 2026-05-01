@@ -189,53 +189,61 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-// Hitta entry vars startDate <= now <= endDate, eller nästa framtida
-function findCurrentOrUpcoming(entries, now) {
+// Kyrkoåret: en högtids texter gäller från dagen den infaller fram tills
+// nästa högtid. Vi visar alltså senast infallna entry (sista vars
+// startDate <= idag) och anger när nästa byte sker.
+function findCurrent(entries, now) {
   const sorted = [...entries].sort(
     (a, b) => a.startDate.localeCompare(b.startDate)
   );
+  let current = null;
+  let next = null;
   for (const e of sorted) {
-    const start = new Date(e.startDate);
-    const end = new Date(e.endDate);
-    if (now >= start && now <= end) {
-      return { entry: e, isUpcoming: false };
+    if (new Date(e.startDate) <= now) {
+      current = e;
+    } else {
+      next = e;
+      break;
     }
   }
-  for (const e of sorted) {
-    const start = new Date(e.startDate);
-    if (start > now) return { entry: e, isUpcoming: true };
-  }
-  return { entry: null, isUpcoming: false };
+  return { current, next };
 }
 
-function renderFeast(entry, isUpcoming, now) {
+function renderFeast(current, next, now) {
   const root = document.getElementById("root");
   const upcoming = document.getElementById("upcoming");
   const yearPart = document.getElementById("yearPartLabel");
 
-  if (!entry) {
-    root.innerHTML = `<p class="loading">Inga kommande högtider hittades.</p>`;
+  if (!current) {
+    root.innerHTML = `<p class="loading">Kyrkoåret har inte börjat - inga texter hittades.</p>`;
     return;
   }
 
-  if (isUpcoming) {
-    const start = new Date(entry.startDate);
+  // Visa "Texter gäller fram till <nästa söndag/helg>" om vi inte ÄR
+  // på en byte-dag idag.
+  const startedToday = new Date(current.startDate).toDateString() === now.toDateString();
+  if (next && !startedToday) {
+    const nextStart = new Date(next.startDate);
     upcoming.hidden = false;
-    upcoming.textContent = `Närmast kommande högtid är ${fmtSwedish(start)}.`;
+    upcoming.textContent =
+      `Texterna gäller fram till ${fmtSwedish(nextStart)} då ${next.feastName} infaller.`;
   } else {
     upcoming.hidden = true;
   }
 
-  yearPart.textContent = entry.churchYearPart?.name || "";
+  yearPart.textContent = current.churchYearPart?.name || "";
 
-  const swatchColor = COLOR_HEX[entry.liturgicalColor] || "var(--muted)";
-  const colorTooltip = entry.liturgicalColorDisplay || entry.liturgicalColor || "";
+  const swatchColor = COLOR_HEX[current.liturgicalColor] || "var(--muted)";
+  const colorTooltip = current.liturgicalColorDisplay || current.liturgicalColor || "";
 
+  const startDate = new Date(current.startDate);
   const meta = [];
-  if (entry.annualText) meta.push(entry.annualText);
-  if (entry.churchYearPart?.name) meta.push(entry.churchYearPart.name);
-  if (entry.liturgicalColorDisplay) meta.push(entry.liturgicalColorDisplay);
+  meta.push(`Infaller ${fmtSwedish(startDate)}`);
+  if (current.annualText) meta.push(current.annualText);
+  if (current.churchYearPart?.name) meta.push(current.churchYearPart.name);
+  if (current.liturgicalColorDisplay) meta.push(current.liturgicalColorDisplay);
 
+  const entry = current; // alias så HTML-templaten nedan inte måste ändras
   const readings = entry.readings?.readings || [];
   const readingsHtml = readings.map(r => `
     <div class="reading">
@@ -271,8 +279,8 @@ async function load() {
     const r = await fetch(`${API_BASE}?apiKey=${API_KEY}`, { cache: "no-store" });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const entries = await r.json();
-    const { entry, isUpcoming } = findCurrentOrUpcoming(entries, now);
-    renderFeast(entry, isUpcoming, now);
+    const { current, next } = findCurrent(entries, now);
+    renderFeast(current, next, now);
     document.getElementById("updatedAt").textContent =
       now.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
   } catch (e) {
