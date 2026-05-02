@@ -475,6 +475,9 @@ header .subtitle {
       <button id="addEmptyPeriodBtn" type="button" class="btn-secondary">
         + Ny period
       </button>
+      <button id="removeCurrentPeriodBtn" type="button" class="btn-secondary">
+        Ta bort vald period
+      </button>
     </div>
     <div class="period-dates">
       <label>validFrom: <input id="periodValidFrom" type="date"></label>
@@ -779,6 +782,16 @@ $("addEmptyPeriodBtn").addEventListener("click", () => {
   // Lägg till tom period sist - användaren får fylla i datum + tider
   workingPeriods.push({ days: {} });
   currentPeriodIdx = workingPeriods.length - 1;
+  renderEditor();
+});
+
+$("removeCurrentPeriodBtn").addEventListener("click", () => {
+  const p = workingPeriods[currentPeriodIdx];
+  const range = `${p.validFrom || "—"} → ${p.validTo || "tills vidare"}`;
+  if (!confirm(`Ta bort period ${currentPeriodIdx + 1} (${range})?`)) return;
+  workingPeriods.splice(currentPeriodIdx, 1);
+  if (!workingPeriods.length) workingPeriods.push({ days: {} });
+  currentPeriodIdx = Math.min(currentPeriodIdx, workingPeriods.length - 1);
   renderEditor();
 });
 
