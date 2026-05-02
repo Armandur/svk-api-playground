@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <style>
 :root {
   --beige:      #FFEBE1;
@@ -100,6 +102,29 @@ header .stats b { color: var(--wine); font-weight: 600; }
 }
 .layer-picker label:hover { color: var(--wine); }
 .layer-picker input { accent-color: var(--wine); margin-right: 6px; }
+
+/* Plats-typ-ikoner: färgade cirklar med initial */
+.place-icon-circle {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  color: #fff; font: 600 12px "DM Sans", Arial, sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; line-height: 1;
+}
+.place-icon { background: transparent; border: none; }
+
+/* Klusterstilar - matcha brand:en */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+  background-color: rgba(125, 0, 55, 0.4);
+}
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background-color: var(--wine); color: var(--beige);
+  font-weight: 600;
+}
 </style>
 </head>
 <body>
@@ -117,6 +142,7 @@ header .stats b { color: var(--wine); font-weight: 600; }
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 // URL-parametrar
 const PARAMS = new URLSearchParams(location.search);
@@ -275,6 +301,36 @@ const LayerPickerControl = L.Control.extend({
 });
 new LayerPickerControl().addTo(map);
 
+// Teckenförklaring för plats-typ-ikoner
+const LegendControl = L.Control.extend({
+  options: { position: "bottomright" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "layer-picker");
+    const items = [
+      ["churchAndChapel", "Kyrka/kapell"],
+      ["parishHome", "Församlingshem"],
+      ["secretariat", "Kansli"],
+      ["cemetery", "Begravningsplats"],
+      ["pollingStation", "Vallokal"],
+      ["external", "Övrigt"],
+    ];
+    div.innerHTML = `<div class="lp-title">Platstyper</div>` +
+      items.map(([key, label]) => {
+        const c = TYPE_ICON[key];
+        return `<label style="cursor:default">
+          <span style="display:inline-block;width:18px;height:18px;border-radius:50%;
+                       background:${c.color};color:#fff;text-align:center;
+                       font:600 10px 'DM Sans';line-height:18px;
+                       border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,0.3);
+                       margin-right:6px;vertical-align:middle">${c.label}</span>
+          ${label}
+        </label>`;
+      }).join("");
+    return div;
+  },
+});
+new LegendControl().addTo(map);
+
 applyMode(currentMode);
 
 const TYPE_LABEL = {
@@ -288,12 +344,38 @@ const TYPE_LABEL = {
   mainPollingStation: "Vallokal",
 };
 
-function placeTypeLabel(place) {
+// Färg + initial per plats-typ. Matchar SVK:s grafiska palett.
+const TYPE_ICON = {
+  churchAndChapel:    { color: "#7D0037", label: "K" },  // vinröd
+  parishHome:         { color: "#00554B", label: "F" },  // mörkgrön
+  secretariat:        { color: "#BC8E4C", label: "A" },  // gold
+  cemetery:           { color: "#412B72", label: "B" },  // mörklila
+  pollingStation:     { color: "#FF785A", label: "V" },  // orange
+  mainPollingStation: { color: "#FF785A", label: "V" },
+  partial:            { color: "#9B87FF", label: "·" },  // lila
+  external:           { color: "#6b5f5a", label: "·" },  // muted
+};
+
+function placeTypeKey(place) {
   const types = place.placeTypes || {};
-  for (const k of Object.keys(types)) {
-    if (TYPE_LABEL[k]) return TYPE_LABEL[k];
+  for (const k of Object.keys(TYPE_ICON)) {
+    if (types[k]) return k;
   }
-  return null;
+  return "external";
+}
+
+function iconForPlace(place) {
+  const conf = TYPE_ICON[placeTypeKey(place)];
+  return L.divIcon({
+    className: "place-icon",
+    html: `<div class="place-icon-circle" style="background:${conf.color}" title="${escapeHtml(TYPE_LABEL[placeTypeKey(place)] || "")}">${conf.label}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
+function placeTypeLabel(place) {
+  return TYPE_LABEL[placeTypeKey(place)] || null;
 }
 
 function buildPopup(place) {
@@ -332,61 +414,131 @@ function buildPopup(place) {
   return html;
 }
 
-async function fetchPlaces() {
-  // Bygg URL: direkt mot SVK om apikey angiven, annars via dev-server-proxy
-  const params = new URLSearchParams({ limit: LIMIT });
+// Klustrad markör-grupp så stora dataset renderar snabbt.
+const cluster = L.markerClusterGroup({
+  chunkedLoading: true,
+  maxClusterRadius: 50,
+  showCoverageOnHover: false,
+});
+cluster.addTo(map);
+
+// Cache av redan tillagda platser så vi inte renderar dubblett.
+const knownPlaceIds = new Set();
+let totalSeen = 0;
+
+function buildFetchUrl(extraParams = {}) {
+  const params = new URLSearchParams({ limit: LIMIT, ...extraParams });
   if (OWNER_ID) params.set("owner_id", OWNER_ID);
-  if (NEARBY) {
-    params.set("nearby", NEARBY);
-    params.set("nearbyRadius", NEARBY_RADIUS);
-  }
-  let url;
   if (API_KEY) {
     params.set("apikey", API_KEY);
-    url = `https://api.svenskakyrkan.se/platser/v4/place?${params}`;
-  } else {
-    url = `/api/platser/place?${params}`;
+    return `https://api.svenskakyrkan.se/platser/v4/place?${params}`;
   }
-  const r = await fetch(url, { cache: "no-store" });
+  return `/api/platser/place?${params}`;
+}
+
+function updateStats(totalHits) {
+  const el = document.getElementById("stats");
+  el.innerHTML = `<b>${knownPlaceIds.size}</b> platser visas` +
+    (totalHits ? ` · <b>${totalHits}</b> i senaste sökning` : "");
+}
+
+function addPlaces(results) {
+  let added = 0;
+  for (const p of results) {
+    if (!p.geolocation?.geometry?.coordinates) continue;
+    if (knownPlaceIds.has(p.id)) continue;
+    knownPlaceIds.add(p.id);
+    const [lon, lat] = p.geolocation.geometry.coordinates;
+    cluster.addLayer(
+      L.marker([lat, lon], { icon: iconForPlace(p) })
+        .bindPopup(buildPopup(p))
+    );
+    added++;
+  }
+  return added;
+}
+
+async function fetchPlacesNearby(centerLatLng, radiusM) {
+  const params = {
+    nearby: `${centerLatLng.lng.toFixed(6)},${centerLatLng.lat.toFixed(6)}`,
+    nearbyRadius: String(Math.round(radiusM)),
+  };
+  const r = await fetch(buildFetchUrl(params), { cache: "no-store" });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
 
-async function init() {
+let fetchTimer = null;
+async function loadForCurrentView() {
+  // Hämta platser inom kartans synliga area. nearby-API:t tar centrum
+  // + radie, så vi räknar ut radien från kartcentrum till hörn.
+  const bounds = map.getBounds();
+  const center = bounds.getCenter();
+  const corner = bounds.getNorthEast();
+  const radiusM = center.distanceTo(corner);
   try {
-    const data = await fetchPlaces();
-    const all = data.results || [];
-    const withGeo = all.filter(p => p.geolocation?.geometry?.coordinates);
-    document.getElementById("subtitle").textContent =
-      OWNER_ID ? `Filter: owner_id=${OWNER_ID}` :
-      NEARBY ? `Inom ${NEARBY_RADIUS} m från ${NEARBY}` :
-      `Slumpvis urval`;
-    document.getElementById("stats").innerHTML =
-      `<b>${withGeo.length}</b> av <b>${data.totalHits || all.length}</b> platser visas`;
-
-    if (!withGeo.length) {
-      showBanner("Inga platser med geolocation hittades för det här filtret.", true);
-      return;
-    }
-
-    const markers = L.featureGroup();
-    for (const p of withGeo) {
-      const [lon, lat] = p.geolocation.geometry.coordinates;
-      const marker = L.marker([lat, lon]).bindPopup(buildPopup(p));
-      markers.addLayer(marker);
-    }
-    markers.addTo(map);
-    map.fitBounds(markers.getBounds(), { padding: [40, 40] });
-
-    if (data.totalHits > all.length) {
+    const data = await fetchPlacesNearby(center, radiusM);
+    addPlaces(data.results || []);
+    totalSeen = Math.max(totalSeen, data.totalHits || 0);
+    updateStats(data.totalHits);
+    // Om antalet träffar = LIMIT antas det finnas fler i den ytan -
+    // visa hint så användaren vet att zoom-in eller mindre yta hjälper.
+    if ((data.results || []).length >= Number(LIMIT)) {
       showBanner(
-        `Visar bara <b>${all.length}</b> av <b>${data.totalHits}</b> matchande platser. ` +
-        `Begränsa via <code>?owner_id=</code> eller <code>?nearby=lon,lat&amp;radius=m</code> för att se rätt urval.`
+        `Många platser i denna vy - bara <b>${LIMIT}</b> av <b>${data.totalHits}</b> ` +
+        `närmaste hämtas per fönster. Zooma in för fler detaljer.`
       );
+    } else {
+      document.getElementById("banner").hidden = true;
     }
   } catch (e) {
     showBanner(`Kunde inte ladda platser: ${escapeHtml(e.message)}`, true);
   }
+}
+
+function scheduleLoad() {
+  // Debounce - använda när man panorerar/zoomar
+  clearTimeout(fetchTimer);
+  fetchTimer = setTimeout(loadForCurrentView, 300);
+}
+
+async function init() {
+  document.getElementById("subtitle").textContent =
+    OWNER_ID ? `Filter: owner_id=${OWNER_ID}` :
+    NEARBY ? `Inom ${NEARBY_RADIUS} m från ${NEARBY}` :
+    `Hämtar platser inom synlig vy`;
+
+  // Om explicit nearby/owner_id - hämta enligt det första, sedan lyssna
+  // på move/zoom för att fylla på fler vid panorering.
+  if (NEARBY || OWNER_ID) {
+    try {
+      const params = {};
+      if (NEARBY) {
+        params.nearby = NEARBY;
+        params.nearbyRadius = NEARBY_RADIUS;
+      }
+      const r = await fetch(buildFetchUrl(params), { cache: "no-store" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      addPlaces(data.results || []);
+      updateStats(data.totalHits);
+      if (knownPlaceIds.size && cluster.getLayers().length) {
+        const group = L.featureGroup(cluster.getLayers());
+        if (group.getLayers().length) {
+          map.fitBounds(group.getBounds(), { padding: [40, 40] });
+        }
+      } else {
+        showBanner("Inga platser med geolocation hittades för det här filtret.", true);
+      }
+    } catch (e) {
+      showBanner(`Kunde inte ladda platser: ${escapeHtml(e.message)}`, true);
+    }
+  } else {
+    // Ingen explicit filter - ladda dynamiskt baserat på vyn
+    loadForCurrentView();
+  }
+  // Vid panorering/zoom: hämta fler platser i den nya vyn
+  map.on("moveend", scheduleLoad);
 }
 
 init();

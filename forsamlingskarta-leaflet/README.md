@@ -89,14 +89,28 @@ gränser.
 `data/`-mappen är gitignored för att inte blåsa upp repot - bygg
 lokalt vid behov.
 
+## Funktioner
+
+- **Plats-markörer** med klustrering (`leaflet.markercluster`) - de
+  9474 platserna grupperas vid utzoomning, sprider ut sig vid inzoom.
+- **Plats-typ-ikoner** - färgade cirklar med initial:
+  K=kyrka/kapell (vinröd), F=församlingshem (mörkgrön),
+  A=kansli (gold), B=begravningsplats (mörklila),
+  V=vallokal (orange), · = övrigt
+- **Dynamisk inladdning** baserat på kartans vy. Vid panorering/zoom
+  hämtas platser inom det nya synliga området via `?nearby=` på
+  Platser-API:t. Cache av kända plats-ID:n förhindrar dubbletter.
+- **Gränslager** med automatisk växling mellan stift / kontrakt /
+  ekonomiska enheter / församlingar baserat på zoom-nivå (eller
+  manuellt via radio-väljare top-right).
+- **Teckenförklaring** bottom-right.
+
 ## TODO
 
-- Simplifiera församlings-GeoJSON med shapely/topojson så det blir
-  hanterbart (5 MB-mål).
-- Ladda församlingar dynamiskt baserat på stiftsklick eller zoom.
-- Klusterning vid utzoomning av plats-markörer.
-- Filter via UI: stiftsväljare, plats-typ-checkboxar.
-- Rita markörikoner per plats-typ (kyrka/kansli/kapell).
+- Stiftsväljare som filter (klick på stift → bara dess platser).
+- Radera stale-markörer när man panorerar långt bort (idag växer
+  cachet obegränsat).
+- Olika ikoner per plats-typ via SVG istället för bara färg+initial.
 
 Se [`docs/modules/PLATSER.md`](../docs/modules/PLATSER.md) för
 datakontrakt, filter-syntax och `geolocation`-formatet (WGS84,
