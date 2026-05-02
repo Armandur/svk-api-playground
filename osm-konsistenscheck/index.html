@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SVK ↔ OSM kyrkokonsistens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<style>
+:root {
+  --beige:      #FFEBE1;
+  --black:      #000000;
+  --wine:       #7D0037;
+  --pink:       #FFC3AA;
+  --gold:       #BC8E4C;
+  --dark-green: #00554B;
+  --muted:      #6b5f5a;
+  --line:       rgba(125, 0, 55, 0.2);
+  --osm:        #3D7AB8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font: 15px/1.45 "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--black);
+  display: flex; flex-direction: column; min-height: 100dvh;
+}
+header {
+  padding: 10px 16px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  background: var(--beige);
+}
+h1 { font-size: 20px; font-weight: 500; color: var(--wine); }
+header .subtitle {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 13px;
+}
+header .stats { font-size: 13px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+header .stats b { font-weight: 600; }
+header .stats .matched b { color: var(--dark-green); }
+header .stats .svk b { color: var(--wine); }
+header .stats .osm b { color: var(--osm); }
+
+#map { flex: 1; min-height: 60vh; background: var(--beige); }
+
+.banner {
+  padding: 10px 16px; background: var(--pink); color: var(--wine);
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  font-size: 13px;
+}
+.banner.err { background: var(--wine); color: var(--beige); font-style: normal; }
+
+.filter-control {
+  background: var(--beige); padding: 8px 10px;
+  border: 1px solid var(--wine);
+  font: 13px "DM Sans", Arial, sans-serif;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  min-width: 220px; max-width: 280px;
+  max-height: 75vh; overflow-y: auto;
+}
+.filter-control .fc-title {
+  font-size: 11px; color: var(--wine); font-weight: 600;
+  margin: 8px 0 4px;
+}
+.filter-control .fc-title:first-child { margin-top: 0; }
+.filter-control label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 0; cursor: pointer; user-select: none;
+}
+.filter-control label.sub {
+  font-size: 12px; color: var(--muted); padding-left: 18px;
+}
+.filter-control .swatch {
+  display: inline-block; width: 12px; height: 12px;
+  border-radius: 50%; border: 1px solid rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+.filter-control .count { color: var(--muted); margin-left: auto; font-size: 12px; }
+.filter-control button {
+  font: 12px "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--wine);
+  border: 1px solid var(--wine); border-radius: 2px;
+  padding: 3px 8px; cursor: pointer;
+  margin: 4px 0 0 18px;
+}
+.filter-control button:hover { background: var(--wine); color: var(--beige); }
+.filter-control details > summary {
+  cursor: pointer; font-size: 12px; color: var(--muted);
+  padding: 2px 0 2px 18px; list-style: none;
+}
+.filter-control details > summary::-webkit-details-marker { display: none; }
+.filter-control details[open] > summary { color: var(--wine); }
+
+.search-control {
+  background: var(--beige); border: 1px solid var(--wine);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  width: 280px; max-width: calc(100vw - 80px);
+}
+.search-control input {
+  width: 100%; border: none; outline: none;
+  background: transparent; padding: 6px 10px;
+  font: 13px "DM Sans", Arial, sans-serif;
+}
+.search-results {
+  max-height: 50vh; overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+.search-results .result {
+  padding: 6px 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  border-bottom: 1px dashed var(--line);
+}
+.search-results .result:last-child { border-bottom: none; }
+.search-results .result:hover { background: var(--pink); }
+.search-results .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.search-results .name {
+  flex: 1; font-size: 13px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.search-results .meta {
+  font-size: 11px; color: var(--muted); flex-shrink: 0;
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  max-width: 100px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-results .empty {
+  padding: 8px 10px; color: var(--muted); font-size: 12px;
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+}
+
+.popup-name {
+  font-weight: 500; color: var(--wine); font-size: 16px;
+  margin-bottom: 4px;
+}
+.popup-meta { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.popup-link { color: var(--wine); font-size: 13px; }
+.popup-status {
+  font-size: 12px; font-weight: 600; padding: 4px 6px;
+  margin: 6px -4px 4px; border-radius: 2px;
+}
+.popup-status.matched { background: rgba(0, 85, 75, 0.12); color: var(--dark-green); }
+.popup-status.svk-only { background: rgba(125, 0, 55, 0.12); color: var(--wine); }
+.popup-status.osm-only { background: rgba(61, 122, 184, 0.14); color: var(--osm); }
+
+/* Egen pie-chart-cluster */
+.pie-cluster {
+  background: transparent !important;
+  border: none !important;
+}
+.pie-cluster .pie-bg {
+  width: 100%; height: 100%; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  border: 2px solid var(--beige);
+}
+.pie-cluster .pie-inner {
+  background: var(--beige); border-radius: 50%;
+  width: 70%; height: 70%;
+  display: flex; align-items: center; justify-content: center;
+  font: 600 12px "DM Sans", Arial, sans-serif;
+  color: var(--black);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>SVK ↔ OSM kyrkokonsistens</h1>
+    <div class="subtitle">Var matchar SVK Platser och OpenStreetMap?</div>
+  </div>
+  <div class="stats" id="stats">Laddar…</div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+function showBanner(msg, isError = false) {
+  const el = document.getElementById("banner");
+  el.innerHTML = msg; el.className = "banner" + (isError ? " err" : "");
+  el.hidden = false;
+}
+function downloadCsv(rows, filename) {
+  const csv = rows.map(r =>
+    r.map(c => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")
+  ).join("\n");
+  // BOM så Excel öppnar UTF-8 korrekt
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const COLOR = {
+  matched: "#00554B",
+  svk_only: "#7D0037",
+  osm_only: "#3D7AB8",
+  mismatch: "#BC8E4C",
+  taggbrist: "#3D7AB8",
+};
+
+const map = L.map("map", { preferCanvas: true }).setView([62.5, 16.0], 5);
+const osmLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "© OpenStreetMap-bidragsgivare",
+});
+// Esri World Imagery - gratis, ingen nyckel, bra för att verifiera
+// att en pin verkligen ligger på en kyrkbyggnad
+const esriLayer = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, attribution: "Tiles © Esri - World Imagery" });
+// Esri Reference-tiles med ortsnamn, vägar och gränser - läggs ovanpå
+// satelliten för ett hybridlager
+const labelOverlay = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  { maxZoom: 19, attribution: "Labels © Esri" });
+const hybridLayer = L.layerGroup([esriLayer, labelOverlay]);
+osmLayer.addTo(map);
+L.control.layers(
+  {
+    "OpenStreetMap": osmLayer,
+    "Satellit (Esri)": esriLayer,
+    "Hybrid (sat + labels)": hybridLayer,
+  },
+  null,
+  { position: "topleft", collapsed: true },
+).addTo(map);
+
+function makeIcon(color, ringColor = null) {
+  // Med ringColor: ge en färgad varningsring runt pin:en
+  const ring = ringColor
+    ? `box-shadow:0 0 0 3px ${ringColor},0 1px 3px rgba(0,0,0,0.4);`
+    : `box-shadow:0 1px 3px rgba(0,0,0,0.4);`;
+  return L.divIcon({
+    className: "kyrka-pin",
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;${ring}"></div>`,
+    iconSize: [14, 14], iconAnchor: [7, 7],
+  });
+}
+
+function popupHtml(p) {
+  if (p.kategori === "matched") {
+    const dist = p.distance_m;
+    const missing = p.osm_missing_tags || [];
+    const missingHtml = missing.length
+      ? `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>` +
+        `<div class="popup-meta">Förslag att lägga till i OSM:</div>` +
+        missing.map(t => {
+          const value = t === "amenity" ? "place_of_worship"
+            : t === "religion" ? "christian"
+            : "lutheran";
+          return `<div class="popup-meta"><code>${t}=${value}</code></div>`;
+        }).join("")
+      : "";
+    const editLink = p.osm_id
+      ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit?${escapeHtml(p.osm_id.replace("/", "="))}" target="_blank" rel="noopener">Redigera i iD</a></div>`
+      : "";
+    return `<div class="popup-name">${escapeHtml(p.svk_namn || p.osm_namn || "?")}</div>` +
+      (p.svk_owner_name ? `<div class="popup-meta">${escapeHtml(p.svk_owner_name)}</div>` : "") +
+      `<div class="popup-status matched">Matchad (${dist} m mellan SVK och OSM)</div>` +
+      (p.osm_namn && p.osm_namn !== p.svk_namn
+        ? `<div class="popup-meta">OSM-namn: ${escapeHtml(p.osm_namn)}</div>` : "") +
+      (p.osm_denomination
+        ? `<div class="popup-meta">OSM-denomination: ${escapeHtml(p.osm_denomination)}</div>` : "") +
+      missingHtml +
+      `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>` +
+      editLink +
+      (p.svk_slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.svk_slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : "") +
+      (p.svk_url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.svk_url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : "");
+  }
+  if (p.kategori === "svk_only") {
+    const [lon, lat] = [p._lon, p._lat];  // sätts vid render
+    return `<div class="popup-name">${escapeHtml(p.name || "?")}</div>` +
+      (p.owner_name ? `<div class="popup-meta">${escapeHtml(p.owner_name)}</div>` : "") +
+      (p.city ? `<div class="popup-meta">${escapeHtml(p.city)}</div>` : "") +
+      `<div class="popup-status svk-only">Saknas i OSM (eller >100 m bort)</div>` +
+      `<div class="popup-meta">Föreslagna OSM-taggar:</div>` +
+      `<div class="popup-meta"><code>amenity=place_of_worship</code></div>` +
+      `<div class="popup-meta"><code>religion=christian</code></div>` +
+      `<div class="popup-meta"><code>denomination=lutheran</code></div>` +
+      (p.name ? `<div class="popup-meta"><code>name=${escapeHtml(p.name)}</code></div>` : "") +
+      (lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">Lägg till i iD-editor</a></div>` : "") +
+      (p.slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : "") +
+      (p.url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : "");
+  }
+  // osm_only
+  return `<div class="popup-name">${escapeHtml(p.name || "(namnlös)")}</div>` +
+    (p.denomination ? `<div class="popup-meta">Denomination: ${escapeHtml(p.denomination)}</div>` : "") +
+    (p.operator ? `<div class="popup-meta">Operator: ${escapeHtml(p.operator)}</div>` : "") +
+    `<div class="popup-status osm-only">Saknas i SVK Platser eller annan denomination</div>` +
+    `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>`;
+}
+
+// Ett gemensamt cluster för alla kategorier - klustermarkören visar
+// fördelningen som en pie-chart (matched grön, svk_only vinröd,
+// osm_only blå).
+function pieClusterIcon(cluster) {
+  const counts = { matched: 0, svk_only: 0, osm_only: 0 };
+  cluster.getAllChildMarkers().forEach(m => {
+    counts[m.options.category] = (counts[m.options.category] || 0) + 1;
+  });
+  const total = counts.matched + counts.svk_only + counts.osm_only;
+  let size = 36;
+  if (total >= 10) size = 42;
+  if (total >= 100) size = 50;
+  if (total >= 1000) size = 60;
+  const m = counts.matched, s = counts.svk_only, o = counts.osm_only;
+  const mp = total ? (m / total) * 360 : 0;
+  const sp = total ? (s / total) * 360 : 0;
+  const stops = [];
+  if (m) stops.push(`${COLOR.matched} 0deg ${mp}deg`);
+  if (s) stops.push(`${COLOR.svk_only} ${mp}deg ${mp + sp}deg`);
+  if (o) stops.push(`${COLOR.osm_only} ${mp + sp}deg 360deg`);
+  const grad = stops.length === 1
+    ? stops[0].split(" ")[0]
+    : `conic-gradient(${stops.join(", ")})`;
+  return L.divIcon({
+    className: "pie-cluster",
+    html: `<div class="pie-bg" style="background:${grad}">` +
+          `<div class="pie-inner">${total}</div></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+const cluster = L.markerClusterGroup({
+  chunkedLoading: true,
+  iconCreateFunction: pieClusterIcon,
+  maxClusterRadius: 60,
+});
+// Markers per kategori behålls för filter-toggle
+const markersByCat = { matched: [], svk_only: [], osm_only: [] };
+
+async function init() {
+  try {
+    const [diffRes, sumRes] = await Promise.all([
+      fetch("data/diff.geojson", { cache: "no-store" }),
+      fetch("data/diff_summary.json", { cache: "no-store" }),
+    ]);
+    if (!diffRes.ok || !sumRes.ok) {
+      showBanner(`<b>Saknar data.</b> Kör <code>uv run osm-konsistenscheck/build_svk.py</code>, ` +
+        `<code>build_osm.py</code> och <code>build_diff.py</code> först.`, true);
+      return;
+    }
+    const diff = await diffRes.json();
+    const sum = await sumRes.json();
+    document.getElementById("stats").innerHTML =
+      `<span class="matched"><b>${sum.matched}</b> matchade</span>` +
+      `<span class="svk"><b>${sum.svk_only}</b> bara SVK</span>` +
+      `<span class="osm"><b>${sum.osm_only}</b> bara OSM</span>`;
+
+    const baseIcons = {
+      matched: makeIcon(COLOR.matched),
+      matched_mismatch: makeIcon(COLOR.matched, COLOR.mismatch),
+      matched_taggbrist: makeIcon(COLOR.matched, COLOR.taggbrist),
+      svk_only: makeIcon(COLOR.svk_only),
+      osm_only: makeIcon(COLOR.osm_only),
+    };
+    // Polylines för matched där SVK-koord och OSM-koord skiljer >50m
+    const distanceLines = L.layerGroup();
+    // Sub-filter för matched: visa bara de som har viss egenskap
+    let matchedEnabled = true;
+    let onlyMismatch = false;
+    let onlyTaggbrist = false;
+    let onlyOver50m = false;
+    const applyMatchedFilter = () => {
+      markersByCat.matched.forEach(m => {
+        const fp = m.options.featureProps;
+        let show = matchedEnabled;
+        if (show && onlyMismatch && !fp.name_mismatch) show = false;
+        if (show && onlyTaggbrist && !(fp.osm_missing_tags || []).length) show = false;
+        if (show && onlyOver50m && (fp.distance_m || 0) <= 50) show = false;
+        const inCluster = cluster.hasLayer(m);
+        if (show && !inCluster) cluster.addLayer(m);
+        else if (!show && inCluster) cluster.removeLayer(m);
+        // Färglägg ringen om något sub-filter aktivt - syns vid inzoom
+        if (show) {
+          if (onlyMismatch && fp.name_mismatch) m.setIcon(baseIcons.matched_mismatch);
+          else if (onlyTaggbrist && (fp.osm_missing_tags || []).length) m.setIcon(baseIcons.matched_taggbrist);
+          else m.setIcon(baseIcons.matched);
+        }
+      });
+    };
+
+    for (const f of diff.features) {
+      const cat = f.properties.kategori;
+      const [lon, lat] = f.geometry.coordinates;
+      // För iD-länken i svk_only-popup
+      f.properties._lon = lon;
+      f.properties._lat = lat;
+      const m = L.marker([lat, lon], {
+        icon: baseIcons[cat], category: cat, featureProps: f.properties,
+      });
+      m.bindPopup(popupHtml(f.properties));
+      markersByCat[cat].push(m);
+      cluster.addLayer(m);
+
+      // Linje för långa avstånd (>50m) mellan SVK och OSM
+      if (cat === "matched" && f.properties.distance_m > 50
+          && f.properties.osm_lonlat) {
+        const [olon, olat] = f.properties.osm_lonlat;
+        distanceLines.addLayer(L.polyline([[lat, lon], [olat, olon]], {
+          color: COLOR.mismatch, weight: 1.5, opacity: 0.7, dashArray: "3, 3",
+        }));
+      }
+    }
+    cluster.addTo(map);
+
+    // Filter-state per OSM-only denomination (bara aktivt om filter ändrats)
+    const denomDisabled = new Set();
+    function applyOsmOnlyFilter() {
+      markersByCat.osm_only.forEach(m => {
+        const d = m.options.featureProps.denomination || "(saknas)";
+        const inCluster = cluster.hasLayer(m);
+        const wanted = !denomDisabled.has(d) && osmOnlyEnabled;
+        if (wanted && !inCluster) cluster.addLayer(m);
+        else if (!wanted && inCluster) cluster.removeLayer(m);
+      });
+    }
+    let osmOnlyEnabled = true;
+
+    // Filter-control
+    const FilterCtrl = L.Control.extend({
+      options: { position: "topright" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "filter-control");
+        const denomList = (sum.osm_denominations || [])
+          .slice(0, 12)  // toppen-12, övriga ryms i "(saknas)" eller övrigt
+          .map(d => {
+            const id = `dn_${d.value.replace(/\W/g, "_")}`;
+            return `<label class="sub"><input type="checkbox" id="${id}" ` +
+              `data-denom="${escapeHtml(d.value)}" checked>` +
+              `${escapeHtml(d.value)}<span class="count">${d.antal}</span></label>`;
+          }).join("");
+        div.innerHTML =
+          `<div class="fc-title">VISA</div>` +
+          `<label><input type="checkbox" data-cat="matched" checked>` +
+            `<span class="swatch" style="background:${COLOR.matched}"></span>` +
+            `Matchade<span class="count">${sum.matched}</span></label>` +
+          `<label class="sub"><input type="checkbox" data-mismatch>` +
+            `Visa bara namn-mismatch<span class="count">${sum.matched_namnmismatch}</span></label>` +
+          `<label class="sub"><input type="checkbox" data-only50m>` +
+            `Visa bara avstånd >50m<span class="count">${sum.matched_distance_over_50m}</span></label>` +
+          `<label class="sub"><input type="checkbox" data-lines>` +
+            `Rita linje SVK↔OSM (för >50m)</label>` +
+          `<label class="sub"><input type="checkbox" data-taggbrist>` +
+            `Visa bara OSM-taggbrist<span class="count">${sum.matched_osm_taggbrist}</span></label>` +
+          `<label><input type="checkbox" data-cat="svk_only" checked>` +
+            `<span class="swatch" style="background:${COLOR.svk_only}"></span>` +
+            `Bara SVK<span class="count">${sum.svk_only}</span></label>` +
+          `<button data-export="svk_only">Exportera CSV</button>` +
+          `<label><input type="checkbox" data-cat="osm_only" checked>` +
+            `<span class="swatch" style="background:${COLOR.osm_only}"></span>` +
+            `Bara OSM<span class="count">${sum.osm_only}</span></label>` +
+          `<details><summary>OSM-denomination</summary>${denomList}</details>`;
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+
+        // Per-kategori toggles
+        div.querySelectorAll("input[data-cat]").forEach(input => {
+          input.addEventListener("change", e => {
+            const cat = e.target.dataset.cat;
+            if (cat === "matched") {
+              matchedEnabled = e.target.checked;
+              applyMatchedFilter();
+            } else if (cat === "osm_only") {
+              osmOnlyEnabled = e.target.checked;
+              applyOsmOnlyFilter();
+            } else if (e.target.checked) {
+              markersByCat[cat].forEach(m => cluster.addLayer(m));
+            } else {
+              markersByCat[cat].forEach(m => cluster.removeLayer(m));
+            }
+          });
+        });
+        // Sub-filter för matched
+        div.querySelector("input[data-mismatch]").addEventListener("change", e => {
+          onlyMismatch = e.target.checked;
+          applyMatchedFilter();
+        });
+        div.querySelector("input[data-only50m]").addEventListener("change", e => {
+          onlyOver50m = e.target.checked;
+          applyMatchedFilter();
+        });
+        div.querySelector("input[data-taggbrist]").addEventListener("change", e => {
+          onlyTaggbrist = e.target.checked;
+          applyMatchedFilter();
+        });
+        // Avståndslinjer (separat lager)
+        div.querySelector("input[data-lines]").addEventListener("change", e => {
+          if (e.target.checked) distanceLines.addTo(map);
+          else map.removeLayer(distanceLines);
+        });
+        // Per-denomination filter (för osm_only)
+        div.querySelectorAll("input[data-denom]").forEach(input => {
+          input.addEventListener("change", e => {
+            const d = e.target.dataset.denom;
+            if (e.target.checked) denomDisabled.delete(d);
+            else denomDisabled.add(d);
+            applyOsmOnlyFilter();
+          });
+        });
+        // Export
+        div.querySelector("button[data-export]").addEventListener("click", () => {
+          const rows = [["namn", "ägare", "stad", "lon", "lat", "url"]];
+          for (const m of markersByCat.svk_only) {
+            const p = m.options.featureProps;
+            const ll = m.getLatLng();
+            rows.push([
+              p.name || "", p.owner_name || "", p.city || "",
+              ll.lng, ll.lat, p.url || "",
+            ]);
+          }
+          downloadCsv(rows, "svk_saknas_i_osm.csv");
+        });
+        return div;
+      },
+    });
+    map.addControl(new FilterCtrl());
+
+    // Sök-control top-left, under layer-väljaren
+    const searchIndex = [];
+    for (const cat of ["matched", "svk_only", "osm_only"]) {
+      for (const m of markersByCat[cat]) {
+        const p = m.options.featureProps;
+        const name = p.svk_namn || p.name || p.osm_namn || "";
+        if (!name) continue;
+        searchIndex.push({
+          name, lower: name.toLowerCase(),
+          cat, marker: m,
+          meta: p.svk_owner_name || p.owner_name || p.city || "",
+        });
+      }
+    }
+    const SearchCtrl = L.Control.extend({
+      options: { position: "topleft" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "search-control");
+        div.innerHTML =
+          `<input type="search" id="search-input" placeholder="Sök kyrka...">` +
+          `<div class="search-results" id="search-results" hidden></div>`;
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      },
+    });
+    map.addControl(new SearchCtrl());
+
+    const input = document.getElementById("search-input");
+    const results = document.getElementById("search-results");
+    let debounceT = null;
+    input.addEventListener("input", e => {
+      clearTimeout(debounceT);
+      debounceT = setTimeout(() => doSearch(e.target.value), 200);
+    });
+    input.addEventListener("focus", () => {
+      if (input.value.length >= 2) doSearch(input.value);
+    });
+    document.addEventListener("click", e => {
+      if (!e.target.closest(".search-control")) results.hidden = true;
+    });
+
+    function doSearch(q) {
+      q = q.trim().toLowerCase();
+      if (q.length < 2) { results.hidden = true; return; }
+      const hits = searchIndex
+        .filter(x => x.lower.includes(q))
+        .sort((a, b) => {
+          const aStart = a.lower.startsWith(q) ? 0 : 1;
+          const bStart = b.lower.startsWith(q) ? 0 : 1;
+          if (aStart !== bStart) return aStart - bStart;
+          return a.name.length - b.name.length;
+        });
+      const total = hits.length;
+      const shown = hits.slice(0, 30);
+      if (!shown.length) {
+        results.innerHTML = `<div class="empty">Inga träffar</div>`;
+      } else {
+        results.innerHTML = shown.map((h, i) =>
+          `<div class="result" data-i="${i}">` +
+          `<span class="dot" style="background:${COLOR[h.cat]}"></span>` +
+          `<span class="name">${escapeHtml(h.name)}</span>` +
+          (h.meta ? `<span class="meta">${escapeHtml(h.meta)}</span>` : "") +
+          `</div>`
+        ).join("") +
+        (total > shown.length
+          ? `<div class="empty">…och ${total - shown.length} till. Skriv mer.</div>`
+          : "");
+      }
+      results.hidden = false;
+      results.querySelectorAll(".result").forEach(el => {
+        el.addEventListener("click", () => {
+          const i = parseInt(el.dataset.i, 10);
+          const h = shown[i];
+          const ll = h.marker.getLatLng();
+          map.flyTo(ll, 15, { duration: 0.6 });
+          // zoomToShowLayer: öppna klustret om markern är dold inuti
+          if (cluster.hasLayer(h.marker)) {
+            cluster.zoomToShowLayer(h.marker, () => h.marker.openPopup());
+          } else {
+            // Markern kan vara filtrerad bort - lägg tillbaka tillfälligt
+            cluster.addLayer(h.marker);
+            setTimeout(() => h.marker.openPopup(), 700);
+          }
+          results.hidden = true;
+          input.value = h.name;
+        });
+      });
+    }
+  } catch (e) {
+    showBanner(`<b>Fel:</b> ${escapeHtml(String(e))}`, true);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

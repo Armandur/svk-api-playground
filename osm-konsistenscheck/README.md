@@ -1,0 +1,120 @@
+# osm-konsistenscheck
+
+Jämför kyrkor i SVK Platser-API:t mot OpenStreetMap för att hitta:
+
+- **Matchade**: båda källorna har en kyrka inom 100 m radie.
+- **Bara SVK**: SVK-kyrkor utan motsvarighet i OSM (saknas, har fel
+  koordinater eller >100 m bort).
+- **Bara OSM**: OSM-kyrkor utan SVK-match (frikyrkor, ortodoxa,
+  katolska, fel taggning, eller verkliga luckor i SVK Platser).
+
+Bygger på Levenshtein-namnlikhet, OSM-taggbrist-check och iD-editor-
+länkar för att göra det enkelt att bidra tillbaka till OSM.
+
+## Snabbstart
+
+```bash
+# Servern måste köras (build_svk.py går via dev-proxyn)
+./start.sh &
+
+uv run osm-konsistenscheck/build_svk.py     # SVK Platser (~1.7 MB)
+uv run osm-konsistenscheck/build_osm.py     # OSM via Overpass (~2.4 MB)
+uv run osm-konsistenscheck/build_diff.py    # default 100 m radie
+
+# -> http://ubuntu-ai:8088/osm-konsistenscheck/
+```
+
+## Funktioner
+
+- **Pie-chart-kluster**: klustermarkörer visar fördelningen mellan
+  matched/svk_only/osm_only som conic-gradient med totalantal i mitten.
+- **Färgkodade pins**: grön (matched), vinröd (svk_only), blå (osm_only).
+  Gula ringar för namn-mismatch, blå för OSM-taggbrist (vid inzoom).
+- **Sub-filter för matched**: "Visa bara namn-mismatch", "Visa bara
+  >50 m", "Visa bara OSM-taggbrist". Klustret uppdateras automatiskt.
+- **Avståndslinjer**: streckade linjer mellan SVK och OSM för
+  matched-par >50 m bort.
+- **OSM-denomination-filter**: kollapsbar lista med top-12
+  denominations - filtrera bort katolska/baptist/etc från osm_only.
+- **Sökruta** top-left: lazy-loaded sök med debounce, sortering på
+  prefix-matchningar, färgad prick per kategori, klick zoomar.
+- **Bakgrundskartor**: OpenStreetMap, Esri-satellit, hybrid (sat+labels).
+- **Popup-länkar**:
+  - "Redigera i iD" för OSM-noden (auto-öppnar editor på rätt feature)
+  - "Lägg till i iD-editor" för svk_only (zoomar till position)
+  - "SVK plats-sida" till `svenskakyrkan.se/platser/<slug>`
+  - "Församlingens sida" om angiven
+- **CSV-export** av "Bara SVK" - 1053 poster med name/owner/city/koord/url.
+
+## Resultat (radie 100 m, 2026-05-02)
+
+| Kategori | Antal |
+|---|---|
+| SVK råa | 4488 |
+| SVK efter dedup på koord | 4411 (-77 dubbletter som "Trons kapell Mo") |
+| OSM (place_of_worship + building=church) | 5206 |
+| Matchade | 3433 |
+| Bara SVK | 978 |
+| Bara OSM | 1773 |
+| Matchade m. namn-mismatch | 80 |
+| Matchade >50 m | 95 |
+| Matchade m. OSM-taggbrist | ~418 |
+
+## Datakällor
+
+**SVK Platser**: `?is=churchandchapel`, hämtar alla 4488 kyrkor och
+kapell. Hämtas via dev-proxyn på localhost:8088 eftersom direktanrop
+mot `api.svenskakyrkan.se` ger HTTP 500 (okänd orsak).
+
+**OSM via Overpass**: kombinerat filter
+`[amenity=place_of_worship][religion=christian]` PLUS
+`[building=church|chapel]` inom Sverige. Building-filtret behövs
+eftersom många kyrkbyggnader saknar `amenity`-taggen i OSM (exempel:
+Ramsjö kyrka var bara taggad som `building=church`, inte
+`amenity=place_of_worship`).
+
+## Algoritm
+
+`build_diff.py` gör följande:
+
+1. **Dedup SVK på koordinat**: SVK-poster på exakt samma punkt
+   (5-decimaler precision = 1 m) sammanslås. Behåller den med högsta
+   prioritet enligt `_name_priority` (suffix `kyrka` > `kapell` > övrigt).
+   Tar bort 77 dubbletter som "Annan plats Mo", "Trons kapell Mo" etc.
+2. **Reprojicera** båda källors koordinater från WGS84 till SWEREF
+   99 TM (EPSG:3006) så avstånd kan mätas i meter.
+3. **Bygg STRtree** över OSM-punkterna.
+4. **Greedy global matchning**: bygg lista av alla SVK-OSM-par inom
+   radien, sortera på `(distance, -namnlikhet)`, plocka kortaste först
+   med tie-break på högsta namn-likhet. Hindrar att två SVK-poster
+   på samma koord kapar OSM-pinnen från den med bättre namn-match.
+5. **Klassificera matched** som namn-mismatch (similarity < 0.55 efter
+   normalisering), avstånd >50 m, eller OSM-taggbrist (saknar
+   `amenity`, `religion=christian` eller en SvK-denomination).
+
+## Filer
+
+```
+osm-konsistenscheck/
+  build_svk.py      # hämtar SVK Platser via dev-proxy
+  build_osm.py      # hämtar OSM via Overpass
+  build_diff.py     # matchar och skriver diff.geojson + summary
+  index.html        # Leaflet-karta med kluster, filter, sök, export
+  data/             # gitignored
+    svk_kyrkor.geojson
+    osm_kyrkor.geojson
+    diff.geojson
+    diff_summary.json
+```
+
+## Möjliga framtida tillägg
+
+- **Wikidata-cross-check**: för osm_only med wikidata-tagg, slå upp
+  Wikidata och se om det är en "Church of Sweden church" - då är det
+  förmodligen en miss i SVK Platser, inte annan denomination.
+- **Tags-export**: predefinierade .osm-fil för iD-editor som lägger
+  till `amenity=place_of_worship` etc i ett klick på matched-noder
+  med taggbrist.
+- **Per-stift-statistik**: var i landet är diskrepansen störst?
+- **Slug-baserade länkar för svk_only**: vissa svk_only saknar slug
+  i nuvarande hämtning - lägg till om det blir aktuellt.

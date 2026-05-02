@@ -159,6 +159,26 @@ församlings delar i typ-färg (guld/vinröd), andra församlingar dimmas
 till mörkgrön. Huvuddelen ritas alltid streckad så hela bilden syns även
 när huvuddelen råkar vara territorialvatten (Nättraby-Hasslö).
 
+### 5d. SVK ↔ OSM kyrkokonsistens (`osm-konsistenscheck/`) ✅ Funktionell
+
+Jämför kyrkor i SVK Platser-API:t mot OpenStreetMap. Matchar SVK och
+OSM-pin via greedy global närmsta-granne (med tie-break på
+namnlikhet) inom 100 m radie. Resultat: 3433 matchade, 978 bara SVK
+(saknas i OSM), 1773 bara OSM (frikyrka eller fel taggning).
+
+UI: pie-chart-kluster med fördelning per kategori, sökruta med lazy-load,
+sub-filter för namn-mismatch / >50 m / OSM-taggbrist, OSM-denomination-
+filter, avståndslinjer mellan SVK- och OSM-positioner, hybridlager
+(satellit + labels) för verifiering, popup-länkar till SVK plats-sida,
+iD-editor för redigering/tilläggning, CSV-export av "Bara SVK".
+
+Datafix: dedup av SVK-poster på exakt samma koord (77 fall som "Trons
+kapell Mo" + "Mo kyrka" på samma punkt blev tidigare två separata
+matchningsförsök). OSM-Overpass-query utökad med `building=church/chapel`
+eftersom många kyrkbyggnader saknar `amenity=place_of_worship`. OSM-
+taggbrist-detektion ger 418 matchade där OSM saknar amenity, religion
+eller korrekt denomination - alla har förslag på taggar i popup.
+
 ### 5c. Pastorat & församlingar över tid (`forsamlingsindelning-historik/`) ✅ Funktionell
 
 Tidsslider 2008-2026 över både `ekonomiska_enheter` (pastorat) och
