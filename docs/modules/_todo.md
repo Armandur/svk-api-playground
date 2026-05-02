@@ -89,14 +89,24 @@ serve.py. End-to-end-verifierad 2026-05-01 mot Härnösands domkyrka.
 
 **Återstår:**
 
-- Filter på församling specifikt via UnitAPI eller `?owner_id=`
-  (`/api/units/*` är förberett i proxyn).
-- Skapa/ta bort hela perioder (idag bara via "Stäng en dag" och
-  "Skapa anpassad period").
 - Bekräftelse-modal innan PUT.
 - Auth-skikt - alla med dev-server-tillgång kan idag skriva.
 - Städa gamla "Stängt YYYY-MM-DD: ..."-rader i `info` när datumen
   har passerat.
+- Klar-markering i "Mina platser" på vilka platser som har
+  öppettider satta (idag visar alla platser oavsett `openHours`).
+
+**Klart efter senaste sessionen:**
+
+- "Mina platser"-flöde via `/churchcontext` + AD-grupp-parsing.
+  Listar platser grupperade per ägare (Pastorat överst, sen
+  församlingar alfabetiskt).
+- Skapa/ta bort hela perioder via knappar i avancerat-panelen och
+  ta-bort-× på period-korten.
+- "Pinga nu" verifierar både session-keepalive och faktisk admin-
+  GET mot Härnösands domkyrka (eller vald plats).
+- Refresh från admin-endpointen efter PUT så användaren ser
+  serverns version direkt.
 
 **Öppna frågor (uppdaterade):**
 

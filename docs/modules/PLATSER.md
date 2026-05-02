@@ -48,7 +48,8 @@ Alla mot `/place?...`:
 | `name=<str>` / `~<str>` / `^<str>` | Namn (exakt / innehåller / börjar med) |
 | `nearby=<lon>,<lat>&nearbyRadius=<m>` | Geosök, radie i meter (WGS84) |
 | `placedetails_hastoilet=true` | Boolean på underfält (snake_case path) |
-| `owner_id=<id>`, `owner_type=Församling` | Filter på ägare |
+| `owner_id=<id>` eller `owner_id=<id1>,<id2>,...` | Filter på ägare ("is any of" - kommaseparerat) |
+| `owner_type=Församling\|Sammfällighet\|Stift\|...` | Filter på enhetstyp. Servern använder `Sammfällighet` för det som UI:t kallar "Pastorat" |
 | `deleted=true` | Inkludera borttagna |
 | `offset=N`, `limit=N` | Paginering (default 100, max 500) |
 | `orderby=<fält>[-]` | Sortering (kommaseparerade fält, `-` suffix = fallande) |
@@ -295,8 +296,45 @@ End-to-end-verifierad mot Härnösands domkyrka 2026-05-01.
 | `https://admin.svenskakyrkan.se/webapi/api-v2/place/{id}` | PUT | **Full replace** - hela Place-objektet, inte delta |
 | `https://admin.svenskakyrkan.se/webapi/api-v2/place/{id}` | PATCH/DELETE | Antas finnas men inte testat |
 | `https://admin.svenskakyrkan.se/webapi/api-v3/...` | GET (SSE) | Realtids-events via `Content-Type: text/event-stream` (api-v**3**, inte v2) |
-| `https://admin.svenskakyrkan.se/churchcontext` | GET | Returnerar inloggad users config + session-keepalive |
+| `https://admin.svenskakyrkan.se/churchcontext` | GET | Returnerar inloggad users config + AD-grupper. Se nedan. |
 | `https://admin.svenskakyrkan.se/webapi/api-v2/Account/Login` | GET | SAML/WS-Federation-redirect (returneras vid 401) |
+
+### `/churchcontext` - användarens kontext
+
+Endpointen returnerar **inte** JSON utan en JS-fil:
+
+```javascript
+var churchContext={"isIntranet":false,"isProduction":false,"user":{...},...};
+function() { ... self.adminWebName = '...'; ... }
+```
+
+Klienter måste extrahera den första balanserade `{...}` efter `var
+churchContext=` (vår dev-proxy gör detta automatiskt på
+`/api/admin/_churchcontext`).
+
+Centralt fält: **`user.groups`** är en lista av AD-grupp-namn med
+formatet:
+
+```
+Ext\740_<unitId>_Externwebbsredaktör <namn>
+```
+
+Exempel:
+
+```
+Ext\740_2022_Externwebbsredaktör Häggdångers församling
+Ext\740_20271_Externwebbsredaktör Härnösands pastorat
+```
+
+Mönstret `^Ext\\740_(\d+)_` extraherar enhets-id:n (`unitId`) som matchar
+`owner.id` på platser. Genom att filtrera Platser-API på
+`?owner_id=<id1>,<id2>,...` får man bara platser användaren har
+skrivbehörighet på - vilket är hur `platser-edit-app/`s "Mina platser"-
+flöde fungerar.
+
+Andra grupper i `user.groups` har andra prefix (`KAP\redaktör_*`,
+`BUILTIN\Users`, `CS-BUILTIN\External users` m.fl.) som vi inte
+parsar idag.
 
 ### Auth - cookie-baserad
 

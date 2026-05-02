@@ -70,6 +70,21 @@ Efter live-tester med utförlig logging av admin-svar:
   `Referer: https://admin.svenskakyrkan.se/` (rotpath), inte krav på
   specifik path som `/admin/platser/redigera/{id}`.
 
+- **`/churchcontext` returnerar JS, inte JSON.** Body börjar med
+  `var churchContext={...};` följt av annan JS-kod (funktioner som
+  sätter `self.adminWebName` etc). En klient som vill parsa måste
+  hitta första balanserade `{...}` efter `var churchContext=`.
+
+- **AD-grupp-format för redaktörsbehörighet:**
+  `Ext\740_<unitId>_Externwebbsredaktör <namn>`. Regex
+  `^Ext\\740_(\d+)_` extraherar `unitId` som matchar `owner.id` på
+  platser. Möjliggör "Mina platser"-filtrering via
+  `?owner_id=<id1>,<id2>,...` på Platser-API:t (kommaseparerade,
+  "is any of"-syntax).
+
+- **`owner.type` är `Sammfällighet`** för det som UI:t i kyrkan
+  vanligen kallar "Pastorat". Mappa vid presentation.
+
 ---
 
 ## Sektion 1: API-nyckel-/token-extraktion
