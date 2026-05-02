@@ -505,6 +505,12 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(400, "Ogiltig JSON")
             return
         new_session = (data.get("session") or "").strip()
+        # Sanera: filtrera bort icke-printable ASCII (smyger sig in vid
+        # copy-paste från terminaler med emoji-prompts som "🌐 ubuntu-ai").
+        # HTTP-headers tillåter bara latin-1; vi tillåter bara printable
+        # ASCII för säkerhets skull. Cookie-värden ska aldrig innehålla
+        # specialtecken.
+        new_session = "".join(c for c in new_session if 32 <= ord(c) < 127)
         if not new_session:
             CS_SESSION = ""
             body = b'{"ok":true,"cleared":true}'
