@@ -213,6 +213,61 @@ centroid-inneslutning. Datakvalitet-filter: ignorerar genitiv-s
 2015-reformen) men behåller terminologi-byten (`X kyrkliga samfällighet`
 → `X pastorat`, 2013-2014-reformen).
 
+### 7. KBR-tidslinje (`kbr-tidslinje/`) ✅ Funktionell + deployad
+
+Live på <https://armandur.github.io/svk-api-playground/kbr-tidslinje/>,
+byggs dagligen av GitHub Actions (datat ändras sällan - cachelagras mellan
+push-körningar, byggs alltid om vid daglig schedule).
+
+Animerad karta med ~3 500 kyrkobyggnader ur KBR. Slider 1000-2025 med
+play/pause. Kyrkor visas som streckad ikon ("under byggnation") vid
+`nybyggnadFran`, fylld era-specifik ikon vid `invigning`. 6 epoker med
+egna kyrksymboler och färger.
+
+**Epoker och ikoner:**
+- Medeltid (<1527): fristående klockstapel + enkel stenkyrka med sadeltak
+- Reformationen (1527-1720): smal nålspira, oktagonalt tornöverstycke
+- 1700-tal (1720-1800): klotfinal, pyramidformad tornkap
+- 1800-tal (1800-1900): hög gotisk spira, spetsbågefönster (dominant epok: 852 kyrkor)
+- 1900-tal (1900-2000): platt tornkrön, funktionalistisk
+- 2000-tal (2000+): böljande tak, flytande kors
+
+**Notering om koordinater:** SWEREF99TM via pyproj. Enstaka poster i KBR
+har felaktiga koordinater (t.ex. Linköpings domkyrka ~11 km fel). Se
+TODO om koordinatfellista nedan.
+
+**Återstår:**
+
+- **Bättre kyrksymboler** - rita om SVG-ikonerna i ett riktigt vektoritverktyg
+  (Inkscape eller Figma). Nuvarande är ritade som inline-SVG-paths "i koden".
+  Riktlinjer för design:
+  - Silhuettbaserade - ska läsas som form, inte beroende av färg
+  - Funka i båda lägena: fylld (invigd) och streckad kontur (under byggnation)
+  - Ankar i botten-mitten, ikonstorlek 22×30 px
+  - Låg path-komplexitet (1-3 element per form), annars blir det suddigt litet
+  - **Medeltid:** fristående klockstapel (tresidig trätimmerstruktur med liten
+    pyramidspets) + fristående stenkyrka (rektangulär med enkelt sadeltak,
+    inga torn). Referens: Gamla Uppsala kyrka, Husaby kyrka.
+  - **Reformationen:** Rektangulärt kyrkoskepp med något högre mittparti,
+    enkel spira. Få nya kyrkor byggdes - ikonen signalerar stilleståndet.
+  - **1700-tal:** Klassicistisk proportionering. Torn med klockvåning och
+    knopp/glob-final. Symmetric fasad. Referens: Hedvig Eleonora kyrka.
+  - **1800-tal:** Nygotisk - mycket hög och smal spira (ofta i tegel),
+    spetsbågiga fönster på långhusets sida. Dominant era. Referens:
+    Oscar Fredriks kyrka, Sofia kyrka.
+  - **1900-tal:** Nationalromantik (rundtorn, tunga murverk) eller
+    funktionalism (tegeltorn, platt krön). Referens: Engelbrektskyrkan,
+    Kungsholms kyrka.
+  - **2000-tal:** Samtida - rektangulär volym, böljande/kurvilineärt tak,
+    fristående kors. Referens: Fisksätra kyrka, S:t Görans kyrka.
+
+- **Koordinatfellista** - jämför KBR-koordinater mot Platser-API via
+  `facilityPartId` (GUID-länken mellan systemen). Exportera kyrkor med
+  >500 m avvikelse som CSV för rapportering till kyrkobyggnadsavdelningen
+  på kyrkokansliet.
+
+- **Stift-filter** - dropdown för att filtrera på ett stift.
+
 ### 6. Kalenderhändelse-aggregator (`calendar-aggregator/`)
 
 Hämta events från [CalendarAPI](#CALENDARAPI) för flera enheter och
@@ -230,7 +285,7 @@ Status efter verifiering med vår nyckel mot test 2026-05-01:
 | Enhetsinformation | ✗ 302 mot test | Prenumerera på "Enhetsinformation" via portalen. |
 | Församlingskartor | ✓ ingen auth | Validera lager-listan via `GetCapabilities`. |
 | Församlingssök | ✗ 401 CallerInvalid | Prenumerera på "Församlingssök" på portalen. |
-| KBR | ✗ 302 mot test | Prenumerera på "Kyrkobyggnadsregistret". |
+| KBR | ✓ prod | Används i `kbr-tidslinje/`. Koordinater i SWEREF99TM. |
 | Platser | ✗ 401 mot test | **Prenumerera på "Platser"** - kritiskt för signage-projektet. Verifiera även om öppettider finns. |
 | UnitAPI | ✓ test | Klart för bruk mot test. Be SVK om prod-aktivering när relevant. |
 | Ämnesområden | ✓ test | Klart för bruk mot test. |

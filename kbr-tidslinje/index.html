@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Svenska kyrkans kyrkor – tidslinje</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #1a1612;
+  color: #e8dcc8;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#header {
+  padding: 10px 16px 8px;
+  background: #1a1612;
+  border-bottom: 1px solid #3a3028;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+#header h1 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #e8dcc8;
+  white-space: nowrap;
+}
+
+#stats {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: #a09070;
+}
+
+.stat { display: flex; flex-direction: column; align-items: center; }
+.stat-value { font-size: 18px; font-weight: 700; color: #e8dcc8; line-height: 1; }
+.stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+#stat-construction .stat-value { color: #9ab0c8; }
+#stat-active .stat-value      { color: #c8a84a; }
+
+#map {
+  flex: 1;
+  min-height: 0;
+}
+
+#controls {
+  padding: 12px 16px 14px;
+  background: #1a1612;
+  border-top: 1px solid #3a3028;
+  flex-shrink: 0;
+}
+
+#year-display {
+  text-align: center;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #8B6914;
+  line-height: 1;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s;
+}
+
+#slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#play-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #c8a84a;
+  background: transparent;
+  color: #c8a84a;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+#play-btn:hover { background: #c8a84a; color: #1a1612; }
+
+#year-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: #3a3028;
+  outline: none;
+  cursor: pointer;
+  --thumb-color: #8B6914;
+  transition: --thumb-color 0.4s;
+}
+#year-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--thumb-color);
+  cursor: pointer;
+  border: 2px solid #1a1612;
+  transition: background 0.4s;
+}
+#year-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--thumb-color);
+  cursor: pointer;
+  border: 2px solid #1a1612;
+  transition: background 0.4s;
+}
+
+#speed-select {
+  background: #2a2218;
+  color: #a09070;
+  border: 1px solid #3a3028;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #7a6a50;
+  align-items: center;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-icon { width: 14px; height: 18px; flex-shrink: 0; }
+
+.church-marker {
+  overflow: visible;
+}
+.church-new {
+  animation: churchPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.church-consecrate {
+  animation: churchConsecrate 0.8s ease-out forwards;
+}
+@keyframes churchPop {
+  0%   { transform: scale(0) translateY(8px); opacity: 0; }
+  100% { transform: scale(1) translateY(0);   opacity: 1; }
+}
+@keyframes churchConsecrate {
+  0%   { transform: scale(1); filter: brightness(1); }
+  40%  { transform: scale(1.9); filter: brightness(1.6); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+.leaflet-div-icon { background: none !important; border: none !important; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Svenska kyrkans kyrkor</h1>
+  <div id="stats">
+    <div class="stat" id="stat-construction">
+      <span class="stat-value" id="val-construction">0</span>
+      <span class="stat-label">byggs</span>
+    </div>
+    <div class="stat" id="stat-active">
+      <span class="stat-value" id="val-active">0</span>
+      <span class="stat-label">invigda</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="val-total">0</span>
+      <span class="stat-label">totalt</span>
+    </div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<div id="controls">
+  <div id="year-display">–</div>
+  <div id="slider-row">
+    <button id="play-btn" title="Spela upp">▶</button>
+    <input type="range" id="year-slider" min="1000" max="2025" value="1000" step="1"/>
+    <select id="speed-select">
+      <option value="800">Långsam</option>
+      <option value="300" selected>Normal</option>
+      <option value="80">Snabb</option>
+      <option value="20">Turbo</option>
+    </select>
+  </div>
+  <div id="legend">
+    <div class="legend-item">
+      <svg class="legend-icon" viewBox="0 0 22 30"><g opacity="0.9">
+        <polygon points="0.5,14 3.5,8 6.5,14" fill="none" stroke="#6a8aaa" stroke-width="1.2" stroke-dasharray="4,2"/>
+        <line x1="0.5" y1="14" x2="0.5" y2="19" stroke="#6a8aaa" stroke-width="1.3" stroke-dasharray="4,2"/>
+        <line x1="6.5" y1="14" x2="6.5" y2="19" stroke="#6a8aaa" stroke-width="1.3" stroke-dasharray="4,2"/>
+        <polygon points="0.5,30 1,19 6,19 6.5,30" fill="none" stroke="#6a8aaa" stroke-width="1.2" stroke-dasharray="4,2"/>
+        <polygon points="8,17 15,11 22,17" fill="none" stroke="#6a8aaa" stroke-width="1.2" stroke-dasharray="4,2"/>
+        <rect x="8" y="17" width="14" height="13" fill="none" stroke="#6a8aaa" stroke-width="1.2" stroke-dasharray="4,2"/>
+      </g></svg>
+      <span>Under byggnation</span>
+    </div>
+    <div class="legend-item">
+      <svg class="legend-icon" viewBox="0 0 22 30"><g>
+        <polygon points="0.5,14 3.5,8 6.5,14" fill="#8B6914" stroke="#5a4008" stroke-width="1"/>
+        <line x1="0.5" y1="14" x2="0.5" y2="19" stroke="#5a4008" stroke-width="1.3"/>
+        <line x1="6.5" y1="14" x2="6.5" y2="19" stroke="#5a4008" stroke-width="1.3"/>
+        <circle cx="3.5" cy="16.5" r="1.1" fill="#5a4008"/>
+        <polygon points="0.5,30 1,19 6,19 6.5,30" fill="#8B6914" stroke="#5a4008" stroke-width="1"/>
+        <polygon points="8,17 15,11 22,17" fill="#8B6914" stroke="#5a4008" stroke-width="1"/>
+        <rect x="8" y="17" width="14" height="13" fill="#8B6914" stroke="#5a4008" stroke-width="1"/>
+      </g></svg>
+      <span>Medeltid (–1527)</span>
+    </div>
+    <div class="legend-item">
+      <svg class="legend-icon" viewBox="0 0 22 30"><g>
+        <polygon points="5,0 3,8 7,8" fill="#6B3A3A" stroke="#3a1a1a" stroke-width="1"/>
+        <rect x="2" y="8" width="6" height="22" fill="#6B3A3A" stroke="#3a1a1a" stroke-width="1"/>
+        <polygon points="7,14 15,10 22,14" fill="#6B3A3A" stroke="#3a1a1a" stroke-width="1"/>
+        <rect x="7" y="14" width="15" height="16" fill="#6B3A3A" stroke="#3a1a1a" stroke-width="1"/>
+      </g></svg>
+      <span>Reformationen (1527–1720)</span>
+    </div>
+    <div class="legend-item">
+      <svg class="legend-icon" viewBox="0 0 22 30"><g>
+        <circle cx="5" cy="2.5" r="1.5" fill="#8B7355" stroke="#5a4a30" stroke-width="0.8"/>
+        <polygon points="2,5 2.5,9 7.5,9 8,5 5,1.5" fill="#8B7355" stroke="#5a4a30" stroke-width="1"/>
+        <rect x="2" y="9" width="6" height="21" fill="#8B7355" stroke="#5a4a30" stroke-width="1"/>
+        <polygon points="7,14 15,10.5 22,14" fill="#8B7355" stroke="#5a4a30" stroke-width="1"/>
+        <rect x="7" y="14" width="15" height="16" fill="#8B7355" stroke="#5a4a30" stroke-width="1"/>
+      </g></svg>
+      <span>1700-tal</span>
+    </div>
+    <div class="legend-item">
+      <svg class="legend-icon" viewBox="0 0 22 30"><g>
+        <polygon points="4.5,0 2.5,10 6.5,10" fill="#C68B2E" stroke="#8a5a10" stroke-width="1"/>
+        <rect x="2.5" y="10" width="4" height="20" fill="#C68B2E" stroke="#8a5a10" stroke-width="1"/>
+        <polygon points="5,12 15,7 22,12" fill="#C68B2E" stroke="#8a5a10" stroke-width="1"/>
+        <rect x="5" y="12" width="17" height="18" fill="#C68B2E" stroke="#8a5a10" stroke-width="1"/>
+      </g></svg>
+      <span>1800-tal</span>
+    </div>
+    <div class="legend-item">
+      <svg class="legend-icon" viewBox="0 0 22 30"><g>
+        <rect x="1" y="4" width="8" height="3" fill="#4A7BA3" stroke="#2a4a70" stroke-width="1"/>
+        <rect x="1" y="7" width="8" height="23" fill="#4A7BA3" stroke="#2a4a70" stroke-width="1"/>
+        <polygon points="7,15 14.5,13 22,15" fill="#4A7BA3" stroke="#2a4a70" stroke-width="1"/>
+        <rect x="7" y="15" width="15" height="15" fill="#4A7BA3" stroke="#2a4a70" stroke-width="1"/>
+      </g></svg>
+      <span>1900-tal</span>
+    </div>
+    <div class="legend-item">
+      <svg class="legend-icon" viewBox="0 0 22 30"><g>
+        <rect x="10.5" y="0" width="1.5" height="7" fill="#3A9B8C" stroke="#1a6a60" stroke-width="0.8"/>
+        <rect x="8.5" y="2" width="5.5" height="1.5" fill="#3A9B8C" stroke="#1a6a60" stroke-width="0.8"/>
+        <path d="M1,16 Q6,8 11,13 Q16,18 21,11 L21,16 Z" fill="#3A9B8C" stroke="#1a6a60" stroke-width="1"/>
+        <rect x="1" y="15" width="20" height="15" fill="#3A9B8C" stroke="#1a6a60" stroke-width="1"/>
+      </g></svg>
+      <span>2000-tal</span>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const ERA_DEFS = [
+  { from: 2000, color: '#3A9B8C', era: 'modern'        },
+  { from: 1900, color: '#4A7BA3', era: 'nittonhundra'  },
+  { from: 1800, color: '#C68B2E', era: 'atttonhundra'  },
+  { from: 1720, color: '#8B7355', era: 'sjuttonhundra' },
+  { from: 1527, color: '#6B3A3A', era: 'reformationen'  },
+  { from:    0, color: '#8B6914', era: 'medeltid'      },
+];
+
+function getEraInfo(year) {
+  for (const e of ERA_DEFS) if (year >= e.from) return e;
+  return ERA_DEFS[ERA_DEFS.length - 1];
+}
+
+function darken(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, ((n >> 16) & 0xff) * (1 - amt)) | 0;
+  const g = Math.max(0, ((n >>  8) & 0xff) * (1 - amt)) | 0;
+  const b = Math.max(0, ((n >>  0) & 0xff) * (1 - amt)) | 0;
+  return `#${((r << 16)|(g << 8)|b).toString(16).padStart(6,'0')}`;
+}
+
+// ── Era SVG builders ──────────────────────────────────────────────
+// All: viewBox 0 0 22 30, tower left, nave right
+// Args: fill (body color or "none"), stroke, dash (dasharray string or "")
+
+function svgMedeltid(fill, stroke, dash) {
+  const da = dash ? `stroke-dasharray="${dash}"` : '';
+  const wf = fill === 'none' ? 'none' : 'rgba(255,240,180,0.55)';
+  const df = fill === 'none' ? 'none' : darken(fill, 0.3);
+  return `
+    <polygon points="0.5,14 3.5,8 6.5,14" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <line x1="0.5" y1="14" x2="0.5" y2="19" stroke="${stroke}" stroke-width="1.3" ${da}/>
+    <line x1="6.5" y1="14" x2="6.5" y2="19" stroke="${stroke}" stroke-width="1.3" ${da}/>
+    <circle cx="3.5" cy="16.5" r="1.1" fill="${stroke}" ${da}/>
+    <polygon points="0.5,30 1,19 6,19 6.5,30" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <polygon points="8,17 15,11 22,17" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="8" y="17" width="14" height="13" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <circle cx="15" cy="19.5" r="1.5" fill="${wf}" stroke="${stroke}" stroke-width="0.7" ${da}/>
+    <path d="M12,30 L12,24 Q14.5,21.5 17,24 L17,30 Z" fill="${df}" stroke="${stroke}" stroke-width="0.8" ${da}/>`;
+}
+
+function svgReformationen(fill, stroke, dash) {
+  const da = dash ? `stroke-dasharray="${dash}"` : '';
+  const df = fill === 'none' ? 'none' : darken(fill, 0.3);
+  return `
+    <polygon points="5,0 3,9 7,9" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <polygon points="2,9 2.5,12 7.5,12 8,9" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="2" y="11" width="6" height="19" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <polygon points="7,15 15,11 22,15" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="7" y="15" width="15" height="15" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <path d="M10,30 L10,23 L13,20.5 L16,23 L16,30 Z" fill="${df}" stroke="${stroke}" stroke-width="0.8" ${da}/>`;
+}
+
+function svgSjuttonhundra(fill, stroke, dash) {
+  const da = dash ? `stroke-dasharray="${dash}"` : '';
+  const wf = fill === 'none' ? 'none' : 'rgba(255,240,180,0.55)';
+  const df = fill === 'none' ? 'none' : darken(fill, 0.3);
+  return `
+    <circle cx="5" cy="2.5" r="1.5" fill="${stroke}" ${da}/>
+    <rect x="4.5" y="0.5" width="1" height="2.5" fill="${stroke}" ${da}/>
+    <polygon points="2,5.5 2.5,9.5 7.5,9.5 8,5.5 5,1.5" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="2" y="9" width="6" height="21" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <polygon points="7,14 15,10.5 22,14" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="7" y="14" width="15" height="16" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <circle cx="14.5" cy="17.5" r="2" fill="${wf}" stroke="${stroke}" stroke-width="0.8" ${da}/>
+    <path d="M10,30 L10,23.5 Q13,21 16,23.5 L16,30 Z" fill="${df}" stroke="${stroke}" stroke-width="0.8" ${da}/>`;
+}
+
+function svgAtttonhundra(fill, stroke, dash) {
+  const da = dash ? `stroke-dasharray="${dash}"` : '';
+  const wf = fill === 'none' ? 'none' : 'rgba(255,240,180,0.55)';
+  const df = fill === 'none' ? 'none' : darken(fill, 0.3);
+  return `
+    <polygon points="4.5,0 2.5,10 6.5,10" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="2.5" y="10" width="4" height="20" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <polygon points="5,12 15,7 22,12" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="5" y="12" width="17" height="18" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <path d="M7.5,20 L7.5,15.5 L9.5,13.5 L11.5,15.5 L11.5,20 Z" fill="${wf}" stroke="${stroke}" stroke-width="0.7" ${da}/>
+    <path d="M14,20 L14,15.5 L16,13.5 L18,15.5 L18,20 Z" fill="${wf}" stroke="${stroke}" stroke-width="0.7" ${da}/>
+    <path d="M12,30 L12,22.5 L15,19.5 L18,22.5 L18,30 Z" fill="${df}" stroke="${stroke}" stroke-width="0.8" ${da}/>`;
+}
+
+function svgNittonhundra(fill, stroke, dash) {
+  const da = dash ? `stroke-dasharray="${dash}"` : '';
+  const df = fill === 'none' ? 'none' : darken(fill, 0.3);
+  return `
+    <rect x="4" y="0.5" width="2" height="5" fill="${stroke}" ${da}/>
+    <rect x="2.5" y="2" width="5" height="2" fill="${stroke}" ${da}/>
+    <rect x="1" y="4.5" width="8" height="3" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="1" y="7" width="8" height="23" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <polygon points="7,15 14.5,13 22,15" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="7" y="15" width="15" height="15" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="10.5" y="23" width="5" height="7" fill="${df}" stroke="${stroke}" stroke-width="0.8" ${da}/>`;
+}
+
+function svgModern(fill, stroke, dash) {
+  const da = dash ? `stroke-dasharray="${dash}"` : '';
+  const df = fill === 'none' ? 'none' : darken(fill, 0.3);
+  return `
+    <rect x="10.5" y="0" width="1.5" height="7.5" fill="${stroke}" ${da}/>
+    <rect x="8.5" y="2" width="5.5" height="1.5" fill="${stroke}" ${da}/>
+    <path d="M1,16 Q6,8 11,13 Q16,18 21,11 L21,16 Z" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="1" y="15" width="20" height="15" fill="${fill}" stroke="${stroke}" stroke-width="1" ${da}/>
+    <rect x="9" y="22" width="5" height="8" fill="${df}" stroke="${stroke}" stroke-width="0.8" ${da}/>`;
+}
+
+const ERA_SVG_FN = {
+  medeltid:      svgMedeltid,
+  reformationen:  svgReformationen,
+  sjuttonhundra: svgSjuttonhundra,
+  atttonhundra:  svgAtttonhundra,
+  nittonhundra:  svgNittonhundra,
+  modern:        svgModern,
+};
+
+function churchSVG(era, state, color) {
+  const dark = darken(color, 0.38);
+  const fn = ERA_SVG_FN[era] ?? svgMedeltid;
+  const [fill, stroke, dash] = state === 'construction'
+    ? ['none', '#6a8aaa', '4,2']
+    : [color, dark, ''];
+  return `<svg width="22" height="30" viewBox="0 0 22 30" xmlns="http://www.w3.org/2000/svg"
+    style="overflow:visible">${fn(fill, stroke, dash)}</svg>`;
+}
+
+function makeIcon(era, state, color, animate) {
+  const cls = animate
+    ? (state === 'construction' ? 'church-marker church-new' : 'church-marker church-consecrate')
+    : 'church-marker';
+  return L.divIcon({
+    html: `<div class="${cls}" style="transform-origin:50% 100%">${churchSVG(era, state, color)}</div>`,
+    iconSize:     [22, 30],
+    iconAnchor:   [11, 30],
+    popupAnchor:  [0, -30],
+    className:    '',
+  });
+}
+
+// ── Karta ─────────────────────────────────────────────────────────
+const map = L.map('map', { zoomSnap: 0.5, preferCanvas: false });
+map.fitBounds([[55.0, 10.5], [69.5, 24.5]]);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap, © CARTO',
+  maxZoom: 19,
+}).addTo(map);
+
+// ── State ─────────────────────────────────────────────────────────
+let churches = [];
+let markers  = {};  // id → { marker, state, era }
+let currentYear = 1000;
+let playing = false;
+let timer   = null;
+
+const slider      = document.getElementById('year-slider');
+const yearDisplay = document.getElementById('year-display');
+const playBtn     = document.getElementById('play-btn');
+const speedSel    = document.getElementById('speed-select');
+const valConst    = document.getElementById('val-construction');
+const valActive   = document.getElementById('val-active');
+const valTotal    = document.getElementById('val-total');
+
+function popupContent(c) {
+  const bygg   = c.bygg   ? `${c.bygg}`  : '?';
+  const invigd = c.invigd ? `${c.invigd}` : '–';
+  const byggtid = (c.bygg && c.invigd && c.invigd > c.bygg)
+    ? ` (${c.invigd - c.bygg} år)` : '';
+  return `<b>${c.namn}</b><br>${c.stift || ''}<br>
+    Byggstart: ${bygg}<br>Invigd: ${invigd}${byggtid}<br>
+    ${c.skydd ? `<small>${c.skydd}</small>` : ''}`;
+}
+
+function setYear(year, animate) {
+  currentYear = year;
+  yearDisplay.textContent = year;
+  slider.value = year;
+  const eraColor = getEraInfo(year).color;
+  slider.style.setProperty('--thumb-color', eraColor);
+  yearDisplay.style.color = eraColor;
+
+  let nConst = 0, nActive = 0;
+
+  for (const c of churches) {
+    const startYear = c.bygg ?? c.invigd;
+    if (!startYear) continue;
+
+    const shouldExist = startYear <= year;
+    const isActive    = c.invigd ? c.invigd <= year : false;
+    const newState    = isActive ? 'active' : 'construction';
+    const eraYear     = c.invigd ?? c.bygg;
+    const { color, era } = getEraInfo(eraYear);
+    const existing = markers[c.id];
+
+    if (!shouldExist) {
+      if (existing) { map.removeLayer(existing.marker); delete markers[c.id]; }
+      continue;
+    }
+
+    if (newState === 'active') nActive++;
+    else nConst++;
+
+    if (!existing) {
+      const m = L.marker([c.lat, c.lng], {
+        icon: makeIcon(era, newState, color, animate),
+        zIndexOffset: newState === 'active' ? 0 : -10,
+      }).bindPopup(popupContent(c));
+      m.addTo(map);
+      markers[c.id] = { marker: m, state: newState, era };
+    } else if (existing.state !== newState) {
+      existing.marker.setIcon(makeIcon(era, newState, color, animate));
+      existing.marker.setZIndexOffset(0);
+      existing.state = newState;
+    }
+  }
+
+  valConst.textContent  = nConst.toLocaleString('sv');
+  valActive.textContent = nActive.toLocaleString('sv');
+  valTotal.textContent  = (nConst + nActive).toLocaleString('sv');
+}
+
+function step() {
+  if (currentYear >= 2025) { stopPlay(); return; }
+  setYear(currentYear + 1, true);
+}
+
+function startPlay() {
+  playing = true;
+  playBtn.textContent = '⏸';
+  timer = setInterval(step, parseInt(speedSel.value));
+}
+
+function stopPlay() {
+  playing = false;
+  playBtn.textContent = '▶';
+  clearInterval(timer);
+  timer = null;
+}
+
+playBtn.addEventListener('click', () => {
+  if (playing) stopPlay();
+  else { if (currentYear >= 2025) setYear(parseInt(slider.min), false); startPlay(); }
+});
+
+slider.addEventListener('input', () => {
+  stopPlay();
+  setYear(parseInt(slider.value), false);
+});
+
+speedSel.addEventListener('change', () => { if (playing) { stopPlay(); startPlay(); } });
+
+// ── Ladda data ────────────────────────────────────────────────────
+fetch('data/churches.json')
+  .then(r => r.json())
+  .then(data => {
+    churches = data;
+    const minYear = Math.min(...data.map(c => c.bygg ?? c.invigd ?? 9999).filter(y => y > 800));
+    const sliderMin = Math.floor(minYear / 10) * 10;
+    slider.min = sliderMin;
+    currentYear = sliderMin;
+    slider.value = sliderMin;
+    yearDisplay.textContent = sliderMin;
+    console.log(`${data.length} kyrkor laddade, äldsta byggstart: ${minYear}`);
+  })
+  .catch(() => {
+    yearDisplay.textContent = 'Fel';
+    document.getElementById('controls').insertAdjacentHTML('afterbegin',
+      '<p style="color:#c06060;text-align:center;padding:6px 0">Kör build_data.py först</p>');
+  });
+</script>
+</body>
+</html>

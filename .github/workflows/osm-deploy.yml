@@ -1,16 +1,21 @@
-name: Deploy osm-konsistenscheck to Pages
+name: Deploy to Pages
 
-# Bygger om SVK + OSM + diff och publicerar osm-konsistenscheck till
+# Bygger och publicerar alla Pages-projekt till
 # https://armandur.github.io/svk-api-playground/
 #
+# Projekt:
+#   - osm-konsistenscheck/ - SVK + OSM-jämförelse, dagligen uppdaterad
+#   - kbr-tidslinje/       - KBR kyrkobyggnader tidslinje, sällan ändrad data
+#
 # Trigger:
-#   - Dagligen 04:00 UTC (rätt tid för dygnsfräsch data, OSM:s fair use
-#     tillåter mångdubbelt mer än så)
-#   - Manuellt via "Run workflow" i Actions-fliken
-#   - Push på osm-konsistenscheck/** eller workflow-filen
+#   - Dagligen 04:00 UTC - bygger alltid om alla projekt (färsk data)
+#   - Push - bygger bara om det projekt vars filer ändrades, återanvänder
+#     cache för det andra. Cache-nyckel baseras på build-skriptens hash,
+#     så en ändring i skriptet tvingar alltid om.
+#   - Manuellt via "Run workflow"
 #
 # Krav:
-#   - Repo-secret APIKEY_PROD med SVK Platser-nyckeln
+#   - Repo-secret APIKEY_PROD med SVK-nyckeln
 #   - Settings -> Pages -> Source: GitHub Actions
 
 on:
@@ -23,6 +28,8 @@ on:
       - 'osm-konsistenscheck/**'
       - '!osm-konsistenscheck/**.md'
       - '!osm-konsistenscheck/rebuild.sh'
+      - 'kbr-tidslinje/**'
+      - '!kbr-tidslinje/**.md'
       - '.github/workflows/osm-deploy.yml'
 
 permissions:
@@ -30,8 +37,6 @@ permissions:
   pages: write
   id-token: write
 
-# Bara en pages-deploy åt gången. cancel-in-progress=false så vi inte
-# avbryter en pågående schedule-build när någon pushar.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -48,7 +53,21 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
+      # OSM: dygnsfärsk data behövs, byggs alltid vid schedule/manuell körning.
+      # Vid push återanvänds cache om build-skripten inte ändrats.
+      - name: Restore OSM cache
+        id: osm-cache
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
+        with:
+          path: |
+            osm-konsistenscheck/data/diff.geojson
+            osm-konsistenscheck/data/diff_summary.json
+          key: osm-built-${{ hashFiles('osm-konsistenscheck/build_*.py') }}
+          restore-keys: osm-built-
+
       - name: Build SVK + OSM + Wikidata + diff
+        if: github.event_name != 'push' || steps.osm-cache.outputs.cache-hit != 'true'
         env:
           APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
         run: |
@@ -57,6 +76,23 @@ jobs:
           uv run osm-konsistenscheck/build_wikidata.py
           uv run osm-konsistenscheck/build_diff.py
 
+      # KBR: byggnadsregistret ändras sällan. Cache baseras på build-skriptets
+      # hash - ändras skriptet invalideras cachen automatiskt.
+      - name: Restore KBR cache
+        id: kbr-cache
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
+        with:
+          path: kbr-tidslinje/data/churches.json
+          key: kbr-built-${{ hashFiles('kbr-tidslinje/build_data.py') }}
+          restore-keys: kbr-built-
+
+      - name: Build KBR-tidslinje
+        if: github.event_name != 'push' || steps.kbr-cache.outputs.cache-hit != 'true'
+        env:
+          APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
+        run: uv run kbr-tidslinje/build_data.py
+
       - name: Prepare deploy folder
         run: |
           mkdir -p _deploy/osm-konsistenscheck/data
@@ -64,8 +100,11 @@ jobs:
           cp osm-konsistenscheck/data/diff.geojson \
              osm-konsistenscheck/data/diff_summary.json \
              _deploy/osm-konsistenscheck/data/
-          # Enkel landningssida i roten med länk till projekten.
-          # Lägger fler projekt här när de Pages-deployas.
+
+          mkdir -p _deploy/kbr-tidslinje/data
+          cp kbr-tidslinje/index.html _deploy/kbr-tidslinje/index.html
+          cp kbr-tidslinje/data/churches.json _deploy/kbr-tidslinje/data/
+
           cat > _deploy/index.html <<'HTML'
           <!doctype html>
           <html lang="sv">
@@ -112,6 +151,12 @@ jobs:
               <p>Karta som visar var Svenska kyrkans Platser-API och OpenStreetMap
               skiljer sig åt. Dagligen uppdaterad.</p>
               <span class="url">/osm-konsistenscheck/</span>
+            </a>
+            <a class="card" href="kbr-tidslinje/">
+              <h2>KBR-tidslinje</h2>
+              <p>Animerad karta över 3 500 svenska kyrkobyggnader från år 1000 till idag,
+              baserad på Kyrkobyggnadsregistret. Färgkodade era-ikoner med byggnationsanimering.</p>
+              <span class="url">/kbr-tidslinje/</span>
             </a>
             <footer>
               Källkod: <a href="https://github.com/Armandur/svk-api-playground">github.com/Armandur/svk-api-playground</a>
