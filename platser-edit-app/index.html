@@ -221,9 +221,11 @@ header .subtitle {
 .cp-intervals { display: flex; flex-direction: column; gap: 6px;
                 margin: 8px 0; }
 
-/* Periodöversikt - kort som visar varje öppettidsuppsättning */
+/* Periodöversikt - kort som visar varje öppettidsuppsättning.
+   Min-bredd ska räcka för 7 dag-celler med "09:30-11:30" (11 tecken)
+   stackade. */
 .period-overview {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
   gap: 10px; margin-bottom: 8px;
 }
 .period-card {
@@ -253,21 +255,21 @@ header .subtitle {
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;
 }
 .period-card .pc-day {
-  text-align: center; font-size: 10px; padding: 4px 1px;
+  text-align: center; font-size: 13px; padding: 6px 4px;
   border-radius: 2px; font-family: ui-monospace, monospace;
   font-weight: 500; min-width: 0; overflow: hidden;
-  display: flex; flex-direction: column; gap: 1px;
+  display: flex; flex-direction: column; gap: 2px;
   align-items: center; justify-content: flex-start;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 .period-card .pc-day .iv {
   display: block; white-space: nowrap;
 }
-.period-card .pc-day-name { font-size: 9px; color: var(--muted);
+.period-card .pc-day-name { font-size: 10px; color: var(--muted);
                             text-align: center; margin-bottom: 2px;
                             font-family: "DM Sans", sans-serif;
                             text-transform: uppercase; letter-spacing: 0.04em;
-                            min-width: 0; }
+                            min-width: 0; font-weight: 500; }
 .period-card .pc-day.open { background: var(--light-green); color: var(--dark-green); }
 .period-card .pc-day.closed { background: var(--pink); color: var(--wine); font-style: italic; }
 .exception-hint {
@@ -617,12 +619,8 @@ async function refreshFromAdmin() {
 }
 
 function compactTime(t) {
-  // "08:00" -> "8", "13:30" -> "13.30", "09:30" -> "9.30"
-  // Punkt istället för kolon sparar visuell vikt; ledande noll bort.
-  if (!t) return "?";
-  const [hRaw, mRaw] = t.split(":");
-  const h = String(parseInt(hRaw, 10));
-  return mRaw === "00" ? h : `${h}.${mRaw}`;
+  // 24h-format bevaras exakt som "HH:MM" från API:t.
+  return t ? t.slice(0, 5) : "?";
 }
 
 function renderPeriodOverview() {
