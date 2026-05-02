@@ -73,6 +73,20 @@ header .subtitle {
   display: block; font-family: "Spectral", "Times New Roman", serif;
   font-style: italic; color: var(--muted); font-size: 0.85em; margin-top: 2px;
 }
+.results .group-header {
+  padding: 14px 16px 8px; background: rgba(125, 0, 55, 0.05);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.results .group-header .group-name {
+  font-weight: 600; color: var(--wine); font-size: 14px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.results .group-header .group-meta {
+  font-family: "Spectral", "Times New Roman", serif;
+  font-style: italic; color: var(--muted); font-size: 13px;
+}
+.results button.grouped-place { padding-left: 32px; }
 
 /* Editor */
 .place-info { margin-bottom: 16px; padding: 12px 16px; background: #fff;
@@ -1155,11 +1169,30 @@ async function loadMyPlaces() {
       ul.innerHTML = `<li><div class="loading">Inga platser hittades för dina ${unitIds.length} enheter (id: ${unitIds.join(", ")}).</div></li>`;
       return;
     }
-    ul.innerHTML = results.map(p => `
-      <li><button data-id="${p.id}">
-        <span class="place-name">${escapeHtml(p.name)}</span>
-        <span class="owner-name">${escapeHtml(p.owner?.name || "")}</span>
-      </button></li>
+    // Gruppera platserna per ägare (församling / pastorat / etc)
+    const grouped = new Map();
+    for (const p of results) {
+      const key = p.owner?.id || "unknown";
+      if (!grouped.has(key)) {
+        grouped.set(key, { owner: p.owner || {}, places: [] });
+      }
+      grouped.get(key).places.push(p);
+    }
+    const groups = [...grouped.values()].sort((a, b) =>
+      (a.owner?.name || "").localeCompare(b.owner?.name || "", "sv"));
+    for (const g of groups) {
+      g.places.sort((a, b) => (a.name || "").localeCompare(b.name || "", "sv"));
+    }
+    ul.innerHTML = groups.map(g => `
+      <li class="group-header">
+        <span class="group-name">${escapeHtml(g.owner.name || "(okänd ägare)")}</span>
+        <span class="group-meta">${g.owner.type || ""} · ${g.places.length} ${g.places.length === 1 ? "plats" : "platser"}</span>
+      </li>
+      ${g.places.map(p => `
+        <li><button data-id="${p.id}" class="grouped-place">
+          <span class="place-name">${escapeHtml(p.name)}</span>
+        </button></li>
+      `).join("")}
     `).join("");
     for (const btn of ul.querySelectorAll("button")) {
       btn.addEventListener("click", () => loadPlace(btn.dataset.id));
