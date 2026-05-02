@@ -222,7 +222,9 @@ push-körningar, byggs alltid om vid daglig schedule).
 Animerad karta med ~3 500 kyrkobyggnader ur KBR. Slider 1000-2025 med
 play/pause. Kyrkor visas som streckad ikon ("under byggnation") vid
 `nybyggnadFran`, fylld era-specifik ikon vid `invigning`. 6 epoker med
-egna kyrksymboler och färger.
+egna kyrksymboler och färger. Nybyggda kyrkor visas med full mättnad och
+tonas successivt ned till 20% vid 400+ års ålder, vilket gör det lätt att
+se var nya kyrkor byggs. Nyare kyrkor visas ovanpå äldre i z-led.
 
 **Epoker och ikoner:**
 - Medeltid (<1527): fristående klockstapel + enkel stenkyrka med sadeltak

@@ -20,6 +20,9 @@ APIKEY_PROD=<nyckel> uv run build_data.py
 
 - **Streckad ikon** - kyrkan är under byggnation (`nybyggnadFran` nådd)
 - **Fylld ikon** - kyrkan invigd (`invigning` nådd), era-specifik symbol och färg
+- Kyrkornas färgmättnad tonas ned med åldern - nybygda kyrkor syns tydligast,
+  äldre tappar successivt mättnad till ett golv på 20% (vid 400+ års ålder)
+- Nyare kyrkor visas ovanpå äldre i z-led
 - Sliderpricken och årtalet byter färg med epoken
 - Play/pause + hastighetskontroll
 
