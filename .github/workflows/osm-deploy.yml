@@ -1,0 +1,72 @@
+name: Deploy osm-konsistenscheck to Pages
+
+# Bygger om SVK + OSM + diff och publicerar osm-konsistenscheck till
+# https://armandur.github.io/svk-api-playground/
+#
+# Trigger:
+#   - Dagligen 04:00 UTC (rätt tid för dygnsfräsch data, OSM:s fair use
+#     tillåter mångdubbelt mer än så)
+#   - Manuellt via "Run workflow" i Actions-fliken
+#   - Push på osm-konsistenscheck/** eller workflow-filen
+#
+# Krav:
+#   - Repo-secret APIKEY_PROD med SVK Platser-nyckeln
+#   - Settings -> Pages -> Source: GitHub Actions
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'osm-konsistenscheck/**'
+      - '.github/workflows/osm-deploy.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Bara en pages-deploy åt gången. cancel-in-progress=false så vi inte
+# avbryter en pågående schedule-build när någon pushar.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Build SVK + OSM + diff
+        env:
+          APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
+        run: |
+          uv run osm-konsistenscheck/build_svk.py
+          uv run osm-konsistenscheck/build_osm.py
+          uv run osm-konsistenscheck/build_diff.py
+
+      - name: Prepare deploy folder
+        run: |
+          mkdir -p _deploy/data
+          cp osm-konsistenscheck/index.html _deploy/index.html
+          cp osm-konsistenscheck/data/diff.geojson \
+             osm-konsistenscheck/data/diff_summary.json \
+             _deploy/data/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _deploy
+
+      - name: Deploy to Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

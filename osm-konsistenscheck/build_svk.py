@@ -6,15 +6,14 @@
 """Hämtar alla kyrkor och kapell från SVK Platser-API:t (typ
 churchAndChapel) och skriver som data/svk_kyrkor.geojson.
 
-Hämtar via dev-proxyn på `http://localhost:8088/api/platser/` så
-APIKEY hanteras av servern. Starta `./start.sh` i repo-roten innan
-detta körs (eller sätt PLATSER_BASE för annan host/port).
+Direktanrop mot api.svenskakyrkan.se kräver APIKEY (eller APIKEY_PROD)
+som env-variabel. Om PLATSER_BASE är satt går vi via den hosten istället
+- användbart för att gå via dev-proxyn på localhost:8088 utan att
+exponera nyckeln i shell-historik.
 
-Direktanrop mot api.svenskakyrkan.se gav 500 vid test 2026-05 även med
-giltig nyckel - okänd orsak. Proxyn lägger sannolikt på en header som
-SVK:s gateway kräver.
-
-Kör: ./start.sh & uv run osm-konsistenscheck/build_svk.py
+Kör:
+  APIKEY=... uv run osm-konsistenscheck/build_svk.py
+  PLATSER_BASE=http://localhost:8088/api/platser uv run osm-konsistenscheck/build_svk.py
 """
 
 from __future__ import annotations
@@ -29,18 +28,32 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "data" / "svk_kyrkor.geojson"
-BASE = os.environ.get("PLATSER_BASE", "http://localhost:8088/api/platser")
+DEFAULT_BASE = "https://api.svenskakyrkan.se/platser/v4"
+BASE = os.environ.get("PLATSER_BASE", DEFAULT_BASE)
+APIKEY = os.environ.get("APIKEY") or os.environ.get("APIKEY_PROD") or ""
 PAGE_SIZE = 500
+DIRECT_HOST = "api.svenskakyrkan.se"
 
 
 def fetch_page(offset: int) -> dict:
-    qs = urllib.parse.urlencode({
+    params = {
         "is": "churchandchapel",
         "limit": PAGE_SIZE,
         "offset": offset,
-    })
+    }
+    # Direktanrop kräver apikey som query-param. Proxyn lägger på den själv.
+    if DIRECT_HOST in BASE:
+        if not APIKEY:
+            raise SystemExit(
+                "Sätt APIKEY (eller APIKEY_PROD) i miljön - eller använd "
+                "PLATSER_BASE=http://localhost:8088/api/platser via dev-proxyn.")
+        params["apikey"] = APIKEY
+    qs = urllib.parse.urlencode(params)
     url = f"{BASE}/place?{qs}"
-    with urllib.request.urlopen(url, timeout=60) as r:
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)",
+    })
+    with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
 

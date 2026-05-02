@@ -796,6 +796,7 @@ async function init() {
 }
 
 // Rebuild-logik
+const rebuildCtrl = document.querySelector(".rebuild-ctrl");
 const rebuildBtn = document.getElementById("rebuild-btn");
 const rebuildStatus = document.getElementById("rebuild-status");
 const rebuildMsg = document.getElementById("rebuild-msg");
@@ -803,9 +804,22 @@ const rebuildMsg = document.getElementById("rebuild-msg");
 // triggar den initiala statuspollen efter en reload en oändlig loop.
 let sawRunning = false;
 
+function hideRebuildUi() {
+  // På statisk hosting (GitHub Pages) finns ingen rebuild-endpoint.
+  // Då döljer vi hela kontrollen permanent istället för att låta knappen
+  // sitta kvar med ett trasigt API.
+  if (rebuildCtrl) rebuildCtrl.hidden = true;
+}
+
 async function pollRebuildStatus() {
   try {
     const res = await fetch("api/rebuild/status", { cache: "no-store" });
+    if (!res.ok) {
+      // 404 = static deploy (Pages). Andra 4xx/5xx = något konfig-fel
+      // serverside. I båda fallen är retry meningslöst.
+      hideRebuildUi();
+      return;
+    }
     const state = await res.json();
 
     if (state.status === "running") {
@@ -829,6 +843,11 @@ async function pollRebuildStatus() {
       rebuildBtn.disabled = false;
     }
   } catch (e) {
+    // Nätverksfel vid första pollen = ingen server alls. Dölj UI:t.
+    if (!sawRunning) {
+      hideRebuildUi();
+      return;
+    }
     console.error("Status polling failed", e);
     setTimeout(pollRebuildStatus, 5000);
   }
