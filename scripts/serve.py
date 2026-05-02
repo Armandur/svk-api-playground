@@ -392,6 +392,9 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == "/api/admin/_session":
             self._get_admin_session_status()
             return
+        if self.path == "/api/admin/_churchcontext":
+            self._proxy_churchcontext()
+            return
         if self.path.startswith(PROXY_PREFIX):
             self._proxy_churchcalendar()
             return
@@ -518,6 +521,48 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _proxy_churchcontext(self) -> None:
+        # Specialfall: /churchcontext ligger utanför /webapi/api-v2/-prefixet
+        # men är samma admin-domän + samma session-cookie.
+        if not CS_SESSION:
+            self.send_error(500, "Sätt CS_SESSION i .env eller via UI:t")
+            return
+        cookie_header = (
+            CS_SESSION if "=" in CS_SESSION and ";" in CS_SESSION
+            else f"CS_UserSessionId={CS_SESSION}"
+        )
+        req = Request("https://admin.svenskakyrkan.se/churchcontext", headers={
+            "Cookie": cookie_header,
+            "Origin": "https://admin.svenskakyrkan.se",
+            "Referer": "https://admin.svenskakyrkan.se/",
+            "User-Agent": "svk-api-playground",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json, text/plain, */*",
+        })
+        try:
+            with urlopen(req, timeout=15) as resp:
+                data = resp.read()
+                ctype = resp.headers.get("Content-Type", "application/json")
+                status = resp.status
+        except HTTPError as e:
+            err = e.read() if hasattr(e, "read") else b""
+            self.send_response(e.code)
+            self.send_header("Content-Type",
+                             e.headers.get("Content-Type", "text/plain"))
+            self.send_header("Content-Length", str(len(err)))
+            self.end_headers()
+            self.wfile.write(err)
+            return
+        except URLError as e:
+            self.send_error(502, f"Upstream error: {e.reason}")
+            return
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _proxy_admin(self, method: str) -> None:
         if not CS_SESSION:
