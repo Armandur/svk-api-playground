@@ -556,6 +556,19 @@ async function search(q) {
   }
 }
 
+function applyPlaceData(place, resetPeriodIdx = true) {
+  currentPlace = place;
+  workingPeriods = JSON.parse(JSON.stringify(place.openHours?.periods || []));
+  if (!workingPeriods.length) workingPeriods.push({ days: {} });
+  if (resetPeriodIdx) {
+    currentPeriodIdx = 0;
+  } else {
+    currentPeriodIdx = Math.min(currentPeriodIdx, workingPeriods.length - 1);
+  }
+  $("openHoursInfoInput").value = place.openHours?.info || "";
+  renderEditor();
+}
+
 async function loadPlace(id) {
   $("results").innerHTML = "";
   $("editor").hidden = false;
@@ -564,20 +577,21 @@ async function loadPlace(id) {
   try {
     const r = await fetch(`/api/platser/place/${id}`, { cache: "no-store" });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    currentPlace = await r.json();
-    workingPeriods = JSON.parse(JSON.stringify(currentPlace.openHours?.periods || []));
-    if (!workingPeriods.length) {
-      workingPeriods.push({ days: {} });
-    }
-    currentPeriodIdx = 0;
-    // Initiera textarean en gång per laddad plats. renderEditor()
-    // rör inte fältet sen, så användarens skrivna anledning bevaras.
-    $("openHoursInfoInput").value = currentPlace.openHours?.info || "";
-    renderEditor();
+    applyPlaceData(await r.json());
   } catch (e) {
     $("placeName").textContent = "";
     showBanner(`Kunde inte hämta plats: ${e.message}`, "err");
   }
+}
+
+async function refreshFromAdmin() {
+  // Hämta från admin-endpointen efter en sparning - samma backend
+  // som PUT skriver till, så vi ser ändringen direkt utan ev.
+  // propagation-fördröjning på publika gatewayen.
+  const r = await fetch(`/api/admin/place/${currentPlace.id}`,
+                        { cache: "no-store" });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  applyPlaceData(await r.json(), false);
 }
 
 function compactTime(t) {
@@ -863,8 +877,15 @@ async function save() {
       body: JSON.stringify(payload),
     });
     if (r.ok) {
-      showBanner("Sparat.", "ok");
-      await loadPlace(currentPlace.id);
+      showBanner("Sparat - läser om från admin-API:t…", "ok");
+      try {
+        await refreshFromAdmin();
+        showBanner("Sparat och verifierat - öppettiderna nedan är " +
+                   "färska från servern.", "ok");
+      } catch (refreshErr) {
+        showBanner(
+          `Sparat, men kunde inte återhämta: ${refreshErr.message}`, "err");
+      }
     } else {
       const text = await r.text();
       const hints = {
