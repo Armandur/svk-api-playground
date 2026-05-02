@@ -85,9 +85,16 @@ header .subtitle {
                     color: var(--muted); margin-top: 4px; }
 
 .period-meta { display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
-               margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+               margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 .period-meta select { font: 14px "DM Sans", sans-serif; padding: 4px 8px;
                       border: 1px solid var(--black); background: #fff; }
+.period-dates { display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+                margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+.period-dates label { display: flex; gap: 6px; align-items: center; }
+.period-dates input[type="date"] {
+  font: 14px "DM Sans", sans-serif; padding: 4px 8px;
+  border: 1px solid var(--black); background: #fff;
+}
 
 .schedule { display: grid; gap: 8px; margin-bottom: 24px; }
 .schedule-row {
@@ -211,10 +218,19 @@ header .subtitle {
 }
 .period-card:hover { border-color: var(--wine); }
 .period-card.active { border-color: var(--wine); background: rgba(125, 0, 55, 0.06); }
+.period-card .pc-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px; margin-bottom: 4px;
+}
 .period-card .pc-title {
   font-size: 12px; font-weight: 600; color: var(--wine);
-  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 0.06em;
 }
+.period-card .pc-remove {
+  background: transparent; border: none; cursor: pointer; color: var(--muted);
+  font-size: 18px; line-height: 1; padding: 0 4px;
+}
+.period-card .pc-remove:hover { color: var(--wine); }
 .period-card .pc-range {
   font-size: 13px; font-family: ui-monospace, monospace;
   color: var(--black); margin-bottom: 8px;
@@ -378,10 +394,7 @@ header .subtitle {
     <div id="sessionDiag" class="session-diag" hidden></div>
     <div class="session-input">
       <button id="pingSessionBtn" type="button" class="btn-secondary">
-        Pinga nu (verifiera och förläng)
-      </button>
-      <button id="testSessionBtn" type="button" class="btn-secondary">
-        Verifiera plats (GET)
+        Pinga nu
       </button>
       <span id="testSessionResult" class="session-hint"></span>
     </div>
@@ -459,7 +472,14 @@ header .subtitle {
     <div class="period-meta">
       <span>Period:</span>
       <select id="periodSelect"></select>
-      <span id="periodValidity"></span>
+      <button id="addEmptyPeriodBtn" type="button" class="btn-secondary">
+        + Ny period
+      </button>
+    </div>
+    <div class="period-dates">
+      <label>validFrom: <input id="periodValidFrom" type="date"></label>
+      <label>validTo: <input id="periodValidTo" type="date"></label>
+      <span class="session-hint">(servern kräver validFrom &lt; validTo strikt)</span>
     </div>
     <div class="schedule" id="schedule"></div>
   </details>
@@ -589,17 +609,35 @@ function renderPeriodOverview() {
       `<div class="pc-day-name">${DAY_LABEL[k].slice(0,3)}</div>`).join("");
     return `<div class="period-card ${i === currentPeriodIdx ? "active" : ""}"
                  data-idx="${i}">
-      <div class="pc-title">Period ${i + 1}</div>
+      <div class="pc-header">
+        <div class="pc-title">Period ${i + 1}</div>
+        <button class="pc-remove" data-idx="${i}" title="Ta bort denna period">×</button>
+      </div>
       <div class="pc-range">${range}</div>
       <div class="pc-days">${dayNames}</div>
       <div class="pc-days">${dayCells}</div>
     </div>`;
   }).join("");
   for (const card of ov.querySelectorAll(".period-card")) {
-    card.addEventListener("click", () => {
+    card.addEventListener("click", (e) => {
+      // Klick på × ska INTE välja perioden
+      if (e.target.classList.contains("pc-remove")) return;
       currentPeriodIdx = Number(card.dataset.idx);
       const advanced = document.querySelector(".advanced-panel");
       if (advanced) advanced.open = true;
+      renderEditor();
+    });
+  }
+  for (const btn of ov.querySelectorAll(".pc-remove")) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.idx);
+      const p = workingPeriods[idx];
+      const range = `${p.validFrom || "—"} → ${p.validTo || "tills vidare"}`;
+      if (!confirm(`Ta bort period ${idx + 1} (${range})?`)) return;
+      workingPeriods.splice(idx, 1);
+      if (!workingPeriods.length) workingPeriods.push({ days: {} });
+      currentPeriodIdx = Math.min(currentPeriodIdx, workingPeriods.length - 1);
       renderEditor();
     });
   }
@@ -626,8 +664,8 @@ function renderEditor() {
   sel.value = String(currentPeriodIdx);
 
   const p = workingPeriods[currentPeriodIdx];
-  $("periodValidity").textContent =
-    `validFrom: ${p.validFrom || "(saknas)"} · validTo: ${p.validTo || "(saknas)"}`;
+  $("periodValidFrom").value = p.validFrom || "";
+  $("periodValidTo").value = p.validTo || "";
 
   // Bygg en set av problemiska intervall-index per dag (för markering)
   const dayIssues = validateDayIntervals(p.days || {});
@@ -710,6 +748,23 @@ function onAdd(e) {
 
 $("periodSelect").addEventListener("change", e => {
   currentPeriodIdx = Number(e.target.value);
+  renderEditor();
+});
+
+$("periodValidFrom").addEventListener("change", e => {
+  workingPeriods[currentPeriodIdx].validFrom = e.target.value || "";
+  renderEditor();
+});
+
+$("periodValidTo").addEventListener("change", e => {
+  workingPeriods[currentPeriodIdx].validTo = e.target.value || "";
+  renderEditor();
+});
+
+$("addEmptyPeriodBtn").addEventListener("click", () => {
+  // Lägg till tom period sist - användaren får fylla i datum + tider
+  workingPeriods.push({ days: {} });
+  currentPeriodIdx = workingPeriods.length - 1;
   renderEditor();
 });
 
@@ -1122,35 +1177,28 @@ $("clearSessionBtn").addEventListener("click", async () => {
   }
 });
 
+// UUID till Härnösands domkyrka används som "kanariefågel" - ett känt
+// gott testobjekt som de flesta användare har läs-access till.
+const PING_TEST_PLACE = "5dab016f-18f3-4973-92d8-69779653a1ef";
+
 $("pingSessionBtn").addEventListener("click", async () => {
   const out = $("testSessionResult");
   out.textContent = "pingar…";
+  // Pinga keepalive-endpoint (förläng session) + GET en känd plats
+  // (verifierar att admin-API:t svarar). Om en plats är vald i editorn,
+  // ping mot den istället - då kan användaren testa egen plats.
+  const placeId = currentPlace?.id || PING_TEST_PLACE;
+  const placeLabel = currentPlace?.name || "Härnösands domkyrka";
   try {
-    const r = await fetch("/api/admin/_session/ping", { method: "POST" });
-    const d = await r.json();
-    out.textContent = `${d.text} (${d.status === 200 ? "OK" : "fel"})`;
-    await refreshSessionStatus();
-  } catch (e) {
-    out.textContent = `Fel: ${e.message}`;
-  }
-});
-
-$("testSessionBtn").addEventListener("click", async () => {
-  const out = $("testSessionResult");
-  out.textContent = "testar…";
-  if (!currentPlace) {
-    out.textContent = "(välj en plats först - vi GET:ar mot dess admin-endpoint)";
-    return;
-  }
-  try {
-    const r = await fetch(`/api/admin/place/${currentPlace.id}`,
-                          { cache: "no-store" });
-    const text = await r.text();
+    await fetch("/api/admin/_session/ping", { method: "POST" });
+    const r = await fetch(`/api/admin/place/${placeId}`, { cache: "no-store" });
     if (r.ok) {
-      out.textContent = `OK: HTTP ${r.status}, ${text.length} byte body`;
+      out.textContent = `OK - sessionen fungerar mot ${placeLabel}`;
     } else {
-      out.textContent = `FEL: HTTP ${r.status} - ${text.slice(0, 120)}`;
+      const text = await r.text();
+      out.textContent = `FEL: HTTP ${r.status} mot ${placeLabel} - ${text.slice(0, 120)}`;
     }
+    await refreshSessionStatus();
   } catch (e) {
     out.textContent = `Fel: ${e.message}`;
   }
