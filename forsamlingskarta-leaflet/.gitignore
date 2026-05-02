@@ -1,0 +1,5 @@
+# GeoJSON-filer byggs av build_kartor.py och kan vara stora (>20 MB).
+# Stift räcker som default-lager, andra hämtas vid behov.
+data/forsamlingar.geojson
+data/kontrakt.geojson
+data/ekonomiska_enheter.geojson

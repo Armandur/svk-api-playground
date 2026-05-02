@@ -41,11 +41,43 @@ https://din-server/forsamlingskarta-leaflet/?apikey=<key>
 ?apikey=<key>&owner_id=20271
 ```
 
+## Kartlager (gränser)
+
+`build_kartor.py` hämtar shapefile-zip:ar från
+`api.svenskakyrkan.se/kartor/`, reprojicerar SWEREF 99 TM → WGS84
+och skriver till `data/`.
+
+```bash
+uv run forsamlingskarta-leaflet/build_kartor.py            # alla lager
+uv run forsamlingskarta-leaflet/build_kartor.py stift      # bara stift
+```
+
+Tillgängliga lager: `forsamlingar`, `kontrakt`, `stift`,
+`ekonomiska_enheter`. Year hårdkodat till 2026-01-01 - ändra i
+scriptet eller utöka med argument vid behov.
+
+Storlek (4 dec, ≈10 m precision):
+
+| Lager | Antal features | Storlek |
+|---|---|---|
+| `stift.geojson` | 13 | 2 MB |
+| `kontrakt.geojson` | ? | ? |
+| `ekonomiska_enheter.geojson` | ? | ? |
+| `forsamlingar.geojson` | 1251 | 23 MB |
+
+Stift används som default bakgrundslager. Församlingar är för stort
+för att rendera direkt - ladda dynamiskt vid zoom-in eller
+filtrera på stift först.
+
+`data/`-mappen är gitignored för att inte blåsa upp repot - bygg
+lokalt vid behov.
+
 ## TODO
 
-- Församlingsgränser som lager (väntar på fix av öppna geoserver-API:t
-  som returnerar 404 just nu, eller ZIP-baserad statisk version).
-- Klusterning vid utzoomning - alternativ när alla 9474 platser visas.
+- Simplifiera församlings-GeoJSON med shapely/topojson så det blir
+  hanterbart (5 MB-mål).
+- Ladda församlingar dynamiskt baserat på stiftsklick eller zoom.
+- Klusterning vid utzoomning av plats-markörer.
 - Filter via UI: stiftsväljare, plats-typ-checkboxar.
 - Rita markörikoner per plats-typ (kyrka/kansli/kapell).
 
