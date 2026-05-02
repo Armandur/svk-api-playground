@@ -316,33 +316,6 @@ const LayerPickerControl = L.Control.extend({
 });
 new LayerPickerControl().addTo(map);
 
-// Teckenförklaring för plats-typ-ikoner
-const LegendControl = L.Control.extend({
-  options: { position: "bottomleft" },
-  onAdd() {
-    const div = L.DomUtil.create("div", "layer-picker legend");
-    const items = [
-      ["churchAndChapel", "Kyrka/kapell"],
-      ["parishHome", "Församlingshem"],
-      ["secretariat", "Kansli"],
-      ["cemetery", "Begravningsplats"],
-      ["pollingStation", "Vallokal"],
-      ["external", "Övrigt"],
-    ];
-    div.innerHTML = `<div class="lp-title">Platstyper</div>` +
-      items.map(([key, label]) => {
-        const c = TYPE_ICON[key];
-        return `<div class="lg-row">
-          <span class="lg-circle" style="background:${c.color}">${c.label}</span>
-          <span>${escapeHtml(label)}</span>
-        </div>`;
-      }).join("");
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  },
-});
-new LegendControl().addTo(map);
-
 applyMode(currentMode);
 
 const TYPE_LABEL = {
@@ -389,6 +362,34 @@ function iconForPlace(place) {
 function placeTypeLabel(place) {
   return TYPE_LABEL[placeTypeKey(place)] || null;
 }
+
+// Teckenförklaring för plats-typ-ikoner. Måste komma efter TYPE_ICON-
+// definitionen eftersom onAdd() refererar den vid addTo(map).
+const LegendControl = L.Control.extend({
+  options: { position: "bottomleft" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "layer-picker legend");
+    const items = [
+      ["churchAndChapel", "Kyrka/kapell"],
+      ["parishHome", "Församlingshem"],
+      ["secretariat", "Kansli"],
+      ["cemetery", "Begravningsplats"],
+      ["pollingStation", "Vallokal"],
+      ["external", "Övrigt"],
+    ];
+    div.innerHTML = `<div class="lp-title">Platstyper</div>` +
+      items.map(([key, label]) => {
+        const c = TYPE_ICON[key];
+        return `<div class="lg-row">
+          <span class="lg-circle" style="background:${c.color}">${c.label}</span>
+          <span>${escapeHtml(label)}</span>
+        </div>`;
+      }).join("");
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  },
+});
+new LegendControl().addTo(map);
 
 function buildPopup(place) {
   const owner = place.owner || {};
