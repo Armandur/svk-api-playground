@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Församlingskarta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --beige:      #FFEBE1;
+  --black:      #000000;
+  --wine:       #7D0037;
+  --pink:       #FFC3AA;
+  --gold:       #BC8E4C;
+  --dark-green: #00554B;
+  --muted:      #6b5f5a;
+  --line:       rgba(125, 0, 55, 0.2);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font: 15px/1.45 "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--black);
+  display: flex; flex-direction: column; min-height: 100vh;
+}
+header {
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+h1 {
+  font-size: 22px; font-weight: 500; color: var(--wine);
+  letter-spacing: -0.01em;
+}
+header .subtitle {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 13px;
+}
+header .stats { font-size: 13px; color: var(--muted); }
+header .stats b { color: var(--wine); font-weight: 600; }
+
+#map {
+  flex: 1; min-height: 60vh;
+  background: var(--beige);
+}
+.leaflet-container {
+  font: 14px "DM Sans", Arial, sans-serif;
+}
+.leaflet-popup-content {
+  margin: 12px 14px; min-width: 220px;
+}
+.popup-name {
+  font-weight: 500; color: var(--wine); font-size: 16px;
+  margin-bottom: 4px;
+}
+.popup-owner {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 13px; margin-bottom: 8px;
+}
+.popup-desc {
+  font-size: 13px; line-height: 1.4; margin-bottom: 8px;
+}
+.popup-meta {
+  font-size: 12px; color: var(--muted);
+  border-top: 1px solid var(--line); padding-top: 6px;
+}
+.popup-meta div { margin-bottom: 2px; }
+.popup-link {
+  display: inline-block; margin-top: 6px;
+  color: var(--wine); text-decoration: none; font-weight: 500;
+}
+.popup-link:hover { text-decoration: underline; }
+
+.banner {
+  padding: 10px 20px; background: var(--pink); color: var(--wine);
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  font-size: 13px;
+}
+.banner.err { background: var(--wine); color: var(--beige); font-style: normal; }
+.banner b { font-style: normal; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Församlingskarta</h1>
+    <div class="subtitle" id="subtitle">Laddar platser…</div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// URL-parametrar
+const PARAMS = new URLSearchParams(location.search);
+const API_KEY = PARAMS.get("apikey");
+const OWNER_ID = PARAMS.get("owner_id");
+const NEARBY = PARAMS.get("nearby");          // "lon,lat"
+const NEARBY_RADIUS = PARAMS.get("radius") || "5000";
+const LIMIT = PARAMS.get("limit") || "500";
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function showBanner(msg, isError = false) {
+  const el = document.getElementById("banner");
+  el.innerHTML = msg;
+  el.className = "banner" + (isError ? " err" : "");
+  el.hidden = false;
+}
+
+// Initiera karta - centrerad på Sverige som default
+const map = L.map("map").setView([62.0, 16.0], 5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "© OpenStreetMap-bidragsgivare",
+}).addTo(map);
+
+const TYPE_LABEL = {
+  churchAndChapel: "Kyrka/kapell",
+  parishHome: "Församlingshem",
+  secretariat: "Kansli",
+  cemetery: "Begravningsplats",
+  external: "Extern plats",
+  partial: "Partiell plats",
+  pollingStation: "Röstningslokal",
+  mainPollingStation: "Vallokal",
+};
+
+function placeTypeLabel(place) {
+  const types = place.placeTypes || {};
+  for (const k of Object.keys(types)) {
+    if (TYPE_LABEL[k]) return TYPE_LABEL[k];
+  }
+  return null;
+}
+
+function buildPopup(place) {
+  const owner = place.owner || {};
+  const visiting = place.visitingInfo || {};
+  const addr = [visiting.address,
+                [visiting.postalCode, visiting.city].filter(Boolean).join(" ")]
+                .filter(Boolean).join(", ");
+  const facilities = [];
+  const pd = place.placeDetails || {};
+  if (pd.hasToilet) facilities.push("Toalett");
+  if (pd.hasWifi) facilities.push("Wi-Fi");
+  if (pd.hasCafe) facilities.push("Café");
+  if (pd.accessibility?.hasRamp) facilities.push("Ramp");
+  if (pd.accessibility?.hasHearingLoop) facilities.push("Hörselslinga");
+
+  let html = `<div class="popup-name">${escapeHtml(place.name)}</div>`;
+  if (owner.name) {
+    html += `<div class="popup-owner">${escapeHtml(owner.name)}`;
+    const typeLabel = placeTypeLabel(place);
+    if (typeLabel) html += ` · ${typeLabel}`;
+    html += `</div>`;
+  }
+  if (place.shortDescription) {
+    html += `<div class="popup-desc">${escapeHtml(place.shortDescription)}</div>`;
+  }
+  const metaLines = [];
+  if (addr) metaLines.push(addr);
+  if (facilities.length) metaLines.push(facilities.join(" · "));
+  if (metaLines.length) {
+    html += `<div class="popup-meta">${metaLines.map(l => `<div>${escapeHtml(l)}</div>`).join("")}</div>`;
+  }
+  if (place.slug) {
+    html += `<a class="popup-link" target="_blank" href="https://www.svenskakyrkan.se/platser/${escapeHtml(place.slug)}">På svenskakyrkan.se →</a>`;
+  }
+  return html;
+}
+
+async function fetchPlaces() {
+  // Bygg URL: direkt mot SVK om apikey angiven, annars via dev-server-proxy
+  const params = new URLSearchParams({ limit: LIMIT });
+  if (OWNER_ID) params.set("owner_id", OWNER_ID);
+  if (NEARBY) {
+    params.set("nearby", NEARBY);
+    params.set("nearbyRadius", NEARBY_RADIUS);
+  }
+  let url;
+  if (API_KEY) {
+    params.set("apikey", API_KEY);
+    url = `https://api.svenskakyrkan.se/platser/v4/place?${params}`;
+  } else {
+    url = `/api/platser/place?${params}`;
+  }
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function init() {
+  try {
+    const data = await fetchPlaces();
+    const all = data.results || [];
+    const withGeo = all.filter(p => p.geolocation?.geometry?.coordinates);
+    document.getElementById("subtitle").textContent =
+      OWNER_ID ? `Filter: owner_id=${OWNER_ID}` :
+      NEARBY ? `Inom ${NEARBY_RADIUS} m från ${NEARBY}` :
+      `Slumpvis urval`;
+    document.getElementById("stats").innerHTML =
+      `<b>${withGeo.length}</b> av <b>${data.totalHits || all.length}</b> platser visas`;
+
+    if (!withGeo.length) {
+      showBanner("Inga platser med geolocation hittades för det här filtret.", true);
+      return;
+    }
+
+    const markers = L.featureGroup();
+    for (const p of withGeo) {
+      const [lon, lat] = p.geolocation.geometry.coordinates;
+      const marker = L.marker([lat, lon]).bindPopup(buildPopup(p));
+      markers.addLayer(marker);
+    }
+    markers.addTo(map);
+    map.fitBounds(markers.getBounds(), { padding: [40, 40] });
+
+    if (data.totalHits > all.length) {
+      showBanner(
+        `Visar bara <b>${all.length}</b> av <b>${data.totalHits}</b> matchande platser. ` +
+        `Begränsa via <code>?owner_id=</code> eller <code>?nearby=lon,lat&amp;radius=m</code> för att se rätt urval.`
+      );
+    }
+  } catch (e) {
+    showBanner(`Kunde inte ladda platser: ${escapeHtml(e.message)}`, true);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
