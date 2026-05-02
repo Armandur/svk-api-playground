@@ -142,11 +142,40 @@ kontaktuppgifter. Kombinerar [FORSAMLINGSSOK](#FORSAMLINGSSOK) +
 [ENHETSINFORMATION](#ENHETSINFORMATION) (slå upp `enhetsid` ->
 fullständig kontaktinfo).
 
-### 5. Kyrkokarta i webbläsaren (`forsamlingskarta-leaflet/`)
+### 5. Kyrkokarta i webbläsaren (`forsamlingskarta-leaflet/`) ✅ Funktionell
 
-Leaflet-baserad karta som lägger till SVK:s församlingsgränser via
-WMS från [FORSAMLINGSKARTOR](#FORSAMLINGSKARTOR). Eventuellt med
-möjlighet att klicka och se vilken församling man tittar på.
+Leaflet + OSM-karta som hämtar församlingsgränser via shapefile-zip
+(direkt från `api.svenskakyrkan.se/kartor/`, inte WMS). Klustrade
+plats-markörer per typ, dynamisk inladdning vid pan/zoom, automatisk
+växling mellan stift / kontrakt / ekonomiska enheter / församlingar
+baserat på zoom (manuell override via radio-väljare).
+
+### 5b. Enklav- och exklavrundtur (`forsamlingskarta-enklaver/`) ✅ Funktionell
+
+Identifierar alla församlingar med åtskilda del-polygoner (exklaver) och
+helt inneslutna polygoner i grannförsamling (enklaver). 270 exklaver, 0
+enklaver med 10 m simplifiering. UI med rundtur-knappar; aktiv
+församlings delar i typ-färg (guld/vinröd), andra församlingar dimmas
+till mörkgrön. Huvuddelen ritas alltid streckad så hela bilden syns även
+när huvuddelen råkar vara territorialvatten (Nättraby-Hasslö).
+
+### 5c. Pastorat & församlingar över tid (`forsamlingsindelning-historik/`) ✅ Funktionell
+
+Tidsslider 2008-2026 över både `ekonomiska_enheter` (pastorat) och
+`forsamlingar`. Drawer (öppnas via (i)-knapp i slidern) listar nya
+pastorat med ingående församlingar, **bildade pastorat** (FörE som blir
+flerförsamlings-pastorat), ändrad sammansättning, upplösta pastorat,
+**FörE som upphör**, **pastorat sammanslagna till FörE**, namnbyten och
+församlingsändringar. Highlight-färgning av aktiva förändringar (grönt /
+guld / mörkrött), toggle "Bara ändrade", klick-på-rad-zoomar-till-feature,
+tickmarks på slidern, canvas-rendering + prefetch av angränsande år för
+snabba sliderbyten.
+
+Mappning forsamling→pastorat härleds geometriskt via STRtree +
+centroid-inneslutning. Datakvalitet-filter: ignorerar genitiv-s
+(`Tierp` ≡ `Tierps`) och suffix-tillägg (`Bromma` ≡ `Bromma församling`,
+2015-reformen) men behåller terminologi-byten (`X kyrkliga samfällighet`
+→ `X pastorat`, 2013-2014-reformen).
 
 ### 6. Kalenderhändelse-aggregator (`calendar-aggregator/`)
 
