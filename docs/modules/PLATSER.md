@@ -49,7 +49,7 @@ Alla mot `/place?...`:
 | `nearby=<lon>,<lat>&nearbyRadius=<m>` | Geosök, radie i meter (WGS84) |
 | `placedetails_hastoilet=true` | Boolean på underfält (snake_case path) |
 | `owner_id=<id>` eller `owner_id=<id1>,<id2>,...` | Filter på ägare ("is any of" - kommaseparerat) |
-| `owner_type=Församling\|Sammfällighet\|Stift\|...` | Filter på enhetstyp. Servern använder `Sammfällighet` för det som UI:t kallar "Pastorat" |
+| `owner_type=Församling\|Sammfällighet\|Stift\|...` | Filter på enhetstyp. **OBS:** `Sammfällighet` med två m är ett stavfel i SVK:s API (korrekt vore "Samfällighet"). Måste matchas med dubbel-m tills SVK fixar det. UI:t kan mappa till "Pastorat". Se [UNITAPI](#UNITAPI) för full enum. |
 | `deleted=true` | Inkludera borttagna |
 | `offset=N`, `limit=N` | Paginering (default 100, max 500) |
 | `orderby=<fält>[-]` | Sortering (kommaseparerade fält, `-` suffix = fallande) |

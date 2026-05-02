@@ -78,6 +78,14 @@ Från `swagger.json` (lokal kopia: `tmp/swagger_enheter.json`):
 `Ingen`, `Församling`, `FörsamlingE` (egen ekonomi), `Sammfällighet`,
 `Utlandet`, `Stift`, `Projekt`.
 
+> **Stavfel:** `Sammfällighet` (två m) är felstavat - korrekt svenska
+> är "Samfällighet" med ett m. Felet är genomgående i SVK:s API och
+> värde-baserat (inte bara label) så ev. rättning kräver både kodfix
+> och datamigration. Klienter måste matcha den felaktiga formen
+> tills SVK åtgärdat det. UI-strängar kan mappa till "Pastorat" vid
+> presentation eftersom det är vad enhetstypen vanligen kallas i
+> kyrkans dagliga språk.
+
 ### Verifierat exempel (test 2026-05-01)
 
 - `unitId=1` = "Kyrkokansliet - Ägarweb" (unitType: Ingen)
