@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Församlingsenklaver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --beige:      #FFEBE1;
+  --black:      #000000;
+  --wine:       #7D0037;
+  --pink:       #FFC3AA;
+  --gold:       #BC8E4C;
+  --dark-green: #00554B;
+  --muted:      #6b5f5a;
+  --line:       rgba(125, 0, 55, 0.2);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font: 15px/1.45 "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--black);
+  display: flex; flex-direction: column; min-height: 100vh;
+}
+header {
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+h1 {
+  font-size: 22px; font-weight: 500; color: var(--wine);
+  letter-spacing: -0.01em;
+}
+header .subtitle {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 13px;
+}
+header .stats { font-size: 13px; color: var(--muted); }
+header .stats b { color: var(--wine); font-weight: 600; }
+
+#map {
+  flex: 1; min-height: 60vh;
+  background: var(--beige);
+}
+.leaflet-container {
+  font: 14px "DM Sans", Arial, sans-serif;
+}
+
+.banner {
+  padding: 10px 20px; background: var(--pink); color: var(--wine);
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  font-size: 13px;
+}
+.banner.err { background: var(--wine); color: var(--beige); font-style: normal; }
+.banner b { font-style: normal; font-weight: 500; }
+
+/* Tour-control */
+.enclave-tour {
+  background: var(--beige); padding: 10px 12px;
+  border: 1px solid var(--wine);
+  font: 13px "DM Sans", Arial, sans-serif;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  min-width: 220px;
+}
+.enclave-tour .et-title {
+  font-size: 11px; color: var(--wine); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.enclave-tour .et-counter {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 12px; margin-bottom: 4px;
+}
+.enclave-tour .et-info {
+  font-size: 14px; color: var(--black); margin-bottom: 8px;
+  line-height: 1.35;
+}
+.enclave-tour .et-info b { color: var(--wine); font-weight: 600; }
+.enclave-tour .et-info .et-meta {
+  display: block; font-size: 12px; color: var(--muted);
+  margin-top: 2px;
+}
+.enclave-tour .et-buttons {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.enclave-tour button {
+  font: 12px "DM Sans", Arial, sans-serif;
+  padding: 4px 10px; cursor: pointer;
+  background: var(--wine); color: var(--beige);
+  border: 1px solid var(--wine); border-radius: 2px;
+}
+.enclave-tour button:hover { background: var(--black); border-color: var(--black); }
+.enclave-tour button.secondary {
+  background: var(--beige); color: var(--wine);
+}
+.enclave-tour button.secondary:hover {
+  background: var(--pink); color: var(--wine);
+}
+.enclave-tour button:disabled {
+  opacity: 0.4; cursor: not-allowed;
+}
+
+.popup-name {
+  font-weight: 500; color: var(--wine); font-size: 16px;
+  margin-bottom: 4px;
+}
+.popup-meta {
+  font-size: 12px; color: var(--muted);
+  border-top: 1px solid var(--line); padding-top: 6px; margin-top: 6px;
+}
+.popup-meta div { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Församlingsenklaver</h1>
+    <div class="subtitle" id="subtitle">Laddar enklaver och exklaver…</div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function showBanner(msg, isError = false) {
+  const el = document.getElementById("banner");
+  el.innerHTML = msg;
+  el.className = "banner" + (isError ? " err" : "");
+  el.hidden = false;
+}
+
+const map = L.map("map").setView([62.0, 16.0], 5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "© OpenStreetMap-bidragsgivare",
+}).addTo(map);
+
+// Tour-state
+let features = [];
+let layer = null;       // GeoJSON-lagret med alla features (kan vara av/på)
+let layerVisible = false;
+let currentIdx = -1;
+let highlightLayer = null;  // separat lager för aktivt val (alltid synligt)
+let parentLayer = null;     // lager-grupp: parent-kontur + linje + markör
+let activeForsamling = null;  // sätts av tourGoto, styr dimning av layer
+
+const COLOR = {
+  enklav: "#7D0037",   // vinröd
+  exklav: "#BC8E4C",   // gold
+};
+const DIM_COLOR = "#00554B";  // mörkgrön - används för andra församlingar
+                              // när en specifik är aktiv
+
+function styleForType(props) {
+  // Innan något val gjorts: alla i sin typ-färg.
+  // Efter val: aktiv församling i typ-färg, andra dimmas till mörkgrön.
+  if (!activeForsamling || props.forsamling === activeForsamling) {
+    const c = COLOR[props.typ] || "#000";
+    return {
+      color: c, weight: 2, opacity: 0.9,
+      fillColor: c, fillOpacity: 0.3,
+    };
+  }
+  return {
+    color: DIM_COLOR, weight: 1.5, opacity: 0.7,
+    fillColor: DIM_COLOR, fillOpacity: 0.15,
+  };
+}
+
+function restyleAllLayer() {
+  if (!layer) return;
+  layer.eachLayer(l => {
+    if (l.feature) l.setStyle(styleForType(l.feature.properties));
+  });
+}
+
+function styleHighlight(props) {
+  const c = COLOR[props.typ] || "#000";
+  return {
+    color: c, weight: 3, opacity: 1,
+    fillColor: c, fillOpacity: 0.55,
+  };
+}
+
+function popupHtml(p) {
+  const lines = [];
+  lines.push(`<div class="popup-name">${escapeHtml(p.forsamling)}</div>`);
+  const subtitle = p.typ === "enklav"
+    ? `Enklav i <b>${escapeHtml(p.omsluten_av || "?")}</b>`
+    : `Exklav (del ${p.del_index} av ${p.totalt_delar})`;
+  lines.push(`<div>${subtitle}</div>`);
+  lines.push(`<div class="popup-meta">`);
+  lines.push(`  <div>Areal: ~${p.area_km2} km²</div>`);
+  lines.push(`</div>`);
+  return lines.join("");
+}
+
+async function loadFeatures() {
+  try {
+    const r = await fetch("data/enklaver.geojson", { cache: "no-store" });
+    if (!r.ok) {
+      showBanner(`<b>Saknar data.</b> Kör <code>uv run forsamlingskarta-enklaver/build_enclaves.py</code> först.`, true);
+      return;
+    }
+    const gj = await r.json();
+    features = gj.features || [];
+    document.getElementById("subtitle").textContent =
+      `${features.length} avvikande områden`;
+    const enclaver = features.filter(f => f.properties.typ === "enklav").length;
+    const exklaver = features.filter(f => f.properties.typ === "exklav").length;
+    document.getElementById("stats").innerHTML =
+      `<b>${enclaver}</b> enklaver · <b>${exklaver}</b> exklaver`;
+    if (features.length === 0) {
+      showBanner("Inga enklaver eller exklaver hittade.", true);
+      return;
+    }
+    // Sortera: enklaver först (sällsyntare), sedan exklaver i fallande areal-ordning
+    features.sort((a, b) => {
+      const ta = a.properties.typ, tb = b.properties.typ;
+      if (ta !== tb) return ta === "enklav" ? -1 : 1;
+      return (b.properties.area_km2 || 0) - (a.properties.area_km2 || 0);
+    });
+    showAllFeatures();
+    tourGoto(0);
+  } catch (e) {
+    showBanner(`<b>Fel:</b> ${escapeHtml(String(e))}`, true);
+  }
+}
+
+function showAllFeatures() {
+  if (layer) {
+    map.removeLayer(layer);
+  }
+  layer = L.geoJSON({ type: "FeatureCollection", features }, {
+    style: f => styleForType(f.properties),
+    onEachFeature: (f, lyr) => {
+      lyr.bindPopup(popupHtml(f.properties));
+      lyr.on("click", () => {
+        const idx = features.indexOf(f);
+        if (idx >= 0) tourGoto(idx, /*pan=*/false);
+      });
+    },
+  }).addTo(map);
+  layerVisible = true;
+}
+
+function hideAllFeatures() {
+  if (layer) {
+    map.removeLayer(layer);
+    layer = null;
+  }
+  layerVisible = false;
+}
+
+function tourGoto(idx, pan = true) {
+  if (features.length === 0) return;
+  if (idx < 0) idx = features.length - 1;
+  if (idx >= features.length) idx = 0;
+  currentIdx = idx;
+  const f = features[idx];
+  const p = f.properties;
+
+  // Markera aktiv församling så hela layer kan dimma andra
+  activeForsamling = p.forsamling;
+  restyleAllLayer();
+
+  // Highlight - alltid synligt även om "Visa alla" är av
+  if (highlightLayer) map.removeLayer(highlightLayer);
+  highlightLayer = L.geoJSON(f, {
+    style: () => styleHighlight(p),
+  }).addTo(map);
+
+  // Parent/syskon-lager: rensa gammalt först
+  if (parentLayer) map.removeLayer(parentLayer);
+  parentLayer = null;
+
+  const layers = [];
+  const boundsAcc = L.latLngBounds([]);
+  if (p.centroid) {
+    const [clon, clat] = p.centroid;
+    boundsAcc.extend([clat, clon]);
+  }
+
+  if (p.typ === "exklav" && Array.isArray(p.alla_delar) && p.alla_delar.length > 0) {
+    // Utöka bounds till alla syskondelars centroider
+    p.alla_delar.forEach(d => {
+      if (d.centroid) boundsAcc.extend([d.centroid[1], d.centroid[0]]);
+    });
+
+    // Huvuddelen (alla_delar[0], största polygonen) finns inte i
+    // features-listan eftersom den inte är en exklav - layer ritar
+    // den alltså inte. Rita den alltid som streckad guld så bilden
+    // blir komplett oavsett om layer är synligt eller inte.
+    const huvud = p.alla_delar[0];
+    layers.push(L.geoJSON(
+      { type: "Feature", geometry: huvud.geom, properties: {} },
+      { style: { color: COLOR.exklav, weight: 2, opacity: 0.9,
+                 fillColor: COLOR.exklav, fillOpacity: 0.25,
+                 dashArray: "4, 4" } }
+    ));
+
+    if (!layerVisible) {
+      // När layer är dolt: rita även syskon-exklaver så de inte försvinner.
+      const aktivKey = p.centroid ? `${p.centroid[0]},${p.centroid[1]}` : "";
+      p.alla_delar.slice(1).forEach(d => {
+        const key = d.centroid ? `${d.centroid[0]},${d.centroid[1]}` : "";
+        if (key === aktivKey) return;
+        layers.push(L.geoJSON(
+          { type: "Feature", geometry: d.geom, properties: {} },
+          { style: { color: COLOR.exklav, weight: 1.5, opacity: 0.85,
+                     fillColor: COLOR.exklav, fillOpacity: 0.18,
+                     dashArray: "4, 4" } }
+        ));
+      });
+    }
+  }
+  if (p.parent_geom && p.parent_centroid) {
+    // Enklav: rita omslutande församling som streckad kontur + linje + markör.
+    layers.push(L.geoJSON(
+      { type: "Feature", geometry: p.parent_geom, properties: {} },
+      { style: { color: "#6b5f5a", weight: 1.5, opacity: 0.7,
+                 fillColor: "#6b5f5a", fillOpacity: 0.04,
+                 dashArray: "4, 4" } }
+    ));
+    const [plon, plat] = p.parent_centroid;
+    const [clon, clat] = p.centroid;
+    layers.push(L.polyline([[clat, clon], [plat, plon]], {
+      color: COLOR.enklav, weight: 2, opacity: 0.85, dashArray: "6, 4",
+    }));
+    layers.push(L.circleMarker([plat, plon], {
+      radius: 6, color: COLOR.enklav, weight: 2, opacity: 1,
+      fillColor: "#FFEBE1", fillOpacity: 1,
+    }).bindTooltip(`Omslutande: ${p.parent_namn || p.omsluten_av}`,
+                   { permanent: false, direction: "top" }));
+    boundsAcc.extend([plat, plon]);
+  }
+
+  if (layers.length > 0) {
+    parentLayer = L.layerGroup(layers).addTo(map);
+  }
+
+  if (pan && p.centroid) {
+    if (boundsAcc.isValid() && (p.alla_delar?.length > 1 || p.parent_centroid)) {
+      map.flyToBounds(boundsAcc.pad(0.25), { duration: 0.8, maxZoom: 12 });
+    } else {
+      const [lon, lat] = p.centroid;
+      let zoom = 11;
+      if (p.area_km2 < 1) zoom = 13;
+      else if (p.area_km2 < 5) zoom = 12;
+      else if (p.area_km2 > 50) zoom = 10;
+      map.flyTo([lat, lon], zoom, { duration: 0.8 });
+    }
+  }
+  updateTourInfo();
+}
+
+function updateTourInfo() {
+  const counter = document.getElementById("et-counter");
+  const info = document.getElementById("et-info");
+  if (!counter || !info) return;
+  if (currentIdx < 0 || features.length === 0) {
+    counter.textContent = "";
+    info.innerHTML = "<i>Ingen plats vald</i>";
+    return;
+  }
+  const f = features[currentIdx];
+  const p = f.properties;
+  counter.textContent = `${currentIdx + 1} / ${features.length}`;
+  const subtitle = p.typ === "enklav"
+    ? `Enklav i <b>${escapeHtml(p.omsluten_av || "?")}</b>`
+    : `Del ${p.del_index} av ${p.totalt_delar} - övriga delar streckade`;
+  info.innerHTML =
+    `<b>${escapeHtml(p.forsamling)}</b><br>${subtitle}` +
+    `<span class="et-meta">Areal: ~${p.area_km2} km²</span>`;
+}
+
+const TourControl = L.Control.extend({
+  options: { position: "topleft" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "enclave-tour");
+    div.innerHTML = `
+      <div class="et-title">Rundtur</div>
+      <div class="et-counter" id="et-counter"></div>
+      <div class="et-info" id="et-info"><i>Laddar…</i></div>
+      <div class="et-buttons">
+        <button id="et-prev">‹ Föreg</button>
+        <button id="et-next">Nästa ›</button>
+        <button id="et-toggle" class="secondary">Dölj alla</button>
+      </div>
+    `;
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    setTimeout(() => {
+      div.querySelector("#et-prev").onclick = () => tourGoto(currentIdx - 1);
+      div.querySelector("#et-next").onclick = () => tourGoto(currentIdx + 1);
+      const t = div.querySelector("#et-toggle");
+      t.onclick = () => {
+        if (layerVisible) {
+          hideAllFeatures();
+          t.textContent = "Visa alla";
+        } else {
+          showAllFeatures();
+          t.textContent = "Dölj alla";
+        }
+      };
+    }, 0);
+    return div;
+  },
+});
+map.addControl(new TourControl());
+
+// Tangentbord: pilar för nästa/föreg
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "ArrowRight") { tourGoto(currentIdx + 1); e.preventDefault(); }
+  else if (e.key === "ArrowLeft") { tourGoto(currentIdx - 1); e.preventDefault(); }
+});
+
+loadFeatures();
+</script>
+</body>
+</html>
