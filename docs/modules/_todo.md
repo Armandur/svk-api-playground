@@ -170,7 +170,12 @@ UI: pie-chart-kluster med fördelning per kategori, sökruta med lazy-load,
 sub-filter för namn-mismatch / >50 m / OSM-taggbrist, OSM-denomination-
 filter, avståndslinjer mellan SVK- och OSM-positioner, hybridlager
 (satellit + labels) för verifiering, popup-länkar till SVK plats-sida,
-iD-editor för redigering/tilläggning, CSV-export av "Bara SVK".
+iD-editor för redigering/tilläggning, CSV-export av "Bara SVK". Knapp
+"Hämta nytt data" i headern triggar rebuild av SVK + OSM + diff via
+`/osm-konsistenscheck/api/rebuild`-endpointen i `serve.py` med
+pulserande live-status per steg, och färskhetsrad visar
+`Senast uppdaterad: YYYY-MM-DD HH:MM` baserat på `built_at` i
+`diff_summary.json`.
 
 Datafix: dedup av SVK-poster på exakt samma koord (77 fall som "Trons
 kapell Mo" + "Mo kyrka" på samma punkt blev tidigare två separata

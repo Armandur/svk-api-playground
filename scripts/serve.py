@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.12"
+# dependencies = ["markdown>=3.5"]
 # ///
 """Gemensam dev-server för svk-api-playground.
 
@@ -12,20 +13,93 @@ Kör: `uv run scripts/serve.py` -> http://localhost:8088/
 
 from __future__ import annotations
 
+import html as html_lib
 import json
 import os
+import subprocess
 import sys
 import threading
 import time
+from datetime import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import markdown
+
 ROOT = Path(__file__).resolve().parent.parent
 PORT = int(os.environ.get("SVK_PORT", "8088"))
 HOST = os.environ.get("SVK_HOST", "0.0.0.0")
+
+# Rebuild-state för osm-konsistenscheck
+REBUILD_LOCK = threading.Lock()
+REBUILD_STATE = {
+    "status": "idle",
+    "step": None,
+    "step_index": 0,
+    "step_total": 3,
+    "started_at": None,
+    "finished_at": None,
+    "message": "",
+    "last_error": None,
+    "exit_code": None,
+}
+
+
+def run_rebuild() -> None:
+    """Bakgrundstråd som kör rebuild-stegen i ordning."""
+    steps = [
+        ("svk", "osm-konsistenscheck/build_svk.py", "Hämtar SVK Platser..."),
+        ("osm", "osm-konsistenscheck/build_osm.py", "Hämtar OSM via Overpass..."),
+        ("diff", "osm-konsistenscheck/build_diff.py", "Bygger matchning..."),
+    ]
+
+    for i, (step_id, script_path, msg) in enumerate(steps, 1):
+        with REBUILD_LOCK:
+            REBUILD_STATE["step"] = step_id
+            REBUILD_STATE["step_index"] = i
+            REBUILD_STATE["message"] = msg
+        
+        print(f">> rebuild [{i}/3]: {msg}", flush=True)
+        try:
+            # Vi använder sys.executable (python) och 'uv run' enligt instruktion.
+            # Eftersom vi redan kör under uv kan vi antingen köra 'uv run' eller 
+            # bara köra skriptet med sys.executable om vi litar på env.
+            # Instruktionen sa: 'uv run osm-konsistenscheck/build_svk.py' etc.
+            cmd = ["uv", "run", script_path]
+            result = subprocess.run(
+                cmd,
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            
+            if result.returncode != 0:
+                with REBUILD_LOCK:
+                    REBUILD_STATE["status"] = "error"
+                    REBUILD_STATE["exit_code"] = result.returncode
+                    REBUILD_STATE["last_error"] = (result.stderr or result.stdout)[-1000:].strip()
+                    REBUILD_STATE["finished_at"] = datetime.now().isoformat()
+                print(f"!! rebuild misslyckades i steg {step_id} (exit {result.returncode})", flush=True)
+                return
+                
+        except Exception as e:
+            with REBUILD_LOCK:
+                REBUILD_STATE["status"] = "error"
+                REBUILD_STATE["last_error"] = str(e)
+                REBUILD_STATE["finished_at"] = datetime.now().isoformat()
+            print(f"!! rebuild kraschade: {e}", flush=True)
+            return
+
+    with REBUILD_LOCK:
+        REBUILD_STATE["status"] = "done"
+        REBUILD_STATE["step"] = None
+        REBUILD_STATE["message"] = "Klar"
+        REBUILD_STATE["finished_at"] = datetime.now().isoformat()
+    print(">> rebuild slutförd utan fel", flush=True)
 
 # Mappar som inte ska listas som pilot-projekt även om de har index.html.
 EXCLUDE_DIRS = {"docs", "scripts", "tmp", ".git", ".claude", ".venv",
@@ -258,10 +332,11 @@ def keep_session_alive() -> None:
 
 
 def discover_links() -> list[dict]:
-    """Bygg lista av länkar för startsidan."""
+    """Bygg lista av länkar för startsidan. Spec:ar och deras Swagger UI
+    är inte med här - de länkas från relevanta modul-filer i docs/svk-apis.html
+    istället för att skräpa ner portalen."""
     links = []
 
-    # Dokumentationen ligger på en specifik plats.
     if (ROOT / "docs" / "svk-apis.html").exists():
         links.append({
             "title": "API-dokumentation",
@@ -269,29 +344,6 @@ def discover_links() -> list[dict]:
             "url": "/docs/svk-apis.html",
             "kind": "docs",
         })
-
-    # OpenAPI-specs i docs/specs/. Föredra HTML-wrapper (Swagger UI) framför
-    # rå JSON eftersom det ger en användbar interaktiv vy.
-    specs_dir = ROOT / "docs" / "specs"
-    if specs_dir.is_dir():
-        html_wrappers = {p.stem for p in specs_dir.glob("*.html")}
-        for spec in sorted(specs_dir.glob("*.json")):
-            base = spec.stem.replace(".openapi", "")
-            size_kb = spec.stat().st_size // 1024
-            if base in html_wrappers:
-                links.append({
-                    "title": base,
-                    "subtitle": f"OpenAPI-spec via Swagger UI ({size_kb} KB)",
-                    "url": f"/docs/specs/{base}.html",
-                    "kind": "spec",
-                })
-            else:
-                links.append({
-                    "title": spec.stem,
-                    "subtitle": f"OpenAPI-spec ({size_kb} KB) - rå JSON",
-                    "url": f"/docs/specs/{spec.name}",
-                    "kind": "spec",
-                })
 
     # Pilot-projekt: undermappar med index.html på rotnivå.
     for entry in sorted(ROOT.iterdir()):
@@ -301,16 +353,19 @@ def discover_links() -> list[dict]:
             continue
         readme = entry / "README.md"
         subtitle = ""
+        readme_url = None
         if readme.exists():
             for line in readme.read_text(encoding="utf-8").splitlines()[:20]:
                 line = line.strip()
                 if line and not line.startswith("#"):
                     subtitle = line
                     break
+            readme_url = f"/{entry.name}/README"
         links.append({
             "title": entry.name,
             "subtitle": subtitle or "Pilot-projekt",
             "url": f"/{entry.name}/",
+            "readme_url": readme_url,
             "kind": "project",
         })
 
@@ -318,16 +373,117 @@ def discover_links() -> list[dict]:
 
 
 def render_index(links: list[dict]) -> bytes:
-    cards = "\n".join(
-        f"""<a class="card card-{l['kind']}" href="{l['url']}">
-              <h2>{l['title']}</h2>
-              <p>{l['subtitle']}</p>
-              <span class="url">{l['url']}</span>
-            </a>"""
-        for l in links
-    )
-    html = TEMPLATE.replace("__CARDS__", cards)
+    parts = []
+    for l in links:
+        if l.get("readme_url"):
+            # Pilot-projekt med README: använd div som container med
+            # absolutpositionerad huvudlänk + en separat README-länk
+            # ovanpå (a-i-a är inte giltig HTML).
+            parts.append(
+                f"""<div class="card card-{l['kind']}">
+                      <a class="card-main" href="{l['url']}" aria-label="Öppna {l['title']}"></a>
+                      <h2>{l['title']}</h2>
+                      <p>{l['subtitle']}</p>
+                      <span class="url">{l['url']}</span>
+                      <a class="card-readme" href="{l['readme_url']}">README →</a>
+                    </div>""")
+        else:
+            parts.append(
+                f"""<a class="card card-{l['kind']}" href="{l['url']}">
+                      <h2>{l['title']}</h2>
+                      <p>{l['subtitle']}</p>
+                      <span class="url">{l['url']}</span>
+                    </a>""")
+    html = TEMPLATE.replace("__CARDS__", "\n".join(parts))
     return html.encode("utf-8")
+
+
+_README_CACHE: dict[str, tuple[float, bytes]] = {}
+
+
+def render_readme(project: str) -> bytes | None:
+    """Renderar <project>/README.md till en self-contained HTML-sida.
+    Cachar på (mtime, html_bytes) så vi slipper bygga om vid varje request."""
+    readme = ROOT / project / "README.md"
+    if not readme.is_file():
+        return None
+    # Hindra path traversal: vi tillåter bara mappar direkt under ROOT.
+    try:
+        readme.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        return None
+    mtime = readme.stat().st_mtime
+    cached = _README_CACHE.get(project)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    md = markdown.Markdown(extensions=["fenced_code", "tables", "toc"])
+    body_html = md.convert(readme.read_text(encoding="utf-8"))
+    title = f"{project} - README"
+    page = README_TEMPLATE.replace("__TITLE__", html_lib.escape(title)) \
+                          .replace("__PROJECT__", html_lib.escape(project)) \
+                          .replace("__BODY__", body_html)
+    out = page.encode("utf-8")
+    _README_CACHE[project] = (mtime, out)
+    return out
+
+
+README_TEMPLATE = """<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+:root { --beige: #FFEBE1; --black: #000; --wine: #7D0037; --gold: #BC8E4C;
+        --muted: #6b5f5a; --line: rgba(125,0,55,0.2); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "DM Sans", Arial, sans-serif; background: var(--beige);
+       color: var(--black); line-height: 1.55;
+       padding: clamp(20px, 4vw, 48px); }
+.wrap { max-width: 760px; margin: 0 auto; }
+.crumbs { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.crumbs a { color: var(--wine); text-decoration: none; }
+.crumbs a:hover { text-decoration: underline; }
+.actions { float: right; font-size: 13px; }
+.actions a { color: var(--gold); text-decoration: none; margin-left: 12px;
+             font-family: ui-monospace, monospace; }
+.actions a:hover { color: var(--wine); }
+h1, h2, h3, h4 { color: var(--wine); margin: 1.5em 0 0.5em; line-height: 1.2;
+                 font-weight: 500; letter-spacing: -0.01em; }
+h1 { font-size: clamp(28px, 4vw, 40px); margin-top: 0; }
+h2 { font-size: 22px; padding-top: 0.5em; border-top: 1px solid var(--line); }
+h3 { font-size: 17px; }
+p, ul, ol, blockquote, table { margin: 0.75em 0; }
+ul, ol { padding-left: 1.5em; }
+li { margin: 0.25em 0; }
+a { color: var(--wine); }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em;
+       background: rgba(125,0,55,0.08); padding: 1px 5px; border-radius: 2px; }
+pre { background: #2b1418; color: #f5e6d8; padding: 12px 16px;
+      border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.45; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--wine); }
+blockquote { border-left: 3px solid var(--wine); padding-left: 12px;
+             color: var(--muted); }
+hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="crumbs">
+  <span class="actions"><a href="/__PROJECT__/">Öppna projekt →</a></span>
+  <a href="/">← portalen</a> / <code>__PROJECT__/README.md</code>
+</div>
+__BODY__
+</div>
+</body>
+</html>
+"""
 
 
 TEMPLATE = """<!doctype html>
@@ -374,6 +530,7 @@ main { max-width: 960px; margin: 0 auto;
   border: 2px solid var(--black); border-radius: 4px;
   background: #fff; text-decoration: none; color: inherit;
   transition: transform 0.1s, background 0.1s;
+  position: relative;
 }
 .card:hover { transform: translateY(-2px); background: var(--wine); color: var(--beige); }
 .card:hover .url { color: var(--beige); opacity: 0.8; }
@@ -384,8 +541,22 @@ main { max-width: 960px; margin: 0 auto;
              letter-spacing: 0.02em; }
 .card-docs { border-color: var(--wine); }
 .card-docs h2::before { content: "📚 "; }
-.card-spec h2::before { content: "📋 "; }
 .card-project h2::before { content: "🧪 "; }
+/* Project-kort med README-länk: huvudlänken täcker hela kortet
+   (z-index 0), README-länken ligger ovanpå (z-index 2). */
+.card-main { position: absolute; inset: 0; z-index: 0;
+             text-decoration: none; color: inherit; }
+.card > h2, .card > p, .card > .url { position: relative; z-index: 1;
+                                       pointer-events: none; }
+.card-readme {
+  position: absolute; bottom: 12px; right: 16px; z-index: 2;
+  font-size: 12px; color: var(--gold); text-decoration: none;
+  font-family: ui-monospace, monospace; letter-spacing: 0.02em;
+  padding: 2px 6px; border-radius: 2px;
+}
+.card-readme:hover { background: var(--beige); color: var(--wine); }
+.card:hover .card-readme { color: var(--beige); }
+.card:hover .card-readme:hover { background: var(--beige); color: var(--wine); }
 footer { max-width: 960px; margin: clamp(32px, 5vw, 64px) auto 0;
          padding-top: 16px; border-top: 1px solid var(--black);
          font-size: 13px; color: #555; display: flex;
@@ -421,11 +592,29 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        # /<projekt>/README -> renderad README.md för pilot-projektet.
+        if self.path.endswith("/README") or self.path.endswith("/README/"):
+            project = self.path.strip("/").rsplit("/", 1)[0]
+            if project and "/" not in project and project not in EXCLUDE_DIRS:
+                body = render_readme(project)
+                if body is not None:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Cache-Control", "no-cache")
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                self.send_error(404, "README saknas för projektet")
+                return
         if self.path == "/api/admin/_session":
             self._get_admin_session_status()
             return
         if self.path == "/api/admin/_churchcontext":
             self._proxy_churchcontext()
+            return
+        if self.path == "/osm-konsistenscheck/api/rebuild/status":
+            self._get_rebuild_status()
             return
         if self.path.startswith(PROXY_PREFIX):
             self._proxy_churchcalendar()
@@ -472,7 +661,53 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == "/api/admin/_session/ping":
             self._manual_ping()
             return
+        if self.path == "/osm-konsistenscheck/api/rebuild":
+            self._trigger_rebuild()
+            return
         self.send_error(405, "Method not allowed")
+
+    def _get_rebuild_status(self) -> None:
+        with REBUILD_LOCK:
+            body = json.dumps(REBUILD_STATE).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _trigger_rebuild(self) -> None:
+        with REBUILD_LOCK:
+            if REBUILD_STATE["status"] == "running":
+                body = json.dumps(REBUILD_STATE).encode("utf-8")
+                self.send_response(409)  # Conflict
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+
+            # Nollställ och starta
+            REBUILD_STATE.update({
+                "status": "running",
+                "step": "init",
+                "step_index": 0,
+                "started_at": datetime.now().isoformat(),
+                "finished_at": None,
+                "message": "Startar rebuild...",
+                "last_error": None,
+                "exit_code": None,
+            })
+            body = json.dumps(REBUILD_STATE).encode("utf-8")
+            threading.Thread(target=run_rebuild, daemon=True).start()
+
+        self.send_response(202)  # Accepted
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _manual_ping(self) -> None:
         status, text = admin_ping("manual")

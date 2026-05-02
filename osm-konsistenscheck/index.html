@@ -45,6 +45,12 @@ header .stats b { font-weight: 600; }
 header .stats .matched b { color: var(--dark-green); }
 header .stats .svk b { color: var(--wine); }
 header .stats .osm b { color: var(--osm); }
+header .freshness {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 12px; margin-top: 2px;
+}
+header .freshness.stale { color: var(--wine); font-style: normal; }
+header .freshness .src { color: var(--muted); font-style: italic; }
 
 #map { flex: 1; min-height: 60vh; background: var(--beige); }
 
@@ -167,6 +173,34 @@ header .stats .osm b { color: var(--osm); }
   font: 600 12px "DM Sans", Arial, sans-serif;
   color: var(--black);
 }
+
+/* Rebuild UI */
+.rebuild-ctrl { display: flex; align-items: center; gap: 12px; }
+.rebuild-btn {
+  font: 500 13px "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--wine);
+  border: 1px solid var(--wine); border-radius: 4px;
+  padding: 6px 12px; cursor: pointer;
+  transition: all 0.1s;
+}
+.rebuild-btn:hover:not(:disabled) { background: var(--wine); color: var(--beige); }
+.rebuild-btn:disabled { opacity: 0.5; cursor: not-allowed; border-color: var(--muted); color: var(--muted); }
+
+.pulse-indicator {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--wine); font-weight: 500;
+}
+.pulse-indicator[hidden] { display: none; }
+.pulse-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--wine);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(125, 0, 55, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(125, 0, 55, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(125, 0, 55, 0); }
+}
 </style>
 </head>
 <body>
@@ -175,6 +209,14 @@ header .stats .osm b { color: var(--osm); }
   <div>
     <h1>SVK ↔ OSM kyrkokonsistens</h1>
     <div class="subtitle">Var matchar SVK Platser och OpenStreetMap?</div>
+    <div class="freshness" id="freshness" hidden></div>
+  </div>
+  <div class="rebuild-ctrl">
+    <div id="rebuild-status" class="pulse-indicator" hidden>
+      <div class="pulse-dot"></div>
+      <span id="rebuild-msg">Uppdaterar...</span>
+    </div>
+    <button id="rebuild-btn" class="rebuild-btn">Hämta nytt data</button>
   </div>
   <div class="stats" id="stats">Laddar…</div>
 </header>
@@ -192,6 +234,64 @@ function escapeHtml(s) {
 function showBanner(msg, isError = false) {
   const el = document.getElementById("banner");
   el.innerHTML = msg; el.className = "banner" + (isError ? " err" : "");
+  el.hidden = false;
+}
+function relativeAge(iso) {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (isNaN(then)) return null;
+  const sec = Math.floor((Date.now() - then.getTime()) / 1000);
+  if (sec < 60) return "just nu";
+  if (sec < 3600) {
+    const m = Math.floor(sec / 60);
+    return `${m} min sedan`;
+  }
+  if (sec < 86400) {
+    const h = Math.floor(sec / 3600);
+    return `${h} h sedan`;
+  }
+  const days = Math.floor(sec / 86400);
+  if (days === 1) return "igår";
+  if (days < 30) return `${days} dagar sedan`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} mån sedan`;
+  return `${Math.floor(days / 365)} år sedan`;
+}
+function formatLocalDateTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+const STALE_DAYS = 30;
+function renderFreshness(sum) {
+  const el = document.getElementById("freshness");
+  if (!el) return;
+  const builtIso = sum.built_at;
+  const built = builtIso ? new Date(builtIso) : null;
+  if (!built || isNaN(built)) {
+    el.hidden = true;
+    return;
+  }
+  const ageDays = Math.floor((Date.now() - built.getTime()) / 86400000);
+  const stale = ageDays >= STALE_DAYS;
+  const stamp = formatLocalDateTime(builtIso);
+  const rel = relativeAge(builtIso);
+  const svkRel = relativeAge(sum.svk_source_at);
+  const osmRel = relativeAge(sum.osm_source_at);
+  let src = "";
+  if (svkRel || osmRel) {
+    const parts = [];
+    if (svkRel) parts.push(`SVK ${svkRel}`);
+    if (osmRel) parts.push(`OSM ${osmRel}`);
+    src = ` <span class="src">(källor: ${parts.join(", ")})</span>`;
+  }
+  el.innerHTML = `Senast uppdaterad: ${stamp} (${rel})` +
+    (stale ? ` - klicka <b>Hämta nytt data</b> för färska siffror` : "") +
+    src;
+  el.className = "freshness" + (stale ? " stale" : "");
   el.hidden = false;
 }
 function downloadCsv(rows, filename) {
@@ -363,6 +463,7 @@ async function init() {
       `<span class="matched"><b>${sum.matched}</b> matchade</span>` +
       `<span class="svk"><b>${sum.svk_only}</b> bara SVK</span>` +
       `<span class="osm"><b>${sum.osm_only}</b> bara OSM</span>`;
+    renderFreshness(sum);
 
     const baseIcons = {
       matched: makeIcon(COLOR.matched),
@@ -626,6 +727,65 @@ async function init() {
     showBanner(`<b>Fel:</b> ${escapeHtml(String(e))}`, true);
   }
 }
+
+// Rebuild-logik
+const rebuildBtn = document.getElementById("rebuild-btn");
+const rebuildStatus = document.getElementById("rebuild-status");
+const rebuildMsg = document.getElementById("rebuild-msg");
+// Vi reloadar bara sidan när vi sett 'running' i denna session - annars
+// triggar den initiala statuspollen efter en reload en oändlig loop.
+let sawRunning = false;
+
+async function pollRebuildStatus() {
+  try {
+    const res = await fetch("api/rebuild/status", { cache: "no-store" });
+    const state = await res.json();
+
+    if (state.status === "running") {
+      sawRunning = true;
+      rebuildBtn.disabled = true;
+      rebuildStatus.hidden = false;
+      let msg = state.message;
+      if (state.step_index > 0) msg += ` (${state.step_index}/${state.step_total})`;
+      rebuildMsg.innerText = msg;
+      setTimeout(pollRebuildStatus, 2000);
+    } else if (state.status === "done" && sawRunning) {
+      rebuildMsg.innerText = "Klart - laddar om...";
+      rebuildBtn.disabled = true;
+      setTimeout(() => location.reload(), 800);
+    } else if (state.status === "error") {
+      rebuildStatus.hidden = true;
+      rebuildBtn.disabled = false;
+      showBanner(`<b>Rebuild misslyckades:</b> ${escapeHtml(state.last_error || "Okänt fel")}`, true);
+    } else {
+      rebuildStatus.hidden = true;
+      rebuildBtn.disabled = false;
+    }
+  } catch (e) {
+    console.error("Status polling failed", e);
+    setTimeout(pollRebuildStatus, 5000);
+  }
+}
+
+rebuildBtn.addEventListener("click", async () => {
+  try {
+    rebuildBtn.disabled = true;
+    const res = await fetch("api/rebuild", { method: "POST" });
+    if (res.status === 202 || res.status === 409) {
+      pollRebuildStatus();
+    } else {
+      const err = await res.text();
+      showBanner(`<b>Kunde inte starta:</b> ${escapeHtml(err)}`, true);
+      rebuildBtn.disabled = false;
+    }
+  } catch (e) {
+    showBanner(`<b>Nätverksfel:</b> ${escapeHtml(String(e))}`, true);
+    rebuildBtn.disabled = false;
+  }
+});
+
+// Initial check
+pollRebuildStatus();
 
 init();
 </script>

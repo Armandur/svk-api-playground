@@ -14,15 +14,34 @@ länkar för att göra det enkelt att bidra tillbaka till OSM.
 ## Snabbstart
 
 ```bash
-# Servern måste köras (build_svk.py går via dev-proxyn)
-./start.sh &
+./start.sh                                   # http://ubuntu-ai:8088/
+```
 
+Öppna http://ubuntu-ai:8088/osm-konsistenscheck/ och klicka **Hämta nytt
+data** uppe till höger - knappen kör SVK + OSM + diff i bakgrunden,
+visar pulserande status per steg och reloadar sidan när det är klart.
+Hela rebuilden tar 1-3 min beroende på Overpass-belastning.
+
+Headern visar `Senast uppdaterad: YYYY-MM-DD HH:MM (rel.)` så det syns
+direkt om datat är färskt eller månader gammalt.
+
+### Manuell rebuild (utan UI)
+
+```bash
+./osm-konsistenscheck/rebuild.sh            # kräver att ./start.sh redan kör
+```
+
+Eller stegvis om något specifikt steg behöver köras om:
+
+```bash
 uv run osm-konsistenscheck/build_svk.py     # SVK Platser (~1.7 MB)
 uv run osm-konsistenscheck/build_osm.py     # OSM via Overpass (~2.4 MB)
 uv run osm-konsistenscheck/build_diff.py    # default 100 m radie
-
-# -> http://ubuntu-ai:8088/osm-konsistenscheck/
 ```
+
+Overpass är notoriskt opålitlig - `build_osm.py` försöker tre Overpass-
+spegelservrar (overpass-api.de, kumi.systems, private.coffee) två gånger
+var med 15 s backoff innan den ger upp.
 
 ## Funktioner
 
@@ -45,6 +64,11 @@ uv run osm-konsistenscheck/build_diff.py    # default 100 m radie
   - "SVK plats-sida" till `svenskakyrkan.se/platser/<slug>`
   - "Församlingens sida" om angiven
 - **CSV-export** av "Bara SVK" - 1053 poster med name/owner/city/koord/url.
+- **In-app rebuild**: knapp i headern triggar `build_svk.py` + `build_osm.py`
+  + `build_diff.py` via en POST mot `/osm-konsistenscheck/api/rebuild`.
+  Status pollas var 2:a sekund (`/api/rebuild/status`), pulserande
+  indikator visar aktuellt steg, sidan reloadar när det är klart.
+  Bara ett rebuild-jobb i taget (parallell-POST → 409).
 
 ## Resultat (radie 100 m, 2026-05-02)
 
@@ -97,15 +121,20 @@ Ramsjö kyrka var bara taggad som `building=church`, inte
 ```
 osm-konsistenscheck/
   build_svk.py      # hämtar SVK Platser via dev-proxy
-  build_osm.py      # hämtar OSM via Overpass
+  build_osm.py      # hämtar OSM via Overpass (med retry mot 3 spegelservrar)
   build_diff.py     # matchar och skriver diff.geojson + summary
-  index.html        # Leaflet-karta med kluster, filter, sök, export
+  rebuild.sh        # kör de tre stegen i ordning (kräver att servern kör)
+  index.html        # Leaflet-karta med kluster, filter, sök, export, rebuild-knapp
   data/             # gitignored
     svk_kyrkor.geojson
     osm_kyrkor.geojson
     diff.geojson
-    diff_summary.json
+    diff_summary.json   # innehåller built_at + svk_source_at + osm_source_at
 ```
+
+In-app-rebuild-endpointarna lever i `scripts/serve.py` (single-threaded
+HTTPServer, jobbet körs i en `threading.Thread(daemon=True)` så den inte
+blockerar status-pollningen).
 
 ## Möjliga framtida tillägg
 

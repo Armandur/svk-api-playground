@@ -16,13 +16,20 @@ Kör: uv run osm-konsistenscheck/build_osm.py
 from __future__ import annotations
 
 import json
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "data" / "osm_kyrkor.geojson"
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+# Flera Overpass-instanser - huvudinstansen får ofta 504/429 vid lasttoppar.
+OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+]
 
 # Sverige som area. Tar place_of_worship med religion=christian, plus
 # building=church (många kyrkbyggnader saknar amenity-taggen). Så
@@ -44,20 +51,45 @@ out tags center;
 """
 
 
+def _fetch_overpass() -> dict:
+    """Försöker varje Overpass-instans i turordning, två gånger var.
+    Backoff: 5 s, 15 s mellan försök. Reser sista felet om alla failar."""
+    body = urllib.parse.urlencode({"data": QUERY}).encode("utf-8")
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        # Overpass returnerar 406 för default Python-User-Agent,
+        # antagligen del av deras anti-abuse-policy.
+        "User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)",
+    }
+    last_err: Exception | None = None
+    attempts = [(url, delay) for url in OVERPASS_URLS for delay in (0, 15)]
+    for i, (url, delay) in enumerate(attempts, 1):
+        if delay:
+            print(f"  väntar {delay} s innan retry...", flush=True)
+            time.sleep(delay)
+        host = url.split("//", 1)[1].split("/", 1)[0]
+        print(f"  försök {i}/{len(attempts)}: {host}", flush=True)
+        req = urllib.request.Request(url, data=body, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                return json.loads(r.read())
+        except HTTPError as e:
+            last_err = e
+            print(f"    HTTP {e.code} {e.reason}", flush=True)
+            # 400 = bad query - meningslöst att retrya andra instanser
+            if e.code == 400:
+                raise
+        except (URLError, TimeoutError, json.JSONDecodeError) as e:
+            last_err = e
+            print(f"    {type(e).__name__}: {e}", flush=True)
+    raise RuntimeError(
+        f"Alla Overpass-instanser failade. Senaste fel: {last_err}")
+
+
 def main() -> int:
     OUT.parent.mkdir(exist_ok=True)
     print("Hämtar OSM-data från Overpass (kan ta 30-60 s)...", flush=True)
-    body = urllib.parse.urlencode({"data": QUERY}).encode("utf-8")
-    req = urllib.request.Request(
-        OVERPASS_URL, data=body,
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            # Overpass returnerar 406 för default Python-User-Agent,
-            # antagligen del av deras anti-abuse-policy.
-            "User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)",
-        })
-    with urllib.request.urlopen(req, timeout=300) as r:
-        result = json.loads(r.read())
+    result = _fetch_overpass()
 
     elements = result.get("elements", [])
     print(f"  hämtade {len(elements)} element", flush=True)

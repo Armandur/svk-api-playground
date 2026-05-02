@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -228,6 +229,11 @@ def main(argv: list[str]) -> int:
         key=lambda x: x["antal"], reverse=True)
 
     summary = {
+        "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "svk_source_at": datetime.fromtimestamp(
+            svk_path.stat().st_mtime, tz=timezone.utc).isoformat(timespec="seconds"),
+        "osm_source_at": datetime.fromtimestamp(
+            osm_path.stat().st_mtime, tz=timezone.utc).isoformat(timespec="seconds"),
         "radius_m": radius,
         "antal_svk": len(svk),
         "antal_osm": len(osm),

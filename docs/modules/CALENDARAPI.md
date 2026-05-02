@@ -10,7 +10,7 @@ collections"), fulltext, partial patch och historik per event.
 |---|---|
 | Stil | REST (JSON), Azure API Management |
 | Server-URL | `https://svk-apim-prod.azure-api.net/calendar/v1` |
-| OpenAPI-spec (lokal) | [`docs/specs/calendarapi.openapi.json`](../specs/calendarapi.openapi.json) - 376 KB, OpenAPI 3.0.1 |
+| OpenAPI-spec (lokal) | [Swagger UI](../specs/calendarapi.html) · [rå JSON](../specs/calendarapi.openapi.json) - 376 KB, OpenAPI 3.0.1 |
 | Version (changelog) | v1.2 (per 2023-10-06 [1.0.3]) |
 | Plattform | Azure APIM (`svk-apim-prod`) |
 | Auth (läs/skriv) | `Ocp-Apim-Subscription-Key: <key>` (header) eller `?subscription-key=<key>` (query) |
