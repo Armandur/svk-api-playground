@@ -106,8 +106,24 @@ const OWNER_ID = PARAMS.get("owner_id");
 const NEARBY = PARAMS.get("nearby");          // "lon,lat"
 const NEARBY_RADIUS = PARAMS.get("radius") || "5000";
 const LIMIT = PARAMS.get("limit") || "500";
-// ?layer=forsamlingar|kontrakt|stift|ekonomiska_enheter|none (default stift)
-const BORDER_LAYER = PARAMS.get("layer") ?? "stift";
+// ?layer=auto|forsamlingar|kontrakt|stift|ekonomiska_enheter|none
+// auto (default) växlar baserat på zoomnivå:
+//   <=6 stift, 7-8 kontrakt, 9-10 ekonomiska_enheter, >=11 forsamlingar
+const BORDER_LAYER = PARAMS.get("layer") ?? "auto";
+
+const ZOOM_THRESHOLDS = [
+  { maxZoom: 6,  layer: "stift" },
+  { maxZoom: 8,  layer: "kontrakt" },
+  { maxZoom: 10, layer: "ekonomiska_enheter" },
+  { maxZoom: 99, layer: "forsamlingar" },
+];
+
+function pickLayerForZoom(zoom) {
+  for (const t of ZOOM_THRESHOLDS) {
+    if (zoom <= t.maxZoom) return t.layer;
+  }
+  return "forsamlingar";
+}
 
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c =>
@@ -128,17 +144,28 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap-bidragsgivare",
 }).addTo(map);
 
-// Lägg på valt gräns-lager om angivet (data byggs av build_kartor.py)
-async function loadBorderLayer(layerName) {
-  if (!layerName || layerName === "none") return;
+// Cachade Leaflet-lager per layerName så vi bara hämtar varje en gång.
+// null = "fetch pågår", false = "fetch failed".
+const layerCache = new Map();
+let activeBorderLayer = null;
+
+async function ensureLayer(layerName) {
+  if (!layerName || layerName === "none") return null;
+  if (layerCache.has(layerName)) {
+    const cached = layerCache.get(layerName);
+    return cached || null;   // false → null
+  }
+  // Markera som "fetch pågår" så samtidiga zoom-event inte triggar dubbla fetch
+  layerCache.set(layerName, null);
   try {
     const r = await fetch(`data/${layerName}.geojson`, { cache: "no-store" });
     if (!r.ok) {
       console.warn(`data/${layerName}.geojson saknas - kör build_kartor.py`);
-      return;
+      layerCache.set(layerName, false);
+      return null;
     }
     const gj = await r.json();
-    L.geoJson(gj, {
+    const leafletLayer = L.geoJson(gj, {
       style: {
         color: "#7D0037", weight: 1.0, opacity: 0.55,
         fillColor: "#FFC3AA", fillOpacity: 0.05,
@@ -149,12 +176,40 @@ async function loadBorderLayer(layerName) {
                   || "(okänt namn)";
         layer.bindTooltip(name, { sticky: true });
       },
-    }).addTo(map);
+    });
+    layerCache.set(layerName, leafletLayer);
+    return leafletLayer;
   } catch (e) {
     console.warn(`Kunde inte ladda ${layerName}-gränser:`, e);
+    layerCache.set(layerName, false);
+    return null;
   }
 }
-loadBorderLayer(BORDER_LAYER);
+
+async function showBorderLayer(layerName) {
+  const next = await ensureLayer(layerName);
+  // Om någon hann byta sedan vi började fetcha, skippa
+  if (BORDER_LAYER === "auto" && pickLayerForZoom(map.getZoom()) !== layerName) {
+    return;
+  }
+  if (activeBorderLayer === next) return;
+  if (activeBorderLayer) map.removeLayer(activeBorderLayer);
+  if (next) {
+    next.addTo(map);
+    activeBorderLayer = next;
+  } else {
+    activeBorderLayer = null;
+  }
+}
+
+if (BORDER_LAYER === "auto") {
+  // Initial + varje zoom-end väljer rätt lager för aktuell zoom
+  const onZoom = () => showBorderLayer(pickLayerForZoom(map.getZoom()));
+  map.on("zoomend", onZoom);
+  onZoom();
+} else {
+  showBorderLayer(BORDER_LAYER);
+}
 
 const TYPE_LABEL = {
   churchAndChapel: "Kyrka/kapell",

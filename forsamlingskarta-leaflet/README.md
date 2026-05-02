@@ -27,7 +27,7 @@ https://din-server/forsamlingskarta-leaflet/?apikey=<key>
 | `?owner_id=<id>` eller `?owner_id=<id1>,<id2>,...` | Filtrera på ägar-enhet (församling/pastorat) |
 | `?nearby=<lon>,<lat>&radius=<m>` | Geosök inom radie i meter (WGS84-koordinater) |
 | `?limit=<n>` | Max antal platser (default 500) |
-| `?layer=<lager>` | Gränser att rita: `stift` (default), `kontrakt`, `forsamlingar`, `ekonomiska_enheter`, eller `none` |
+| `?layer=<lager>` | Gränser att rita. Default `auto` växlar baserat på zoom (stift→kontrakt→ekonomiska_enheter→forsamlingar). Override med `stift`, `kontrakt`, `forsamlingar`, `ekonomiska_enheter` eller `none`. |
 
 ### Exempel
 
@@ -72,8 +72,19 @@ ser till att grannförsamlingar inte får glapp på delade gränser.
 Tolerance per lager justeras i `SIMPLIFY_TOLERANCE_M`-dicten i
 `build_kartor.py`.
 
-Lager väljs via `?layer=forsamlingar|kontrakt|stift|ekonomiska_enheter|none`
-(default `stift`).
+Lager väljs via `?layer=`. Default `auto` växlar baserat på zoom:
+
+| Zoom | Lager |
+|---|---|
+| ≤ 6 (Hela Sverige) | `stift` |
+| 7-8 (Region) | `kontrakt` |
+| 9-10 (Stiftsområde) | `ekonomiska_enheter` |
+| ≥ 11 (Kommunnivå+) | `forsamlingar` |
+
+Lager hämtas lazy och cachas, så ett lager laddas bara en gång även
+om man zoomar fram och tillbaka. Override med `?layer=<namn>` för att
+låsa till en specifik vy, eller `?layer=none` för att dölja alla
+gränser.
 
 `data/`-mappen är gitignored för att inte blåsa upp repot - bygg
 lokalt vid behov.
