@@ -305,6 +305,75 @@ Hämta events från [CalendarAPI](#CALENDARAPI) för flera enheter och
 visa som en gemensam stiftskalender eller liknande. Bra övning på
 OAuth2-flödet och OData-aktig sökning.
 
+### 9. KBR + Riksantikvarieämbetet K-samsök (`kbr-raa/`)
+
+KBR har ett `identitetRAA`-fält per kyrka som är en direktlänk till RAÄ:s
+kulturmiljöregister. K-samsök (SOCH) har ett öppet REST/SPARQL-API:
+`https://kulturarvsdata.se/ksamsok/api`.
+
+Möjliga vinklar:
+- Berika `kbr-tidslinje/` med skyddsstatus per kyrka (byggnadsminne,
+  kyrkligt kulturminne, skyddsklass K1/K2/K3) - visas i popup.
+- Komplettera `kbr-kvalitet/` med en flik "RAÄ-koppling": kyrkor vars
+  `identitetRAA` inte hittas i K-samsök, eller vars koordinater avviker.
+- 324 kyrkor i KBR saknar `identitetRAA` - K-samsök-sökning på namn +
+  koordinat kan hitta troliga matchningar.
+
+Öppet API, ingen nyckel krävs. Enda externa beroendet är pyproj (redan
+installerat i projektet).
+
+### 10. kbr-tidslinje + historiska kartlager (`kbr-tidslinje/`, utbyggnad)
+
+Lantmäteriet har ett öppet WMS med historiska kartor:
+- Häradskartan (~1870-1900): `https://api.lantmateriet.se/historiska-ortofoton/...`
+- Ekonomiska kartan (1930-1980)
+- Fältkartan / Generalstabskartan (1800-tal)
+
+Tile-lagret byts automatiskt baserat på slider-år, så år 1880 visar
+Häradskartan, år 1950 Ekonomiska kartan osv. Tekniskt: byt `L.tileLayer`-URL
+när `currentYear` passerar en tröskeln. Kräver att man identifierar rätt
+WMS-endpoint och lager-namn - se Lantmäteriets API-portal.
+
+Visuellt stark funktion: bygger på befintlig kbr-tidslinje utan ny datapipeline.
+
+### 11. signage-platser + SMHI väderprognos (utbyggnad)
+
+SMHI har ett helt öppet prognos-API (ingen nyckel):
+`https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/{lng}/lat/{lat}/data.json`
+
+Utbyggnad av `signage-platser/`: lägg till en väderrad i displayen baserat
+på platsens koordinater. Hämtas direkt från SMHI vid varje polling-cykel.
+Relevant för utomhusarrangemang och kyrkbesökare.
+
+Begränsningar: SMHI-prognosen täcker bara Sverige och max ~10 dygn framåt.
+Koordinater tas från Platser-API:ts `location`-fält.
+
+### 12. Församlingsgränser + SCB befolkningsstatistik (`forsamling-befolkning/`)
+
+SCB publicerar befolkningsdata på DeSO-rutor (250 m upplösning) som öppen
+nedladdning: `https://www.scb.se/hitta-statistik/statistik-efter-amne/befolkning/`.
+
+Kombinera med församlingsgränserna från `forsamlingskarta-leaflet/`:
+- Räkna antal SCB-invånare per församling via spatial join (pyproj/shapely)
+- Koropletlager i Leaflet: färg per befolkningstäthet
+- Popup: "X invånare, Y km², Z inv/km²"
+
+Intressant kontrast storstads- kontra glesbygdsförsamlingar. Kräver
+nedladdning av SCB-fil (shapefile/GeoJSON) och en enkel Python-join mot
+KML/GeoJSON från Församlingskartor-API:t.
+
+### 13. KBR + Mapillary-fasadfoton (`kbr-tidslinje/`, utbyggnad)
+
+Mapillary har ett gratis API (kräver API-nyckel, gratis registrering):
+`https://graph.mapillary.com/images?fields=id,thumb_256_url&bbox={west},{south},{east},{north}`
+
+Hämta närmaste gatufoto inom 100 m från KBR-koordinaten och visa som
+miniatyr i popup. Enklaste berikandet av kbr-tidslinje - ett klick
+öppnar full bild på mapillary.com om täckning finns.
+
+Genomförbarhet beror på Mapillary-täckning utanför städer - många landsbygdskyrkor
+kan sakna foton. Räkna andelen täckta som ett kvalitetsmått.
+
 ## Generellt - nästa steg per API
 
 Status efter verifiering med vår nyckel mot test 2026-05-01:
