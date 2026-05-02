@@ -81,6 +81,25 @@ header .stats b { color: var(--wine); font-weight: 600; }
 }
 .banner.err { background: var(--wine); color: var(--beige); font-style: normal; }
 .banner b { font-style: normal; font-weight: 500; }
+
+/* Layer-väljare som leaflet-control - vinröd accent, beige bakgrund */
+.layer-picker {
+  background: var(--beige); padding: 8px 10px;
+  border: 1px solid var(--wine);
+  font: 13px "DM Sans", Arial, sans-serif;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.layer-picker .lp-title {
+  font-size: 11px; color: var(--wine); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.layer-picker label {
+  display: block; padding: 2px 0; cursor: pointer;
+  user-select: none; line-height: 1.4;
+}
+.layer-picker label:hover { color: var(--wine); }
+.layer-picker input { accent-color: var(--wine); margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -188,8 +207,12 @@ async function ensureLayer(layerName) {
 
 async function showBorderLayer(layerName) {
   const next = await ensureLayer(layerName);
-  // Om någon hann byta sedan vi började fetcha, skippa
-  if (BORDER_LAYER === "auto" && pickLayerForZoom(map.getZoom()) !== layerName) {
+  // Race-skydd: om användaren bytte mode/zoom sen vi började fetcha,
+  // skippa för att inte rendera fel lager.
+  const expected = currentMode === "auto"
+    ? pickLayerForZoom(map.getZoom())
+    : currentMode;
+  if (expected !== layerName && expected !== "none") {
     return;
   }
   if (activeBorderLayer === next) return;
@@ -202,14 +225,57 @@ async function showBorderLayer(layerName) {
   }
 }
 
-if (BORDER_LAYER === "auto") {
-  // Initial + varje zoom-end väljer rätt lager för aktuell zoom
-  const onZoom = () => showBorderLayer(pickLayerForZoom(map.getZoom()));
-  map.on("zoomend", onZoom);
-  onZoom();
-} else {
-  showBorderLayer(BORDER_LAYER);
+// Aktuellt mode - kan ändras live via lager-väljaren
+let currentMode = BORDER_LAYER;
+let zoomHandler = null;
+
+function applyMode(mode) {
+  currentMode = mode;
+  if (zoomHandler) {
+    map.off("zoomend", zoomHandler);
+    zoomHandler = null;
+  }
+  if (mode === "auto") {
+    zoomHandler = () => showBorderLayer(pickLayerForZoom(map.getZoom()));
+    map.on("zoomend", zoomHandler);
+    zoomHandler();
+  } else {
+    showBorderLayer(mode);
+  }
 }
+
+// Custom Leaflet control - radio buttons för manuellt lagerval
+const LAYER_OPTIONS = [
+  { value: "auto",                label: "Auto (växlar med zoom)" },
+  { value: "stift",               label: "Stift" },
+  { value: "kontrakt",            label: "Kontrakt" },
+  { value: "ekonomiska_enheter",  label: "Ekonomiska enheter" },
+  { value: "forsamlingar",        label: "Församlingar" },
+  { value: "none",                label: "Inga gränser" },
+];
+
+const LayerPickerControl = L.Control.extend({
+  options: { position: "topright" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "layer-picker");
+    div.innerHTML = `<div class="lp-title">Gränser</div>` +
+      LAYER_OPTIONS.map(o => `
+        <label>
+          <input type="radio" name="border-layer" value="${o.value}"
+                 ${o.value === currentMode ? "checked" : ""}>
+          ${o.label}
+        </label>`).join("");
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    for (const inp of div.querySelectorAll("input")) {
+      inp.addEventListener("change", e => applyMode(e.target.value));
+    }
+    return div;
+  },
+});
+new LayerPickerControl().addTo(map);
+
+applyMode(currentMode);
 
 const TYPE_LABEL = {
   churchAndChapel: "Kyrka/kapell",
