@@ -141,9 +141,11 @@ blockerar status-pollningen).
 - **Wikidata-cross-check**: för osm_only med wikidata-tagg, slå upp
   Wikidata och se om det är en "Church of Sweden church" - då är det
   förmodligen en miss i SVK Platser, inte annan denomination.
-- **Tags-export**: predefinierade .osm-fil för iD-editor som lägger
-  till `amenity=place_of_worship` etc i ett klick på matched-noder
-  med taggbrist.
+- **Per-nod tag-copy**: knapp i popupen som kopierar de saknade
+  taggarna (t.ex. `amenity=place_of_worship\nreligion=christian`) till
+  clipboard. Användaren öppnar iD via "Redigera"-länken som vanligt och
+  klistrar in i "Alla taggar"-vyn. Manuellt verifierat per nod, inom
+  OSM:s riktlinjer (ej massimport).
 - **Per-stift-statistik**: var i landet är diskrepansen störst?
 - **Slug-baserade länkar för svk_only**: vissa svk_only saknar slug
   i nuvarande hämtning - lägg till om det blir aktuellt.

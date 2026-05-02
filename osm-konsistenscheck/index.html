@@ -154,6 +154,16 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 .popup-status.matched { background: rgba(0, 85, 75, 0.12); color: var(--dark-green); }
 .popup-status.svk-only { background: rgba(125, 0, 55, 0.12); color: var(--wine); }
 .popup-status.osm-only { background: rgba(61, 122, 184, 0.14); color: var(--osm); }
+.copy-tags-btn {
+  font: 11px "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--wine);
+  border: 1px solid var(--wine); border-radius: 2px;
+  padding: 2px 8px; margin: 4px 0 2px;
+  cursor: pointer;
+}
+.copy-tags-btn:hover { background: var(--wine); color: var(--beige); }
+.copy-tags-btn.copied { background: var(--dark-green); color: var(--beige);
+                        border-color: var(--dark-green); }
 
 /* Egen pie-chart-cluster */
 .pie-cluster {
@@ -354,19 +364,71 @@ function makeIcon(color, ringColor = null) {
   });
 }
 
+function suggestedTagValue(key) {
+  // Defaultvärden för Svenska kyrkans noder. Lutheran är "Church of
+  // Sweden"-standard i OSM (denomination-värdet).
+  if (key === "amenity") return "place_of_worship";
+  if (key === "religion") return "christian";
+  if (key === "denomination") return "lutheran";
+  return "";
+}
+function copyToClipboard(text, btn) {
+  // navigator.clipboard kräver secure context. ubuntu-ai över Tailscale
+  // är inte secure context i alla browsers, så fallback till textarea.
+  const flash = (label, ok = true) => {
+    const orig = btn.textContent;
+    btn.textContent = label;
+    if (ok) btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove("copied"); }, 1500);
+  };
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    ta.style.top = "0"; ta.style.left = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    flash(ok ? "Kopierat!" : "Misslyckades", ok);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(() => flash("Kopierat!"))
+      .catch(fallback);
+  } else {
+    fallback();
+  }
+}
+// Event-delegation för copy-knappar (popups skapas dynamiskt av Leaflet)
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".copy-tags-btn");
+  if (!btn) return;
+  e.preventDefault();
+  const text = decodeURIComponent(btn.dataset.tags || "");
+  if (text) copyToClipboard(text, btn);
+});
+function copyTagsButton(tagLines) {
+  // Knapp som kopierar key=value-rader till clipboard. Värdet bärs i
+  // data-tags som URI-encoded sträng så vi slipper escape-mardrömmar
+  // för name-värden med citattecken etc.
+  const payload = encodeURIComponent(tagLines.join("\n"));
+  return `<button class="copy-tags-btn" data-tags="${payload}" type="button">` +
+    `Kopiera taggar</button>`;
+}
+
 function popupHtml(p) {
   if (p.kategori === "matched") {
     const dist = p.distance_m;
     const missing = p.osm_missing_tags || [];
+    const missingTagLines = missing.map(t => `${t}=${suggestedTagValue(t)}`);
     const missingHtml = missing.length
       ? `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>` +
         `<div class="popup-meta">Förslag att lägga till i OSM:</div>` +
-        missing.map(t => {
-          const value = t === "amenity" ? "place_of_worship"
-            : t === "religion" ? "christian"
-            : "lutheran";
-          return `<div class="popup-meta"><code>${t}=${value}</code></div>`;
-        }).join("")
+        missingTagLines.map(line =>
+          `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("") +
+        copyTagsButton(missingTagLines)
       : "";
     const editLink = p.osm_id
       ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit?${escapeHtml(p.osm_id.replace("/", "="))}" target="_blank" rel="noopener">Redigera i iD</a></div>`
@@ -386,15 +448,20 @@ function popupHtml(p) {
   }
   if (p.kategori === "svk_only") {
     const [lon, lat] = [p._lon, p._lat];  // sätts vid render
+    const newNodeTags = [
+      "amenity=place_of_worship",
+      "religion=christian",
+      "denomination=lutheran",
+    ];
+    if (p.name) newNodeTags.push(`name=${p.name}`);
     return `<div class="popup-name">${escapeHtml(p.name || "?")}</div>` +
       (p.owner_name ? `<div class="popup-meta">${escapeHtml(p.owner_name)}</div>` : "") +
       (p.city ? `<div class="popup-meta">${escapeHtml(p.city)}</div>` : "") +
       `<div class="popup-status svk-only">Saknas i OSM (eller >100 m bort)</div>` +
       `<div class="popup-meta">Föreslagna OSM-taggar:</div>` +
-      `<div class="popup-meta"><code>amenity=place_of_worship</code></div>` +
-      `<div class="popup-meta"><code>religion=christian</code></div>` +
-      `<div class="popup-meta"><code>denomination=lutheran</code></div>` +
-      (p.name ? `<div class="popup-meta"><code>name=${escapeHtml(p.name)}</code></div>` : "") +
+      newNodeTags.map(line =>
+        `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("") +
+      copyTagsButton(newNodeTags) +
       (lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">Lägg till i iD-editor</a></div>` : "") +
       (p.slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : "") +
       (p.url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : "");
