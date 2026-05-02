@@ -543,7 +543,6 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             with urlopen(req, timeout=15) as resp:
                 data = resp.read()
-                ctype = resp.headers.get("Content-Type", "application/json")
                 status = resp.status
         except HTTPError as e:
             err = e.read() if hasattr(e, "read") else b""
@@ -557,8 +556,15 @@ class Handler(SimpleHTTPRequestHandler):
         except URLError as e:
             self.send_error(502, f"Upstream error: {e.reason}")
             return
+        # /churchcontext returnerar JS: "var churchContext={...};"
+        # Strippa wrappern så klienten kan parsa som JSON.
+        text = data.decode("utf-8", errors="replace")
+        if text.startswith("var churchContext="):
+            text = text[len("var churchContext="):]
+        text = text.rstrip().rstrip(";")
+        data = text.encode("utf-8")
         self.send_response(status)
-        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()

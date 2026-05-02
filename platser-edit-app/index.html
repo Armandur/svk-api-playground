@@ -406,6 +406,9 @@ header .subtitle {
 <div class="search">
   <input id="searchInput" type="search" autocomplete="off"
     placeholder="Sök plats eller församling, t.ex. 'härnösand domkyrka'">
+  <button id="myPlacesBtn" type="button" class="btn-secondary">
+    Mina platser
+  </button>
 </div>
 <ul id="results" class="results"></ul>
 
@@ -1116,6 +1119,57 @@ $("addExceptionBtn").addEventListener("click", () => {
 $("saveBtn").addEventListener("click", save);
 $("searchInput").addEventListener("input",
   debounce(e => search(e.target.value.trim()), 300));
+
+// Mina platser - hämta inloggade users enhets-id:n från churchcontext
+// och filtrera Platser-API på dessa via owner_id.
+function extractUnitIdsFromGroups(groups) {
+  // Format: "Ext\740_<unitId>_Externwebbsredaktör <namn>"
+  const ids = new Set();
+  for (const g of groups || []) {
+    const m = g.match(/^Ext\\740_(\d+)_/);
+    if (m) ids.add(m[1]);
+  }
+  return [...ids];
+}
+
+async function loadMyPlaces() {
+  const ul = $("results");
+  ul.innerHTML = `<li><div class="loading">Hämtar dina platser…</div></li>`;
+  $("searchInput").value = "";
+  try {
+    const cc = await fetch("/api/admin/_churchcontext", { cache: "no-store" });
+    if (!cc.ok) throw new Error(`Kunde inte hämta sessionsinfo (HTTP ${cc.status})`);
+    const ctx = await cc.json();
+    const unitIds = extractUnitIdsFromGroups(ctx.user?.groups);
+    if (!unitIds.length) {
+      ul.innerHTML = `<li><div class="loading">Inga skriv-grupper hittades i din SSO-session.</div></li>`;
+      return;
+    }
+    const r = await fetch(
+      `/api/platser/place?owner_id=${unitIds.join(",")}&limit=500`,
+      { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    const results = d.results || [];
+    if (!results.length) {
+      ul.innerHTML = `<li><div class="loading">Inga platser hittades för dina ${unitIds.length} enheter (id: ${unitIds.join(", ")}).</div></li>`;
+      return;
+    }
+    ul.innerHTML = results.map(p => `
+      <li><button data-id="${p.id}">
+        <span class="place-name">${escapeHtml(p.name)}</span>
+        <span class="owner-name">${escapeHtml(p.owner?.name || "")}</span>
+      </button></li>
+    `).join("");
+    for (const btn of ul.querySelectorAll("button")) {
+      btn.addEventListener("click", () => loadPlace(btn.dataset.id));
+    }
+  } catch (e) {
+    ul.innerHTML = `<li><div class="loading">Fel: ${escapeHtml(e.message)}</div></li>`;
+  }
+}
+
+$("myPlacesBtn").addEventListener("click", loadMyPlaces);
 
 function fmtRelative(ts, now) {
   if (!ts) return "aldrig";
