@@ -56,11 +56,15 @@ def shapefile_from_zip(zf: zipfile.ZipFile, layer: str, year: str) -> shapefile.
 
 
 def project_geometry(geom: dict, transformer: Transformer) -> dict:
-    """Reprojicera GeoJSON-geometri från EPSG:3006 till EPSG:4326."""
+    """Reprojicera GeoJSON-geometri från EPSG:3006 till EPSG:4326.
+    Med always_xy=True på transformern är input (x=easting, y=northing)
+    och output (lon, lat). GeoJSON-standarden vill ha [lon, lat] så
+    vi behåller den ordningen rakt av."""
+    def proj_point(p):
+        lon, lat = transformer.transform(p[0], p[1])
+        return [lon, lat]
     def proj_ring(ring):
-        return [list(transformer.transform(x, y))[::-1] + ([list(p)[2:] if len(p) > 2 else []][0])
-                for p in ring for x, y in [(p[0], p[1])]]
-    # Förenklad: bara hantera Polygon/MultiPolygon (vad uff-lagren använder)
+        return [proj_point(p) for p in ring]
     t = geom["type"]
     if t == "Polygon":
         return {"type": "Polygon",
@@ -70,9 +74,7 @@ def project_geometry(geom: dict, transformer: Transformer) -> dict:
                 "coordinates": [[proj_ring(ring) for ring in poly]
                                 for poly in geom["coordinates"]]}
     if t == "Point":
-        x, y = geom["coordinates"][:2]
-        lon, lat = transformer.transform(x, y)
-        return {"type": "Point", "coordinates": [lon, lat]}
+        return {"type": "Point", "coordinates": proj_point(geom["coordinates"])}
     raise ValueError(f"Okänd geometritype: {t}")
 
 
