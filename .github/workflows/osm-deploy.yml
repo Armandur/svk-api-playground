@@ -56,11 +56,67 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy/data
-          cp osm-konsistenscheck/index.html _deploy/index.html
+          mkdir -p _deploy/osm-konsistenscheck/data
+          cp osm-konsistenscheck/index.html _deploy/osm-konsistenscheck/index.html
           cp osm-konsistenscheck/data/diff.geojson \
              osm-konsistenscheck/data/diff_summary.json \
-             _deploy/data/
+             _deploy/osm-konsistenscheck/data/
+          # Enkel landningssida i roten med länk till projekten.
+          # Lägger fler projekt här när de Pages-deployas.
+          cat > _deploy/index.html <<'HTML'
+          <!doctype html>
+          <html lang="sv">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>svk-api-playground</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+          <style>
+          :root { --beige: #FFEBE1; --black: #000; --wine: #7D0037; --gold: #BC8E4C; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: "DM Sans", Arial, sans-serif; background: var(--beige);
+                 color: var(--black); min-height: 100vh; padding: clamp(24px, 5vw, 64px); }
+          .wrap { max-width: 720px; margin: 0 auto; }
+          h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 500; color: var(--wine);
+               letter-spacing: -0.02em; }
+          h1 em { font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+                  font-weight: 400; color: var(--black); }
+          .lead { font-size: 17px; margin: 16px 0 32px; max-width: 580px; line-height: 1.5; }
+          .card { display: block; padding: 20px 24px; background: #fff;
+                  border: 2px solid var(--black); border-radius: 4px;
+                  text-decoration: none; color: inherit; margin-bottom: 12px;
+                  transition: transform 0.1s, background 0.1s; }
+          .card:hover { transform: translateY(-2px); background: var(--wine); color: var(--beige); }
+          .card h2 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+          .card p { font-size: 14px; }
+          .card .url { font-size: 12px; font-family: ui-monospace, monospace;
+                       color: var(--gold); margin-top: 8px; display: block; }
+          .card:hover .url { color: var(--beige); opacity: 0.8; }
+          footer { font-size: 13px; color: #555; margin-top: 48px;
+                   border-top: 1px solid var(--black); padding-top: 12px; }
+          footer a { color: var(--wine); }
+          </style>
+          </head>
+          <body>
+          <div class="wrap">
+            <h1>svk-api-playground</h1>
+            <p class="lead">Lekplats för Svenska kyrkans publika API:er. <em>Statiska
+            byggen från huvud-repo:t.</em></p>
+            <a class="card" href="osm-konsistenscheck/">
+              <h2>SVK ↔ OSM kyrkokonsistens</h2>
+              <p>Karta som visar var Svenska kyrkans Platser-API och OpenStreetMap
+              skiljer sig åt. Dagligen uppdaterad.</p>
+              <span class="url">/osm-konsistenscheck/</span>
+            </a>
+            <footer>
+              Källkod: <a href="https://github.com/Armandur/svk-api-playground">github.com/Armandur/svk-api-playground</a>
+            </footer>
+          </div>
+          </body>
+          </html>
+          HTML
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
