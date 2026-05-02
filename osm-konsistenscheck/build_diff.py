@@ -194,14 +194,27 @@ def main(argv: list[str]) -> int:
             },
         })
 
+    # Wikidata-berikning: vilka osm_only har wikidata-tagg som pekar mot
+    # en SvK-stiftstillhörig kyrka? De flyttas konceptuellt från "annan
+    # denomination" till "förmodlig SVK Platser-miss".
+    wd_set: dict[str, str] = {}
+    wd_set_path = DATA / "wikidata_svk_set.json"
+    if wd_set_path.exists():
+        wd_set = json.loads(wd_set_path.read_text())["items"]
+
     osm_only = []
     for j, (_, osm_props, osm_lonlat) in enumerate(osm_rows):
         if j in osm_consumed:
             continue
+        props = {**osm_props, "kategori": "osm_only"}
+        wd = osm_props.get("wikidata")
+        if wd and wd in wd_set:
+            props["likely_svk_miss"] = True
+            props["wikidata_diocese"] = wd_set[wd]
         osm_only.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": osm_lonlat},
-            "properties": {**osm_props, "kategori": "osm_only"},
+            "properties": props,
         })
 
     out = {
@@ -228,6 +241,8 @@ def main(argv: list[str]) -> int:
         ({"value": k, "antal": v} for k, v in denom_counts.items()),
         key=lambda x: x["antal"], reverse=True)
 
+    likely_svk_miss = sum(1 for f in osm_only
+                          if f["properties"].get("likely_svk_miss"))
     summary = {
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "svk_source_at": datetime.fromtimestamp(
@@ -240,6 +255,7 @@ def main(argv: list[str]) -> int:
         "matched": len(matched),
         "svk_only": len(svk_only),
         "osm_only": len(osm_only),
+        "osm_only_likely_svk_miss": likely_svk_miss,
         "matched_namnmismatch": namnmismatch,
         "matched_distance_over_50m": long_distance,
         "matched_osm_taggbrist": osm_kvalitet,

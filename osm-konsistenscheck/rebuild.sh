@@ -20,5 +20,6 @@ fi
 echo "=== $(date -Is) rebuild ==="
 uv run osm-konsistenscheck/build_svk.py
 uv run osm-konsistenscheck/build_osm.py
+uv run osm-konsistenscheck/build_wikidata.py
 uv run osm-konsistenscheck/build_diff.py "${1:-100}"
 echo "=== klart - ladda om http://ubuntu-ai:${PORT}/osm-konsistenscheck/ ==="

@@ -140,8 +140,9 @@ Ramsjö kyrka var bara taggad som `building=church`, inte
 osm-konsistenscheck/
   build_svk.py      # hämtar SVK Platser direkt med APIKEY (PLATSER_BASE för proxy)
   build_osm.py      # hämtar OSM via Overpass (med retry mot 3 spegelservrar)
+  build_wikidata.py # hämtar SvK-stiftens Q-IDs från Wikidata SPARQL
   build_diff.py     # matchar och skriver diff.geojson + summary
-  rebuild.sh        # kör de tre stegen i ordning (kräver att servern kör)
+  rebuild.sh        # kör stegen i ordning (kräver att servern kör)
   index.html        # Leaflet-karta med kluster, filter, sök, export, rebuild-knapp
   data/             # gitignored
     svk_kyrkor.geojson
@@ -164,6 +165,13 @@ blockerar status-pollningen).
   clipboard. Användaren öppnar iD via "Redigera"-länken som vanligt och
   klistrar in i "Alla taggar"-vyn. Manuellt verifierat per nod, inom
   OSM:s riktlinjer (ej massimport).
+
+- **Wikidata-cross-check** ✅ implementerat: `build_wikidata.py` hämtar
+  alla Q-IDs som har P708 = ett av de 13 SvK-stiften. `build_diff.py`
+  berikar `osm_only`-features vars `wikidata`-tagg finns i setet med
+  `likely_svk_miss=true`. UI:t visar dem med vinröd ring runt blå pin
+  och har en "Visa bara förmodliga SVK-missar"-toggle. ~178 av 1773
+  osm_only-noder identifierade så.
 - **Per-stift-statistik**: var i landet är diskrepansen störst?
 - **Slug-baserade länkar för svk_only**: vissa svk_only saknar slug
   i nuvarande hämtning - lägg till om det blir aktuellt.

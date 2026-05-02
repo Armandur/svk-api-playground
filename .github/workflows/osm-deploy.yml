@@ -48,12 +48,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Build SVK + OSM + diff
+      - name: Build SVK + OSM + Wikidata + diff
         env:
           APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
         run: |
           uv run osm-konsistenscheck/build_svk.py
           uv run osm-konsistenscheck/build_osm.py
+          uv run osm-konsistenscheck/build_wikidata.py
           uv run osm-konsistenscheck/build_diff.py
 
       - name: Prepare deploy folder

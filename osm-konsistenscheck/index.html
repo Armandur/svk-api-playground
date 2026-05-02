@@ -468,11 +468,18 @@ function popupHtml(p) {
       (p.url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : "");
   }
   // osm_only
+  const statusText = p.likely_svk_miss
+    ? `Wikidata pekar mot ${escapeHtml(p.wikidata_diocese || "SvK-stift")} - kanske saknas i SVK Platser`
+    : "Saknas i SVK Platser eller annan denomination";
+  const wdLink = p.wikidata
+    ? `<div class="popup-meta"><a class="popup-link" href="https://www.wikidata.org/wiki/${escapeHtml(p.wikidata)}" target="_blank" rel="noopener">Wikidata ${escapeHtml(p.wikidata)}</a></div>`
+    : "";
   return `<div class="popup-name">${escapeHtml(p.name || "(namnlös)")}</div>` +
     (p.denomination ? `<div class="popup-meta">Denomination: ${escapeHtml(p.denomination)}</div>` : "") +
     (p.operator ? `<div class="popup-meta">Operator: ${escapeHtml(p.operator)}</div>` : "") +
-    `<div class="popup-status osm-only">Saknas i SVK Platser eller annan denomination</div>` +
-    `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>`;
+    `<div class="popup-status osm-only">${statusText}</div>` +
+    `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>` +
+    wdLink;
 }
 
 // Ett gemensamt cluster för alla kategorier - klustermarkören visar
@@ -539,6 +546,9 @@ async function init() {
       matched_taggbrist: makeIcon(COLOR.matched, COLOR.taggbrist),
       svk_only: makeIcon(COLOR.svk_only),
       osm_only: makeIcon(COLOR.osm_only),
+      // osm_only-noder vars wikidata-tagg pekar mot SvK-stift - vinröd
+      // ring (svk-färgen) signalerar "borde sannolikt vara svk_only".
+      osm_only_likely_miss: makeIcon(COLOR.osm_only, COLOR.svk_only),
     };
     // Polylines för matched där SVK-koord och OSM-koord skiljer >50m
     const distanceLines = L.layerGroup();
@@ -572,8 +582,11 @@ async function init() {
       // För iD-länken i svk_only-popup
       f.properties._lon = lon;
       f.properties._lat = lat;
+      const icon = (cat === "osm_only" && f.properties.likely_svk_miss)
+        ? baseIcons.osm_only_likely_miss
+        : baseIcons[cat];
       const m = L.marker([lat, lon], {
-        icon: baseIcons[cat], category: cat, featureProps: f.properties,
+        icon, category: cat, featureProps: f.properties,
       });
       m.bindPopup(popupHtml(f.properties));
       markersByCat[cat].push(m);
@@ -592,16 +605,19 @@ async function init() {
 
     // Filter-state per OSM-only denomination (bara aktivt om filter ändrats)
     const denomDisabled = new Set();
+    let osmOnlyEnabled = true;
+    let onlyLikelySvkMiss = false;
     function applyOsmOnlyFilter() {
       markersByCat.osm_only.forEach(m => {
-        const d = m.options.featureProps.denomination || "(saknas)";
+        const fp = m.options.featureProps;
+        const d = fp.denomination || "(saknas)";
         const inCluster = cluster.hasLayer(m);
-        const wanted = !denomDisabled.has(d) && osmOnlyEnabled;
+        let wanted = !denomDisabled.has(d) && osmOnlyEnabled;
+        if (wanted && onlyLikelySvkMiss && !fp.likely_svk_miss) wanted = false;
         if (wanted && !inCluster) cluster.addLayer(m);
         else if (!wanted && inCluster) cluster.removeLayer(m);
       });
     }
-    let osmOnlyEnabled = true;
 
     // Filter-control
     const FilterCtrl = L.Control.extend({
@@ -636,6 +652,11 @@ async function init() {
           `<label><input type="checkbox" data-cat="osm_only" checked>` +
             `<span class="swatch" style="background:${COLOR.osm_only}"></span>` +
             `Bara OSM<span class="count">${sum.osm_only}</span></label>` +
+          (sum.osm_only_likely_svk_miss
+            ? `<label class="sub"><input type="checkbox" data-likely-miss>` +
+              `Visa bara förmodliga SVK-missar` +
+              `<span class="count">${sum.osm_only_likely_svk_miss}</span></label>`
+            : "") +
           `<details><summary>OSM-denomination</summary>${denomList}</details>`;
         L.DomEvent.disableClickPropagation(div);
         L.DomEvent.disableScrollPropagation(div);
@@ -670,6 +691,14 @@ async function init() {
           onlyTaggbrist = e.target.checked;
           applyMatchedFilter();
         });
+        // Förmodliga SvK-missar (osm_only med wikidata-tagg i SvK-stift)
+        const likelyMissInput = div.querySelector("input[data-likely-miss]");
+        if (likelyMissInput) {
+          likelyMissInput.addEventListener("change", e => {
+            onlyLikelySvkMiss = e.target.checked;
+            applyOsmOnlyFilter();
+          });
+        }
         // Avståndslinjer (separat lager)
         div.querySelector("input[data-lines]").addEventListener("change", e => {
           if (e.target.checked) distanceLines.addTo(map);

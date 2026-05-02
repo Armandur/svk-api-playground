@@ -39,7 +39,7 @@ REBUILD_STATE = {
     "status": "idle",
     "step": None,
     "step_index": 0,
-    "step_total": 3,
+    "step_total": 4,
     "started_at": None,
     "finished_at": None,
     "message": "",
@@ -53,6 +53,7 @@ def run_rebuild() -> None:
     steps = [
         ("svk", "osm-konsistenscheck/build_svk.py", "Hämtar SVK Platser..."),
         ("osm", "osm-konsistenscheck/build_osm.py", "Hämtar OSM via Overpass..."),
+        ("wikidata", "osm-konsistenscheck/build_wikidata.py", "Hämtar SvK-stift från Wikidata..."),
         ("diff", "osm-konsistenscheck/build_diff.py", "Bygger matchning..."),
     ]
 
@@ -62,7 +63,7 @@ def run_rebuild() -> None:
             REBUILD_STATE["step_index"] = i
             REBUILD_STATE["message"] = msg
         
-        print(f">> rebuild [{i}/3]: {msg}", flush=True)
+        print(f">> rebuild [{i}/{len(steps)}]: {msg}", flush=True)
         try:
             # Vi använder sys.executable (python) och 'uv run' enligt instruktion.
             # Eftersom vi redan kör under uv kan vi antingen köra 'uv run' eller 
