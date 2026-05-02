@@ -298,6 +298,42 @@ saknar RAA-id, 2 011 saknar planform, 1 960 saknar tillgänglighetshandlingsprog
 
 - Lämna `report.csv` till kyrkobyggnadsavdelningen för åtgärd.
 - Ev. komplettera med UnitAPI-validering av `agandeEnhetLkf`-koder.
+- **K-samsök/RAÄ som fjärde koordinatkälla** - se nedan.
+
+### 8b. KBR vs K-samsök koordinatjämförelse (ej påbörjad)
+
+Stickprov 2026-05-02 bekräftade att K-samsök/BBR har oberoende koordinater
+och identifierar samma fel som Platser+OSM. Linköpings domkyrka: KBR avviker
+11 293 m mot RAÄ/BBR - RAÄ stämmer med Platser och OSM.
+
+**Varför det är intressant:** KBR-koordinater registreras av kyrkan själv.
+RAÄ/BBR är en oberoende källa. Avvikelse bekräftad från tre oberoende håll
+är starkare bevis för ett KBR-fel än avvikelse mot bara en källa.
+
+**Matchningsflöde (verifierat):**
+
+1. KBR-fältet `fastighetsbeteckning` → K-samsök `cadastralUnit`-sökning
+   `GET ksamsok/api?method=search&query=cadastralUnit="<fastighet>"&fields=itemId`
+2. Svar ger `http://kulturarvsdata.se/raa/bbr/<id>` → hämta som RDF
+3. RDF-dokumentet listar länkade `raa/bbrb/<id>`-poster (byggnadsdelen)
+4. Hämta `raa/bbrb/<id>` som RDF → extrahera `<gml:coordinates>lng,lat</gml:coordinates>`
+
+Koordinaterna är WGS84 (EPSG:4326), direkt jämförbara med KBR efter pyproj-konvertering.
+
+**Begränsningar:**
+
+- Tre HTTP-anrop per kyrka → ~10 500 anrop totalt, ~30 min med rimlig throttling
+- 14 KBR-kyrkor saknar `fastighetsbeteckning` - de kan inte matchas
+- Inte alla BBR-poster har koordinater i `bbrb`-undernivån
+- K-samsök och KBR kan ha gemensam ursprungskälla för nyare kyrkor,
+  men RAÄ mäter/verifierar oberoende för kulturminnesmärkta objekt
+
+**Implementation i `build_report.py`:**
+
+Lägg till ett nytt pass efter KBR-hämtningen som batchar K-samsök-lookups
+för de kyrkor som redan avviker mot Platser/OSM (ca 84 st med >200 m).
+Spara `raa_lat`, `raa_lng`, `avstand_raa_m` i `report.json`.
+Visa RAÄ-markör (lila?) på kartan i koordinatavvikelse-fliken.
 
 ### 6. Kalenderhändelse-aggregator (`calendar-aggregator/`)
 
