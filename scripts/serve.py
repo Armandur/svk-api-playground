@@ -130,6 +130,38 @@ def admin_ping(source: str) -> tuple[int, str]:
         return 0, CS_SESSION_LAST_PING_STATUS
 
 
+def _extract_first_json_object(text: str) -> str | None:
+    """Hitta första balanserade {...}-objektet i en JS/JSON-sträng.
+    Hanterar nästlade objekt och strängar (ignorerar { och } inuti dem).
+    Returnerar substring inkl klamrar, eller None om inget hittas."""
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        c = text[i]
+        if escape:
+            escape = False
+            continue
+        if c == "\\":
+            escape = True
+            continue
+        if c == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return None
+
+
 def parse_cookie_header(s: str) -> dict[str, str]:
     """Parsar 'name1=v1; name2=v2; ...' till en dict, bevarar ordning."""
     out: dict[str, str] = {}
@@ -562,13 +594,17 @@ class Handler(SimpleHTTPRequestHandler):
         except URLError as e:
             self.send_error(502, f"Upstream error: {e.reason}")
             return
-        # /churchcontext returnerar JS: "var churchContext={...};"
-        # Strippa wrappern så klienten kan parsa som JSON.
+        # /churchcontext returnerar en JS-fil som börjar med
+        # "var churchContext={...};" följt av annan JS-kod (funktioner
+        # m.m.). Plocka ut första balanserade {...}-objektet och returnera
+        # bara det som JSON.
         text = data.decode("utf-8", errors="replace")
-        if text.startswith("var churchContext="):
-            text = text[len("var churchContext="):]
-        text = text.rstrip().rstrip(";")
-        data = text.encode("utf-8")
+        json_str = _extract_first_json_object(text)
+        if json_str is None:
+            self.send_error(502, "Kunde inte extrahera churchContext-objekt "
+                                 "från upstream-svar")
+            return
+        data = json_str.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
