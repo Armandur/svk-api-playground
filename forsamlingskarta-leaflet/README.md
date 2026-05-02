@@ -27,6 +27,7 @@ https://din-server/forsamlingskarta-leaflet/?apikey=<key>
 | `?owner_id=<id>` eller `?owner_id=<id1>,<id2>,...` | Filtrera på ägar-enhet (församling/pastorat) |
 | `?nearby=<lon>,<lat>&radius=<m>` | Geosök inom radie i meter (WGS84-koordinater) |
 | `?limit=<n>` | Max antal platser (default 500) |
+| `?layer=<lager>` | Gränser att rita: `stift` (default), `kontrakt`, `forsamlingar`, `ekonomiska_enheter`, eller `none` |
 
 ### Exempel
 
@@ -56,18 +57,23 @@ Tillgängliga lager: `forsamlingar`, `kontrakt`, `stift`,
 `ekonomiska_enheter`. Year hårdkodat till 2026-01-01 - ändra i
 scriptet eller utöka med argument vid behov.
 
-Storlek (4 dec, ≈10 m precision):
+Storlek efter Douglas-Peucker-simplifiering i SWEREF-meter
+(`shapely.simplify(tolerance, preserve_topology=True)`):
 
-| Lager | Antal features | Storlek |
-|---|---|---|
-| `stift.geojson` | 13 | 2 MB |
-| `kontrakt.geojson` | ? | ? |
-| `ekonomiska_enheter.geojson` | ? | ? |
-| `forsamlingar.geojson` | 1251 | 23 MB |
+| Lager | Antal | Tolerance | Storlek |
+|---|---|---|---|
+| `stift.geojson` | 13 | 50 m | 208 KB |
+| `kontrakt.geojson` | 96 | 25 m | 938 KB |
+| `ekonomiska_enheter.geojson` | 568 | 10 m | 3.6 MB |
+| `forsamlingar.geojson` | 1251 | 10 m | 5.6 MB |
 
-Stift används som default bakgrundslager. Församlingar är för stort
-för att rendera direkt - ladda dynamiskt vid zoom-in eller
-filtrera på stift först.
+10 m tolerance = exakt på street-level zoom. Topology-bevarande
+ser till att grannförsamlingar inte får glapp på delade gränser.
+Tolerance per lager justeras i `SIMPLIFY_TOLERANCE_M`-dicten i
+`build_kartor.py`.
+
+Lager väljs via `?layer=forsamlingar|kontrakt|stift|ekonomiska_enheter|none`
+(default `stift`).
 
 `data/`-mappen är gitignored för att inte blåsa upp repot - bygg
 lokalt vid behov.

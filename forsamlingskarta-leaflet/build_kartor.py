@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["pyshp>=2.3", "pyproj>=3.6"]
+# dependencies = ["pyshp>=2.3", "pyproj>=3.6", "shapely>=2.0"]
 # ///
 """Hämtar zip-filer med kartlager från api.svenskakyrkan.se/kartor/,
 konverterar shapefile (SWEREF 99 TM) till GeoJSON (WGS84) och skriver
@@ -28,12 +28,24 @@ from pathlib import Path
 
 import shapefile
 from pyproj import Transformer
+from shapely.geometry import mapping, shape
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 DEFAULT_YEAR = "2026-01-01"
 DEFAULT_LAYERS = ["forsamlingar", "kontrakt", "stift", "ekonomiska_enheter"]
 URL_TPL = "https://api.svenskakyrkan.se/kartor/{layer}_{year}.zip"
+
+# Simplifierings-tolerance per lager, i meter. Sätts till 0 för att
+# behålla full detalj. SWEREF 99 TM är i meter så tolerance:n är
+# direkt jämförbar med fysisk avvikelse på marken. 10 m motsvarar
+# street-level precision - syns inte på normalt zoom-omfång.
+SIMPLIFY_TOLERANCE_M = {
+    "forsamlingar": 10,         # 1251 polygoner, 23 MB → ~5-7 MB
+    "ekonomiska_enheter": 10,
+    "kontrakt": 25,             # färre features, kan tåla mer förenkling
+    "stift": 50,                # bara 13 stora polygoner
+}
 
 
 def fetch_zip(layer: str, year: str) -> zipfile.ZipFile:
@@ -96,17 +108,30 @@ def round_coords(geom: dict, decimals: int = 4) -> dict:
     return geom
 
 
-def build_geojson(layer: str, year: str) -> dict:
-    print(f"[{layer}_{year}] processar…")
+def simplify_in_meters(geom: dict, tolerance_m: float) -> dict:
+    """Douglas-Peucker-simplifiering i SWEREF-meter. Måste köras INNAN
+    reprojektion eftersom shapely tolkar tolerance i input-CRS units.
+    preserve_topology=True undviker att angränsande församlingar får
+    glapp eller överlapp i delade gränser."""
+    if tolerance_m <= 0:
+        return geom
+    s = shape(geom)
+    simplified = s.simplify(tolerance_m, preserve_topology=True)
+    return mapping(simplified)
+
+
+def build_geojson(layer: str, year: str, tolerance_m: float) -> dict:
+    print(f"[{layer}_{year}] processar (tolerance={tolerance_m} m)…")
     zf = fetch_zip(layer, year)
     sf = shapefile_from_zip(zf, layer, year)
     transformer = Transformer.from_crs("EPSG:3006", "EPSG:4326", always_xy=True)
     features = []
     for shape_rec in sf.shapeRecords():
         geom = shape_rec.shape.__geo_interface__
-        projected = project_geometry(geom, transformer)
+        # Simplifiera i SWEREF-meter, sen reprojicera
+        simplified = simplify_in_meters(geom, tolerance_m)
+        projected = project_geometry(simplified, transformer)
         rounded = round_coords(projected)
-        # Plocka ur record som dict (alla DBF-fält)
         props = {k: v for k, v in shape_rec.record.as_dict().items()}
         features.append({"type": "Feature", "properties": props, "geometry": rounded})
     return {"type": "FeatureCollection", "features": features}
@@ -116,7 +141,8 @@ def main(argv: list[str]) -> int:
     layers = argv[1:] if len(argv) > 1 else DEFAULT_LAYERS
     DATA.mkdir(exist_ok=True)
     for layer in layers:
-        gj = build_geojson(layer, DEFAULT_YEAR)
+        tolerance = SIMPLIFY_TOLERANCE_M.get(layer, 10)
+        gj = build_geojson(layer, DEFAULT_YEAR, tolerance)
         out = DATA / f"{layer}.geojson"
         out.write_text(json.dumps(gj, separators=(",", ":"), ensure_ascii=False),
                        encoding="utf-8")

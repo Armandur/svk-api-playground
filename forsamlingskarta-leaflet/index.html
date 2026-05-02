@@ -106,6 +106,8 @@ const OWNER_ID = PARAMS.get("owner_id");
 const NEARBY = PARAMS.get("nearby");          // "lon,lat"
 const NEARBY_RADIUS = PARAMS.get("radius") || "5000";
 const LIMIT = PARAMS.get("limit") || "500";
+// ?layer=forsamlingar|kontrakt|stift|ekonomiska_enheter|none (default stift)
+const BORDER_LAYER = PARAMS.get("layer") ?? "stift";
 
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c =>
@@ -126,27 +128,33 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap-bidragsgivare",
 }).addTo(map);
 
-// Lägg på stiftsgränser som ett bakgrundslager om filen finns
-async function loadDiosceses() {
+// Lägg på valt gräns-lager om angivet (data byggs av build_kartor.py)
+async function loadBorderLayer(layerName) {
+  if (!layerName || layerName === "none") return;
   try {
-    const r = await fetch("data/stift.geojson", { cache: "no-store" });
-    if (!r.ok) return;
+    const r = await fetch(`data/${layerName}.geojson`, { cache: "no-store" });
+    if (!r.ok) {
+      console.warn(`data/${layerName}.geojson saknas - kör build_kartor.py`);
+      return;
+    }
     const gj = await r.json();
     L.geoJson(gj, {
       style: {
-        color: "#7D0037", weight: 1.5, opacity: 0.6,
-        fillColor: "#FFC3AA", fillOpacity: 0.06,
+        color: "#7D0037", weight: 1.0, opacity: 0.55,
+        fillColor: "#FFC3AA", fillOpacity: 0.05,
       },
       onEachFeature: (feature, layer) => {
-        const name = feature.properties?.namn || "(stift)";
+        const name = feature.properties?.namn
+                  || feature.properties?.NAMN
+                  || "(okänt namn)";
         layer.bindTooltip(name, { sticky: true });
       },
     }).addTo(map);
   } catch (e) {
-    console.warn("Kunde inte ladda stiftsgränser:", e);
+    console.warn(`Kunde inte ladda ${layerName}-gränser:`, e);
   }
 }
-loadDiosceses();
+loadBorderLayer(BORDER_LAYER);
 
 const TYPE_LABEL = {
   churchAndChapel: "Kyrka/kapell",
