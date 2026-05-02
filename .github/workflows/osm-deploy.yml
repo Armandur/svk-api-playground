@@ -21,6 +21,8 @@ on:
     branches: [main]
     paths:
       - 'osm-konsistenscheck/**'
+      - '!osm-konsistenscheck/**.md'
+      - '!osm-konsistenscheck/rebuild.sh'
       - '.github/workflows/osm-deploy.yml'
 
 permissions:

@@ -159,7 +159,10 @@ församlings delar i typ-färg (guld/vinröd), andra församlingar dimmas
 till mörkgrön. Huvuddelen ritas alltid streckad så hela bilden syns även
 när huvuddelen råkar vara territorialvatten (Nättraby-Hasslö).
 
-### 5d. SVK ↔ OSM kyrkokonsistens (`osm-konsistenscheck/`) ✅ Funktionell
+### 5d. SVK ↔ OSM kyrkokonsistens (`osm-konsistenscheck/`) ✅ Funktionell + deployad
+
+Live på <https://armandur.github.io/svk-api-playground/osm-konsistenscheck/>,
+byggs dagligen 04:00 UTC av GitHub Actions.
 
 Jämför kyrkor i SVK Platser-API:t mot OpenStreetMap. Matchar SVK och
 OSM-pin via greedy global närmsta-granne (med tie-break på

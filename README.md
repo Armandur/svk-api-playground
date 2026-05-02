@@ -38,6 +38,11 @@ finns i `docs/modules/_todo.md`:
 - Kyrkokarta i webbläsaren med Leaflet
 - Kalenderhändelse-aggregator för stiftskalender
 
+## Live-deploys
+
+- **osm-konsistenscheck** - <https://armandur.github.io/svk-api-playground/osm-konsistenscheck/>
+  byggs dagligen via GitHub Actions (`.github/workflows/osm-deploy.yml`).
+
 ## Autentisering
 
 De flesta tjänsterna kräver en SVK-API-nyckel som skickas som

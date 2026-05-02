@@ -127,6 +127,17 @@ ska fortfarande vara `main`.
 
 Aktuella pilot-projekt: se `docs/modules/_todo.md`.
 
+## Pages-deploys
+
+Pilot-projekt som ska vara publikt nåbara byggs av GitHub Actions och
+deployas till GitHub Pages under `https://armandur.github.io/svk-api-playground/`.
+Workflow per projekt under `.github/workflows/<projekt>-deploy.yml`.
+Kopierar bara det som UI:t behöver (typiskt `index.html` + `data/diff.geojson`),
+inte rådata. Triggar dagligen + push på projekt-mappen + manuellt.
+
+Krav på GitHub-sidan: `APIKEY_PROD` som repo-secret, Settings → Pages →
+Source: GitHub Actions.
+
 ## Relaterat
 
 - **medvind-mobil-poc** - parallell-projekt med samma docs-arkitektur

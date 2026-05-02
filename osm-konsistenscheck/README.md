@@ -11,6 +11,15 @@ Jämför kyrkor i SVK Platser-API:t mot OpenStreetMap för att hitta:
 Bygger på Levenshtein-namnlikhet, OSM-taggbrist-check och iD-editor-
 länkar för att göra det enkelt att bidra tillbaka till OSM.
 
+## Live
+
+Publicerat på <https://armandur.github.io/svk-api-playground/osm-konsistenscheck/>.
+GitHub Actions bygger om dagligen 04:00 UTC + vid push på
+`osm-konsistenscheck/**` och deployar till GitHub Pages
+(`.github/workflows/osm-deploy.yml`). På Pages-deployen är "Hämta nytt
+data"-knappen dold eftersom det inte finns någon serverside-rebuild att
+trigga - cron sköter färskheten.
+
 ## Snabbstart
 
 ```bash
@@ -34,10 +43,16 @@ direkt om datat är färskt eller månader gammalt.
 Eller stegvis om något specifikt steg behöver köras om:
 
 ```bash
-uv run osm-konsistenscheck/build_svk.py     # SVK Platser (~1.7 MB)
-uv run osm-konsistenscheck/build_osm.py     # OSM via Overpass (~2.4 MB)
-uv run osm-konsistenscheck/build_diff.py    # default 100 m radie
+APIKEY=... uv run osm-konsistenscheck/build_svk.py    # SVK Platser (~1.7 MB)
+uv run osm-konsistenscheck/build_osm.py               # OSM via Overpass (~2.4 MB)
+uv run osm-konsistenscheck/build_diff.py              # default 100 m radie
 ```
+
+`build_svk.py` går direkt mot `api.svenskakyrkan.se` och kräver `APIKEY`
+(eller `APIKEY_PROD`) i miljön. Sätt `PLATSER_BASE=http://localhost:8088/api/platser`
+för att gå via dev-proxyn istället - då behövs ingen nyckel i shellet.
+`./start.sh` läser `.env` automatiskt så `rebuild.sh` (som går via proxyn)
+slipper hantera nyckeln själv.
 
 Overpass är notoriskt opålitlig - `build_osm.py` försöker tre Overpass-
 spegelservrar (overpass-api.de, kumi.systems, private.coffee) två gånger
@@ -87,8 +102,11 @@ var med 15 s backoff innan den ger upp.
 ## Datakällor
 
 **SVK Platser**: `?is=churchandchapel`, hämtar alla 4488 kyrkor och
-kapell. Hämtas via dev-proxyn på localhost:8088 eftersom direktanrop
-mot `api.svenskakyrkan.se` ger HTTP 500 (okänd orsak).
+kapell direkt från `api.svenskakyrkan.se/platser/v4/place` med APIKEY
+som query-param. (Tidigare gick allt via dev-proxyn pga rapporterade
+500-fel - de syns inte längre, gateway-bug eller policy-ändring som
+fixats. Proxy-vägen finns kvar via `PLATSER_BASE`-env för lokal körning
+utan att exponera nyckeln.)
 
 **OSM via Overpass**: kombinerat filter
 `[amenity=place_of_worship][religion=christian]` PLUS
@@ -120,7 +138,7 @@ Ramsjö kyrka var bara taggad som `building=church`, inte
 
 ```
 osm-konsistenscheck/
-  build_svk.py      # hämtar SVK Platser via dev-proxy
+  build_svk.py      # hämtar SVK Platser direkt med APIKEY (PLATSER_BASE för proxy)
   build_osm.py      # hämtar OSM via Overpass (med retry mot 3 spegelservrar)
   build_diff.py     # matchar och skriver diff.geojson + summary
   rebuild.sh        # kör de tre stegen i ordning (kräver att servern kör)
