@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KBR koordinatkvalitet</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root { --beige:#FFEBE1; --black:#000; --wine:#7D0037; --gold:#BC8E4C; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:var(--black); }
+
+#header { padding:8px 16px; border-bottom:2px solid var(--black);
+  display:flex; align-items:center; gap:10px; background:#fff; min-height:40px; }
+#header h1 { font-size:16px; font-weight:600; color:var(--wine); white-space:nowrap; }
+#header .sub { font-size:11px; color:#777; }
+#header button.export { margin-left:auto; padding:4px 12px; background:var(--wine);
+  color:#fff; border:none; border-radius:3px; font-size:12px; cursor:pointer; white-space:nowrap; }
+
+.tabs-nav { display:flex; border-bottom:2px solid var(--black); background:#fff8f4; overflow-x:auto; }
+.tabs-nav button { padding:7px 14px; font-size:12px; border:none; background:none;
+  cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap; flex-shrink:0; }
+.tabs-nav button.active { border-bottom-color:var(--wine); color:var(--wine); font-weight:600; }
+.tabs-nav button:hover:not(.active) { background:#ffe8de; }
+
+.tab-pane { display:none; }
+.tab-pane.active { display:flex; flex-direction:column; }
+
+#coord-controls { padding:5px 12px; display:flex; gap:8px; align-items:center;
+  background:#fff8f4; border-bottom:1px solid #ddd; font-size:12px;
+  overflow-x:auto; white-space:nowrap; flex-shrink:0; }
+#coord-controls label { font-weight:500; }
+#threshold { width:110px; }
+#stift-filter, #src-filter { font-size:12px; max-width:130px; }
+.ctrl-stats { display:flex; gap:10px; margin-left:auto; align-items:center; }
+.ctrl-stat { display:flex; align-items:center; gap:4px; color:#444; }
+.dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+#match-info { font-size:10px; color:#999; border-left:1px solid #ddd; padding-left:8px; }
+
+#coord-main { display:flex; flex:1; overflow:hidden; }
+#map { flex:1; }
+#sidebar { width:360px; overflow-y:auto; border-left:2px solid var(--black); background:#fff; }
+
+.quality-pane { padding:14px 18px; overflow-y:auto; }
+.q-section { margin-bottom:22px; }
+.q-section h2 { font-size:13px; font-weight:600; color:var(--wine); margin-bottom:4px;
+  display:flex; align-items:center; gap:6px; }
+.q-badge { background:var(--wine); color:#fff; font-size:10px; font-weight:600;
+  padding:1px 6px; border-radius:10px; }
+.q-badge.ok { background:#2e7d32; }
+.q-note { font-size:11px; color:#666; margin-bottom:5px; }
+
+.data-table { width:100%; border-collapse:collapse; font-size:11px; }
+.data-table th { background:var(--wine); color:#fff; padding:5px 6px; text-align:left;
+  font-weight:500; cursor:pointer; position:sticky; top:0; z-index:1; }
+.data-table th:hover { background:#a0004a; }
+.data-table td { padding:4px 6px; border-bottom:1px solid #f0e8e0; vertical-align:top; }
+.data-table tr:hover td { background:#fff3ee; }
+
+.dist-badge { display:inline-block; padding:1px 5px; border-radius:8px;
+  font-weight:600; font-size:10px; color:#fff; }
+.src-label { font-size:9px; color:#999; display:block; }
+.row-detail { display:none; }
+tr.expanded + tr.row-detail { display:table-row; }
+tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
+  padding:3px 6px 6px; }
+#no-data { padding:28px 14px; text-align:center; color:#999; font-size:12px; }
+
+.map-btn { background:none; border:1px solid #ccc; border-radius:3px; cursor:pointer;
+  padding:2px 5px; color:#666; font-size:12px; line-height:1; }
+.map-btn:hover { background:#ffe8de; border-color:var(--wine); color:var(--wine); }
+
+#map-legend { position:absolute; bottom:24px; left:8px; z-index:1000;
+  background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:4px;
+  padding:6px 10px; font-size:11px; line-height:1.9; }
+.leg { display:flex; align-items:center; gap:5px; }
+
+@media print {
+  #header button.export, .tabs-nav, #coord-controls, #coord-main,
+  #tab-koordinater, #map-legend, .no-print { display:none !important; }
+  .tab-pane { display:block !important; height:auto !important; }
+  .quality-pane { height:auto !important; overflow:visible !important; padding:0; }
+  .q-section { page-break-inside:avoid; margin-bottom:14px; }
+  body { background:#fff; font-size:9pt; }
+  .data-table { font-size:8pt; }
+  .data-table th { background:#7D0037 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  #print-header { display:block !important; margin-bottom:10px; padding-bottom:8px;
+    border-bottom:2px solid #000; }
+}
+#print-header { display:none; }
+#print-header h1 { font-size:16pt; color:var(--wine); }
+#print-header p { font-size:9pt; color:#555; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>KBR - koordinatkvalitet</h1>
+  <span class="sub">KBR jämfört mot SVK Platser och OSM</span>
+  <button class="export" onclick="window.print()">Skriv ut / PDF</button>
+</div>
+
+<div class="tabs-nav">
+  <button class="tab-btn active" data-tab="koordinater">Koordinatavvikelser</button>
+  <button class="tab-btn" data-tab="datum">Datumkvalitet</button>
+  <button class="tab-btn" data-tab="koord-kvalitet">Koordinatkvalitet</button>
+  <button class="tab-btn" data-tab="namn">Namnkvalitet</button>
+  <button class="tab-btn" data-tab="status">Status &amp; avyttring</button>
+  <button class="tab-btn" data-tab="komplettering">Komplettering &amp; förvaltning</button>
+</div>
+
+<!-- Flik 1: Koordinatavvikelser -->
+<div id="tab-koordinater" class="tab-pane active" style="height:calc(100vh - 88px)">
+  <div id="coord-controls">
+    <label>Tröskel:</label>
+    <input type="range" id="threshold" min="0" max="50000" step="100" value="500">
+    <span id="threshold-val" style="min-width:44px;font-weight:600">500 m</span>
+    <label>Stift:</label><select id="stift-filter"><option value="">Alla</option></select>
+    <label>Källa:</label>
+    <select id="src-filter">
+      <option value="">Platser + OSM</option>
+      <option value="platser">Bara Platser</option>
+      <option value="osm">Bara OSM</option>
+    </select>
+    <div class="ctrl-stats">
+      <span class="ctrl-stat"><span class="dot" style="background:#c62828"></span><span id="cnt-5k">-</span> &ge;5 km</span>
+      <span class="ctrl-stat"><span class="dot" style="background:#f57c00"></span><span id="cnt-1k">-</span> &ge;1 km</span>
+      <span class="ctrl-stat"><span class="dot" style="background:#fbc02d"></span><span id="cnt-200">-</span> &ge;200 m</span>
+      <span id="match-info">-</span>
+    </div>
+  </div>
+  <div id="coord-main">
+    <div id="map">
+      <div id="map-legend">
+        <div class="leg"><span style="width:9px;height:9px;border-radius:50%;background:#e53935;display:inline-block"></span> KBR</div>
+        <div class="leg"><span style="width:9px;height:9px;border-radius:50%;background:#1565c0;display:inline-block"></span> Platser</div>
+        <div class="leg"><span style="width:9px;height:9px;border-radius:50%;background:#2e7d32;display:inline-block"></span> OSM</div>
+      </div>
+    </div>
+    <div id="sidebar"><div id="no-data">Laddar data...</div></div>
+  </div>
+</div>
+
+<!-- Flik 2: Datumkvalitet -->
+<div id="tab-datum" class="tab-pane" style="height:calc(100vh - 88px)">
+  <div class="quality-pane" style="height:100%">
+    <div id="print-header"><h1>KBR - Datakvalitetsrapport</h1><p id="print-meta"></p></div>
+    <div class="q-section">
+      <h2>Omöjlig datumodning <span class="q-badge" id="cnt-omojligt">-</span></h2>
+      <p class="q-note">nybyggnadFran &gt; invigning. Sannolikt datainmatningsfel.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Byggstart</th><th>Invigning</th><th>Diff</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-omojligt"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Byggnadstid &gt;300 år <span class="q-badge" id="cnt-lang">-</span></h2>
+      <p class="q-note">Kan vara korrekt för katedraler, men bör granskas.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Byggstart</th><th>Invigning</th><th>Byggnadstid</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-lang"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Samma år för byggstart och invigning <span class="q-badge" id="cnt-samma">-</span></h2>
+      <p class="q-note">Rimligt för moderna kyrkor, ovanligt för äldre.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>År</th><th>Funktion</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-samma"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Datum saknas <span class="q-badge" id="cnt-saknas">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Saknas</th><th>Känt datum</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-saknas"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Flik 3: Koordinatkvalitet -->
+<div id="tab-koord-kvalitet" class="tab-pane" style="height:calc(100vh - 88px)">
+  <div class="quality-pane" style="height:100%">
+    <div class="q-section">
+      <h2>Koordinater utanför Sverige <span class="q-badge" id="cnt-utanfor">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Lat</th><th>Lng</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-utanfor"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Avrundade koordinater (1 km precision) <span class="q-badge" id="cnt-rundad">-</span></h2>
+      <p class="q-note">Båda SWEREF99TM-koordinaterna jämnt delbara med 1000 m.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Lat</th><th>Lng</th><th>X</th><th>Y</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-rundad"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Duplikatkoordinater <span class="q-badge" id="cnt-duplikat-koord">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrkor</th><th>Lat</th><th>Lng</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-duplikat-koord"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Flik 4: Namnkvalitet -->
+<div id="tab-namn" class="tab-pane" style="height:calc(100vh - 88px)">
+  <div class="quality-pane" style="height:100%">
+    <div class="q-section">
+      <h2>Duplikatnamn inom stift <span class="q-badge" id="cnt-namn-dup">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Antal</th><th>KBR-id:n</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-namn-dup"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Flik 5: Status & avyttring -->
+<div id="tab-status" class="tab-pane" style="height:calc(100vh - 88px)">
+  <div class="quality-pane" style="height:100%">
+    <div class="q-section">
+      <h2>Kyrkan används inte <span class="q-badge" id="cnt-ej-aktiv">-</span></h2>
+      <p class="q-note">anvandningsfrekvens = "Kyrkan används inte".</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Invigning</th><th>Frekvens</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-ej-aktiv"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Funktionsändring (kyrka → icke-kyrka) <span class="q-badge" id="cnt-funk-andrad">-</span></h2>
+      <p class="q-note">Ursprunglig eller nuvarande användning byter kategori (kyrka/icke-kyrka).</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Ursprunglig</th><th>Nuvarande</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-funk-andrad"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Flik 6: Komplettering & förvaltning -->
+<div id="tab-komplettering" class="tab-pane" style="height:calc(100vh - 88px)">
+  <div class="quality-pane" style="height:100%">
+    <div class="q-section">
+      <h2>RAA-identitet saknas <span class="q-badge" id="cnt-raa">-</span></h2>
+      <p class="q-note">Saknar identitetRAA - kopplingen till Riksantikvarieämbetets Bebyggelseregister.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Invigning</th><th>KML-skydd</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-raa"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Byggnadsarea saknas <span class="q-badge" id="cnt-byggarea">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Invigning</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-byggarea"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Fastighetsbeteckning saknas <span class="q-badge" id="cnt-fastighet">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Invigning</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-fastighet"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Planform saknas <span class="q-badge" id="cnt-planform">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Invigning</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-planform"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Material saknas <span class="q-badge" id="cnt-material">-</span></h2>
+      <p class="q-note">materialStomme och/eller materialFasad saknas.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Saknar</th><th>Stomme</th><th>Fasad</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-material"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Handlingsprogram tillgänglighet saknas <span class="q-badge" id="cnt-tillg-prog">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Program</th><th>Anpassning</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-tillg-prog"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Inte tillgänglighetsanpassad <span class="q-badge" id="cnt-ej-tillg">-</span></h2>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Anpassning</th><th>Program</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-ej-tillg"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Post ej uppdaterad sedan 2020 <span class="q-badge" id="cnt-andrad">-</span></h2>
+      <p class="q-note">andradDatum äldre än 2020-01-01. Posten kan ha föråldrade uppgifter.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Invigning</th><th>Senast ändrad</th><th>Skapad</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-andrad"></tbody></table>
+    </div>
+    <div class="q-section">
+      <h2>Ägarenhet ≠ geografisk enhet <span class="q-badge" id="cnt-agare">-</span></h2>
+      <p class="q-note">Kan vara avsiktligt (kapell förvaltat av annan församling), men bör granskas.</p>
+      <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>Ägarenhet</th><th>Geografisk enhet</th><th class="no-print" style="width:28px"></th></tr></thead>
+      <tbody id="tbody-agare"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([62.5, 16], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'&copy; OpenStreetMap', maxZoom:19
+}).addTo(map);
+
+let allRows = [], markerLayer = L.layerGroup().addTo(map);
+let sortCol = 'avstand_m', sortAsc = false;
+let highlightMarker = null;
+
+function distColor(m) {
+  return m >= 5000 ? '#c62828' : m >= 1000 ? '#e53935' : m >= 500 ? '#f57c00' : '#fbc02d';
+}
+function fmtDist(m) {
+  if (m == null) return '-';
+  return m >= 1000 ? (m/1000).toFixed(1)+' km' : m+' m';
+}
+
+function jumpToKBR(lat, lng, name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-tab="koordinater"]').classList.add('active');
+  document.getElementById('tab-koordinater').classList.add('active');
+  map.invalidateSize();
+  if (highlightMarker) { map.removeLayer(highlightMarker); highlightMarker = null; }
+  highlightMarker = L.circleMarker([lat, lng], {
+    radius:14, color:'#7D0037', fillColor:'#7D0037', fillOpacity:0.25, weight:2.5,
+  }).bindTooltip(name, {permanent:true, direction:'top'}).addTo(map);
+  map.setView([lat, lng], 15);
+  setTimeout(() => { if (highlightMarker) { map.removeLayer(highlightMarker); highlightMarker = null; } }, 6000);
+}
+function mapBtn(lat, lng, name) {
+  if (lat == null) return '<td class="no-print"></td>';
+  const safe = (name||'').replace(/'/g, "\\'").replace(/"/g,'&quot;');
+  return `<td class="no-print"><button class="map-btn" onclick="jumpToKBR(${lat},${lng},'${safe}')" title="Visa på karta">&#x2316;</button></td>`;
+}
+
+function setCount(id, n, warn) {
+  const el = document.getElementById(id); if (!el) return;
+  el.textContent = n;
+  el.className = warn ? (n > 0 ? 'q-badge' : 'q-badge ok') : 'q-badge';
+}
+function rows(data, fields) {
+  return data.map(r =>
+    '<tr><td>' + fields.map(f => {
+      const v = r[f]; return v == null ? '-' : v === true ? 'Ja' : v === false ? '' : v;
+    }).join('</td><td>') + '</td>' + mapBtn(r.kbr_lat, r.kbr_lng, r.namn) + '</tr>'
+  ).join('');
+}
+
+// Koordinatfliken
+function buildTable(rs) {
+  const sb = document.getElementById('sidebar');
+  if (!rs.length) { sb.innerHTML = '<div id="no-data">Inga avvikelser</div>'; return; }
+  let html = `<table class="data-table"><thead><tr>
+    <th data-col="avstand_m">Avvikelse</th><th data-col="namn">Kyrka</th><th data-col="stift">Stift</th>
+  </tr></thead><tbody>`;
+  rs.forEach((r, i) => {
+    const hp = r.avstand_platser_m != null, ho = r.avstand_osm_m != null;
+    const b = (hp ? `<span class="dist-badge" style="background:${distColor(r.avstand_platser_m)}">${fmtDist(r.avstand_platser_m)}</span><span class="src-label">Platser</span>` : '')
+            + (ho ? ` <span class="dist-badge" style="background:${distColor(r.avstand_osm_m)}">${fmtDist(r.avstand_osm_m)}</span><span class="src-label">OSM</span>` : '');
+    html += `<tr class="data-row" data-idx="${i}"><td style="white-space:nowrap">${b}</td><td>${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
+    <tr class="row-detail"><td colspan="3">
+      <strong>KBR (Kyrkobyggnadsregistret)</strong> ${r.kbr_lat}, ${r.kbr_lng}<br>
+      ${hp ? `<strong>Platser-API</strong> ${r.platser_lat}, ${r.platser_lng}<br>` : ''}
+      ${ho ? `<strong>OSM</strong> ${r.osm_lat}, ${r.osm_lng}<br>` : ''}
+      KBR-id: ${r.kbr_id}${r.skydd ? ' | <strong>KML-skyddad</strong>' : ''}
+    </td></tr>`;
+  });
+  sb.innerHTML = html + '</tbody></table>';
+  sb.querySelectorAll('th[data-col]').forEach(th => th.addEventListener('click', () => {
+    sortAsc = sortCol === th.dataset.col ? !sortAsc : th.dataset.col !== 'avstand_m';
+    sortCol = th.dataset.col; applyFilter();
+  }));
+  sb.querySelectorAll('.data-row').forEach(tr => tr.addEventListener('click', () => {
+    tr.classList.toggle('expanded');
+    const r = rs[+tr.dataset.idx];
+    const lats = [r.kbr_lat, r.platser_lat, r.osm_lat].filter(Boolean);
+    const lngs = [r.kbr_lng, r.platser_lng, r.osm_lng].filter(Boolean);
+    map.setView([(Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2], Math.max(map.getZoom(),13));
+  }));
+}
+
+function buildMarkers(rs) {
+  markerLayer.clearLayers();
+  rs.forEach(r => {
+    const c = distColor(r.avstand_m);
+    if (r.platser_lat != null) {
+      L.polyline([[r.kbr_lat,r.kbr_lng],[r.platser_lat,r.platser_lng]],
+        {color:'#1565c0',weight:1.5,opacity:0.5,dashArray:'4 4'}).addTo(markerLayer);
+      L.circleMarker([r.platser_lat,r.platser_lng],{radius:4,color:'#1565c0',fillColor:'#42a5f5',fillOpacity:0.8,weight:1.5})
+        .bindTooltip(`<strong>Platser-API</strong><br>${r.namn}<br>${r.platser_lat}, ${r.platser_lng}`,{sticky:true}).addTo(markerLayer);
+    }
+    if (r.osm_lat != null) {
+      L.polyline([[r.kbr_lat,r.kbr_lng],[r.osm_lat,r.osm_lng]],
+        {color:'#2e7d32',weight:1.5,opacity:0.5,dashArray:'2 4'}).addTo(markerLayer);
+      L.circleMarker([r.osm_lat,r.osm_lng],{radius:4,color:'#2e7d32',fillColor:'#66bb6a',fillOpacity:0.8,weight:1.5})
+        .bindTooltip(`<strong>OSM</strong><br>${r.namn}<br>${r.osm_lat}, ${r.osm_lng}`,{sticky:true}).addTo(markerLayer);
+    }
+    L.circleMarker([r.kbr_lat,r.kbr_lng],{radius:5,color:c,fillColor:c,fillOpacity:0.9,weight:1.5})
+      .bindTooltip(`<strong>KBR (Kyrkobyggnadsregistret)</strong><br>${r.namn}<br>${r.kbr_lat}, ${r.kbr_lng}<br>Platser: ${fmtDist(r.avstand_platser_m)} | OSM: ${fmtDist(r.avstand_osm_m)}`,{sticky:true}).addTo(markerLayer);
+  });
+}
+
+function applyFilter() {
+  const thr = +document.getElementById('threshold').value;
+  const stift = document.getElementById('stift-filter').value;
+  const src   = document.getElementById('src-filter').value;
+  let rs = allRows.filter(r => r.avstand_m >= thr);
+  if (stift) rs = rs.filter(r => r.stift === stift);
+  if (src === 'platser') rs = rs.filter(r => r.avstand_platser_m != null && r.avstand_platser_m >= thr);
+  if (src === 'osm')     rs = rs.filter(r => r.avstand_osm_m != null && r.avstand_osm_m >= thr);
+  rs.sort((a,b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}
+    return (va<vb?-1:va>vb?1:0)*(sortAsc?1:-1);
+  });
+  buildTable(rs); buildMarkers(rs);
+}
+
+document.getElementById('threshold').addEventListener('input', function() {
+  document.getElementById('threshold-val').textContent = fmtDist(+this.value); applyFilter();
+});
+document.getElementById('stift-filter').addEventListener('change', applyFilter);
+document.getElementById('src-filter').addEventListener('change', applyFilter);
+
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  if (btn.dataset.tab === 'koordinater') map.invalidateSize();
+}));
+
+// Ladda data
+fetch('data/report.json').then(r=>r.json()).then(data => {
+  allRows = data;
+  document.getElementById('cnt-5k').textContent  = data.filter(r=>r.avstand_m>=5000).length;
+  document.getElementById('cnt-1k').textContent  = data.filter(r=>r.avstand_m>=1000).length;
+  document.getElementById('cnt-200').textContent = data.filter(r=>r.avstand_m>=200).length;
+  const stifts = [...new Set(data.map(r=>r.stift).filter(Boolean))].sort();
+  const sel = document.getElementById('stift-filter');
+  stifts.forEach(s => { const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
+  applyFilter();
+}).catch(() => {
+  document.getElementById('sidebar').innerHTML = '<div id="no-data">Kör build_report.py först</div>';
+});
+
+fetch('data/quality.json').then(r=>r.json()).then(q => {
+  // Datum
+  setCount('cnt-omojligt', q.datum_omojligt.length, true);
+  document.getElementById('tbody-omojligt').innerHTML = rows(q.datum_omojligt,['namn','stift','nybyggnadFran','invigning','diff_år']);
+  setCount('cnt-lang', q.byggnadstid_lang.length, false);
+  document.getElementById('tbody-lang').innerHTML = rows(q.byggnadstid_lang,['namn','stift','nybyggnadFran','invigning','byggnadstid']);
+  setCount('cnt-samma', q.datum_samma_ar.length, false);
+  document.getElementById('tbody-samma').innerHTML = rows(q.datum_samma_ar,['namn','stift','år','funktion']);
+  setCount('cnt-saknas', q.datum_saknas.length, true);
+  document.getElementById('tbody-saknas').innerHTML = q.datum_saknas.map(r =>
+    `<tr><td>${r.namn}</td><td>${r.stift}</td><td>${r.saknas}</td><td>${r.invigning??r.nybyggnadFran??'-'}</td>${mapBtn(r.kbr_lat,r.kbr_lng,r.namn)}</tr>`).join('');
+
+  // Koordinatkvalitet
+  setCount('cnt-utanfor', q.koord_utanfor.length, true);
+  document.getElementById('tbody-utanfor').innerHTML = rows(q.koord_utanfor,['namn','stift','kbr_lat','kbr_lng']);
+  setCount('cnt-rundad', q.koord_rundad.length, false);
+  document.getElementById('tbody-rundad').innerHTML = rows(q.koord_rundad,['namn','stift','kbr_lat','kbr_lng','kbr_x','kbr_y']);
+  setCount('cnt-duplikat-koord', q.koord_duplikat.length, true);
+  document.getElementById('tbody-duplikat-koord').innerHTML = q.koord_duplikat.map(g =>
+    `<tr><td>${g.kyrkor.map(k=>k.namn).join(', ')}</td><td>${g.kbr_lat}</td><td>${g.kbr_lng}</td>${mapBtn(g.kbr_lat,g.kbr_lng,g.kyrkor[0].namn)}</tr>`).join('');
+
+  // Namnkvalitet
+  setCount('cnt-namn-dup', q.namn_duplikat.length, false);
+  document.getElementById('tbody-namn-dup').innerHTML = q.namn_duplikat.map(g =>
+    `<tr><td>${g.namn}</td><td>${g.stift}</td><td>${g.kyrkor.length}</td><td style="font-size:10px">${g.kyrkor.map(k=>k.kbr_id).join(', ')}</td>${mapBtn(g.kyrkor[0]?.kbr_lat,g.kyrkor[0]?.kbr_lng,g.namn)}</tr>`).join('');
+
+  // Status
+  setCount('cnt-ej-aktiv', q.status_ej_aktiv.length, true);
+  document.getElementById('tbody-ej-aktiv').innerHTML = rows(q.status_ej_aktiv,['namn','stift','invigning','anvandningsfrekvens']);
+  setCount('cnt-funk-andrad', q.funktion_andrad.length, false);
+  document.getElementById('tbody-funk-andrad').innerHTML = rows(q.funktion_andrad,['namn','stift','ursprunglig','nuvarande']);
+
+  // Komplettering
+  setCount('cnt-raa', q.raa_saknas.length, false);
+  document.getElementById('tbody-raa').innerHTML = rows(q.raa_saknas,['namn','stift','invigning','skyddEnligtKML']);
+  setCount('cnt-byggarea', q.byggarea_saknas.length, false);
+  document.getElementById('tbody-byggarea').innerHTML = rows(q.byggarea_saknas,['namn','stift','invigning']);
+  setCount('cnt-fastighet', q.fastighet_saknas.length, false);
+  document.getElementById('tbody-fastighet').innerHTML = rows(q.fastighet_saknas,['namn','stift','invigning']);
+  setCount('cnt-planform', q.planform_saknas.length, false);
+  document.getElementById('tbody-planform').innerHTML = rows(q.planform_saknas,['namn','stift','invigning']);
+  setCount('cnt-material', q.material_saknas.length, false);
+  document.getElementById('tbody-material').innerHTML = rows(q.material_saknas,['namn','stift','saknar','materialStomme','materialFasad']);
+  setCount('cnt-tillg-prog', q.tillg_ej_prog.length, false);
+  document.getElementById('tbody-tillg-prog').innerHTML = rows(q.tillg_ej_prog,['namn','stift','program','anpassning']);
+  setCount('cnt-ej-tillg', q.ej_tillganglig.length, false);
+  document.getElementById('tbody-ej-tillg').innerHTML = rows(q.ej_tillganglig,['namn','stift','anpassning','program']);
+  setCount('cnt-andrad', q.andrad_gammal.length, false);
+  document.getElementById('tbody-andrad').innerHTML = rows(q.andrad_gammal,['namn','stift','invigning','andradDatum','skapadDatum']);
+  setCount('cnt-agare', q.agare_mismatch.length, false);
+  document.getElementById('tbody-agare').innerHTML = rows(q.agare_mismatch,['namn','stift','agandeEnhet','geografiskEnhet']);
+}).catch(() => {});
+
+fetch('data/stats.json').then(r=>r.json()).then(s => {
+  document.getElementById('match-info').textContent =
+    `KBR ${s.kbr_totalt} | Platser ${s.platser_totalt} | OSM ${s.osm_totalt||'?'} | Match ${s.matchade} | Omatch ${s.omatchade_kbr}`;
+  const d = new Date(s.generated);
+  document.getElementById('print-meta').textContent =
+    `Genererad: ${d.toLocaleString('sv-SE')} | KBR: ${s.kbr_totalt} | Platser: ${s.platser_totalt} | OSM: ${s.osm_totalt||'?'}`;
+}).catch(() => {});
+</script>
+</body>
+</html>

@@ -261,12 +261,41 @@ TODO om koordinatfellista nedan.
   - **2000-tal:** Samtida - rektangulär volym, böljande/kurvilineärt tak,
     fristående kors. Referens: Fisksätra kyrka, S:t Görans kyrka.
 
-- **Koordinatfellista** - jämför KBR-koordinater mot Platser-API via
-  `facilityPartId` (GUID-länken mellan systemen). Exportera kyrkor med
-  >500 m avvikelse som CSV för rapportering till kyrkobyggnadsavdelningen
-  på kyrkokansliet.
+- **Koordinatfellista** - implementerad som `kbr-kvalitet/`, se nedan.
 
 - **Stift-filter** - dropdown för att filtrera på ett stift.
+
+### 8. KBR-kvalitetsrapport (`kbr-kvalitet/`) ✅ Funktionell
+
+Datakvalitetsverktyg som hämtar ~3 500 kyrkor från KBR och jämför mot
+SVK Platser-API:t och OSM. Körs lokalt med `APIKEY_PROD=... uv run
+kbr-kvalitet/build_report.py` (~3 min inkl. Overpass-hämtning).
+
+**Kontrollerar:**
+
+- Koordinatavvikelser KBR vs Platser och OSM (matchning: namn +
+  geografiskt närmaste kandidat, cap 200 km)
+- Datumkvalitet: omöjlig ordning, lång byggnadstid (>300 år), saknade datum
+- Koordinatkvalitet: utanför Sverige, rundade koordinater (1 km precision),
+  duplikatkoordinater
+- Namnkvalitet: duplikatnamn inom stift
+- Status: "Kyrkan används inte", fundamentala funktionsändringar (kyrka/icke-kyrka)
+- Komplettering: saknade RAA-id, byggarea, fastighetsbeteckning, planform,
+  material, tillgänglighetshandlingsprogram
+- Förvaltning: poster ej uppdaterade sedan 2020, ägar/geo-enhet mismatch
+
+**Resultat (2026-05-02):** 38 kyrkor inaktiva, 64 funktionsändrade, 324
+saknar RAA-id, 2 011 saknar planform, 1 960 saknar tillgänglighetshandlingsprogram,
+84 koordinatavvikelser >= 200 m mot Platser/OSM.
+
+**Output:** `data/report.csv` (koordinatavvikelser), `data/quality.json`
+(alla fynd), ⌖-knappar i alla tabeller hoppar till KBR-koordinaten på karta,
+"Skriv ut / PDF" exporterar samtliga tabeller.
+
+**Återstår:**
+
+- Lämna `report.csv` till kyrkobyggnadsavdelningen för åtgärd.
+- Ev. komplettera med UnitAPI-validering av `agandeEnhetLkf`-koder.
 
 ### 6. Kalenderhändelse-aggregator (`calendar-aggregator/`)
 
@@ -285,7 +314,7 @@ Status efter verifiering med vår nyckel mot test 2026-05-01:
 | Enhetsinformation | ✗ 302 mot test | Prenumerera på "Enhetsinformation" via portalen. |
 | Församlingskartor | ✓ ingen auth | Validera lager-listan via `GetCapabilities`. |
 | Församlingssök | ✗ 401 CallerInvalid | Prenumerera på "Församlingssök" på portalen. |
-| KBR | ✓ prod | Används i `kbr-tidslinje/`. Koordinater i SWEREF99TM. |
+| KBR | ✓ prod | Används i `kbr-tidslinje/` och `kbr-kvalitet/`. Koordinater i SWEREF99TM. |
 | Platser | ✗ 401 mot test | **Prenumerera på "Platser"** - kritiskt för signage-projektet. Verifiera även om öppettider finns. |
 | UnitAPI | ✓ test | Klart för bruk mot test. Be SVK om prod-aktivering när relevant. |
 | Ämnesområden | ✓ test | Klart för bruk mot test. |

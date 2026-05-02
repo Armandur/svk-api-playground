@@ -31,17 +31,19 @@ docs uppdateras.
 Pilot-projekt mot API:erna läggs som undermappar i denna repo. Idéer
 finns i `docs/modules/_todo.md`:
 
-- Signage-vy med dynamiska öppettider (Härnösands domkyrka m.fl.)
-- Mini-app för platsadministration som alternativ till Content Studio
-- Kyrkoårs-widget för embed på församlings-hemsidor
-- Församlingssök-formulär
-- Kyrkokarta i webbläsaren med Leaflet
-- Kalenderhändelse-aggregator för stiftskalender
+- `kbr-tidslinje/` - animerad karta över ~3 500 kyrkobyggnader 1000-idag
+- `kbr-kvalitet/` - datakvalitetsrapport för KBR, jämför mot Platser och OSM
+- `signage-platser/` - signage-vy med dynamiska öppettider
+- `platser-edit-app/` - mini-app för platsadministration
+- `kyrkoaret-widget/` - kyrkoårs-widget för embed
+- Församlingssök-formulär, kyrkokarta, kalenderhändelse-aggregator (planerade)
 
 ## Live-deploys
 
 - **osm-konsistenscheck** - <https://armandur.github.io/svk-api-playground/osm-konsistenscheck/>
   byggs dagligen via GitHub Actions (`.github/workflows/osm-deploy.yml`).
+- **kbr-tidslinje** - <https://armandur.github.io/svk-api-playground/kbr-tidslinje/>
+  animerad karta över ~3 500 kyrkobyggnader 1000-idag, byggs av samma workflow.
 
 ## Autentisering
 
