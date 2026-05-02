@@ -278,9 +278,11 @@ def diff_year(prev: dict, curr: dict) -> dict:
                 "tillagda": sorted(
                     f_namn_curr.get(fk, fk) for fk in curr_set - prev_set
                 ),
-                "fjarnade": sorted(
+                "borttagna": sorted(
                     f_namn_prev.get(fk, fk) for fk in prev_set - curr_set
                 ),
+                "tillagda_kod": sorted(curr_set - prev_set),
+                "borttagna_kod": sorted(prev_set - curr_set),
             })
     sammansattning.sort(key=lambda x: x["namn"])
 
@@ -298,6 +300,36 @@ def diff_year(prev: dict, curr: dict) -> dict:
         and not _namn_equiv(f_namn_prev[k], f_namn_curr[k], strip_suffix=True)
     )
 
+    # Skpkod-omkodningar: SVK byter ibland skpkod på en ekonomisk enhet
+    # utan att namn eller ingående församlingar ändras. Tekniskt ser det
+    # ut som "ny" + "upphörd" på två olika skpkod, men strukturellt har
+    # inget hänt. Para ihop dessa och lyft ut till egen kategori.
+    skpkod_omkodning = []
+    forsvunna_alla = forsvunna_pastorat + forsvunna_fore
+    forsvunna_lookup: dict = {}
+    for x in forsvunna_alla:
+        key = (x["namn"], frozenset(x["ingaende"]))
+        forsvunna_lookup[key] = x
+    nya_kvar = []
+    matched_old_kod: set = set()
+    for x in nya_pastorat:
+        key = (x["namn"], frozenset(x.get("ingaende", [])))
+        if key in forsvunna_lookup:
+            old = forsvunna_lookup[key]
+            skpkod_omkodning.append({
+                "namn": x["namn"],
+                "kod_fran": old["kod"],
+                "kod_till": x["kod"],
+                "ingaende": x.get("ingaende", []),
+            })
+            matched_old_kod.add(old["kod"])
+        else:
+            nya_kvar.append(x)
+    nya_pastorat = nya_kvar
+    forsvunna_pastorat = [x for x in forsvunna_pastorat if x["kod"] not in matched_old_kod]
+    forsvunna_fore = [x for x in forsvunna_fore if x["kod"] not in matched_old_kod]
+    skpkod_omkodning.sort(key=lambda x: x["namn"])
+
     return {
         "pastorat": {
             "nya": nya_pastorat,
@@ -307,6 +339,7 @@ def diff_year(prev: dict, curr: dict) -> dict:
             "pastoratsbildning": pastoratsbildning,
             "pastoratsupplosning": pastoratsupplosning,
             "sammansattning": sammansattning,
+            "skpkod_omkodning": skpkod_omkodning,
         },
         "forsamlingar": {
             "nya": nya_forsamlingar,

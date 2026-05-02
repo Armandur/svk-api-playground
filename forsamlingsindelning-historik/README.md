@@ -24,14 +24,23 @@ uv run forsamlingsindelning-historik/build_historik.py --rebuild-summary
 - **Karta** med pastoratsgränser i vinrött ovanpå tunnare grå
   församlingsgränser. Pastorat-popup listar ingående församlingar.
 - **Årsslider** 2008-2026 med tickmarks (datalist) och stegvis snäppning.
+- **Play-knapp** (▶) autospelar tidslinjen 2 sekunder per år. Stoppas
+  med ■ eller genom att dra slidern.
 - **(i)-knapp** öppnar drawer med detaljerade förändringslistor.
-- **Highlight-färgning** av aktiv förändring: nya pastorat gröna, ändrade
-  guld, upplösta mörkröd-streckade. Stabila går i bakgrunden.
+  Knappen byter till × när drawer:n är öppen.
+- **Highlight-färgning** av aktiv förändring: nya pastorat gröna,
+  ändrade guld, upplösta mörkröd-streckade, tillagda församlingar
+  gröna, borttagna mörkröda, stabila går i bakgrunden.
+- **Färgkodade rubriker** i drawer:n med färgruta som matchar kart-stilen.
 - **Toggle "Bara ändrade"** filtrerar bort stabila pastorat/församlingar.
 - **Klick på rad i drawer:n** zoomar och öppnar popup på kartan.
 - **Tooltips** visar status: "Nytt pastorat sedan X", "Bildat pastorat
-  (tidigare X som FörE)", "Ändrad sammansättning: + tillagda, − fjarnade",
-  "Pastorat → FörE", "Upplöst {år}" + lista över vart församlingarna gick.
+  (tidigare X som FörE)", "Ändrad sammansättning: + tillagda, − borttagna",
+  "Pastorat → FörE", "Skpkod-omkodning (ingen strukturell ändring)",
+  "Upplöst {år}" + lista över vart församlingarna gick, "Tillagd i Y
+  pastorat sedan X" / "Borttagen från Y".
+- **URL-state**: `?year=YYYY` synkas båda riktningarna - dela en specifik
+  vy genom att kopiera URL:en.
 - **Mobilvänlig drawer** från botten med backdrop, öppnas/stängs via
   info-knappen som byter mellan (i) och ×.
 
@@ -46,6 +55,7 @@ uv run forsamlingsindelning-historik/build_historik.py --rebuild-summary
 | **Upplösta pastorat** | `skpkod` försvinner; flerförsamlings-pastorat |
 | **FörE upphör** | `skpkod` försvinner; var en församling med egen ekonomi |
 | **Namnbyte** | Samma typ, annat namn (ej genitiv-s eller suffix-tillägg) |
+| **Skpkod-omkodning** | Ny `skpkod` med samma namn och samma ingående - bara administrativ omkodning, ingen strukturell ändring |
 
 ## Data
 
@@ -97,3 +107,8 @@ församlingens centroid.
   efter första bytet.
 - Datalist + ticks-bar bakom slidern för visuella snäppmarkeringar.
 - 100dvh + env(safe-area-inset-bottom) för iOS Safari-kompatibilitet.
+- Filer: `index.html` (skal), `app.css` (stilar), `app.js` (logik) -
+  ingen bundler.
+- Skpkod-omkodningar detekteras genom att para nya FörE/pastorat med
+  upphörda av samma namn + ingående församlingar - 240 sådana över
+  perioden 2008-2026, varav 62 år 2018-2019 ensamt.
