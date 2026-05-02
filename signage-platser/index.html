@@ -227,9 +227,13 @@ if (DETAILS_MODE === 'min') {
   document.documentElement.classList.add('details-min');
 }
 
-// ?place=<guid> hämtar valfri plats via dev-serverns SVK-proxy.
-// Utan param används place.json (skapad av refresh.py för offline-bruk).
+// ?place=<guid> + ev. ?apikey=<readonly-key> styr varifrån data hämtas.
+// Tre lägen, i prioritetsordning:
+//   1. apikey + place: direkt mot api.svenskakyrkan.se (ingen server behövs)
+//   2. bara place: via dev-serverns proxy (/api/platser/...)
+//   3. inget av dem: place.json (refresh.py-flödet, offline-fallback)
 const PLACE_GUID = new URLSearchParams(location.search).get('place');
+const API_KEY_PARAM = new URLSearchParams(location.search).get('apikey');
 
 function buildWeekSchedule(periods, now) {
   const today = new Date(now);
@@ -434,14 +438,21 @@ function renderClock(now) {
 async function fetchData() {
   try {
     let payload;
-    if (PLACE_GUID) {
-      // Direkt via proxy - färska data utan refresh.py-beroende
+    if (API_KEY_PARAM && PLACE_GUID) {
+      // Direkt mot SVK - ingen server behövs. apikey i URL är OK för
+      // publika read-only-nycklar (CORS är öppet: Allow-Origin: *).
+      const url = `https://api.svenskakyrkan.se/platser/v4/place/${PLACE_GUID}?apikey=${encodeURIComponent(API_KEY_PARAM)}`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      payload = { fetched_at: new Date().toISOString(), place: await r.json() };
+    } else if (PLACE_GUID) {
+      // Via dev-serverns proxy (nyckeln stannar server-sidigt)
       const r = await fetch(`/api/platser/place/${PLACE_GUID}`,
                             { cache: 'no-store' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       payload = { fetched_at: new Date().toISOString(), place: await r.json() };
     } else {
-      // Default: läs place.json som refresh.py uppdaterar
+      // Statisk place.json (refresh.py + offline-fallback)
       const r = await fetch('place.json', { cache: 'no-store' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       payload = await r.json();
