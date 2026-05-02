@@ -80,7 +80,7 @@ header .subtitle {
 }
 .results .group-header .group-name {
   font-weight: 600; color: var(--wine); font-size: 14px;
-  text-transform: uppercase; letter-spacing: 0.05em;
+  letter-spacing: 0.01em;
 }
 .results .group-header .group-meta {
   font-family: "Spectral", "Times New Roman", serif;
@@ -1169,7 +1169,13 @@ async function loadMyPlaces() {
       ul.innerHTML = `<li><div class="loading">Inga platser hittades för dina ${unitIds.length} enheter (id: ${unitIds.join(", ")}).</div></li>`;
       return;
     }
-    // Gruppera platserna per ägare (församling / pastorat / etc)
+    // Gruppera per ägare (församling/pastorat/etc). Servern använder
+    // "Sammfällighet" för pastorat - vi visar "Pastorat" i UI:t.
+    const TYPE_DISPLAY = { "Sammfällighet": "Pastorat" };
+    const isPastorat = g => {
+      const t = g.owner?.type || "";
+      return t === "Sammfällighet" || t === "Pastorat";
+    };
     const grouped = new Map();
     for (const p of results) {
       const key = p.owner?.id || "unknown";
@@ -1178,22 +1184,30 @@ async function loadMyPlaces() {
       }
       grouped.get(key).places.push(p);
     }
-    const groups = [...grouped.values()].sort((a, b) =>
-      (a.owner?.name || "").localeCompare(b.owner?.name || "", "sv"));
+    // Pastorat först, sen resten alfabetiskt på namn
+    const groups = [...grouped.values()].sort((a, b) => {
+      const aP = isPastorat(a), bP = isPastorat(b);
+      if (aP !== bP) return aP ? -1 : 1;
+      return (a.owner?.name || "").localeCompare(b.owner?.name || "", "sv");
+    });
     for (const g of groups) {
       g.places.sort((a, b) => (a.name || "").localeCompare(b.name || "", "sv"));
     }
-    ul.innerHTML = groups.map(g => `
-      <li class="group-header">
-        <span class="group-name">${escapeHtml(g.owner.name || "(okänd ägare)")}</span>
-        <span class="group-meta">${g.owner.type || ""} · ${g.places.length} ${g.places.length === 1 ? "plats" : "platser"}</span>
-      </li>
-      ${g.places.map(p => `
-        <li><button data-id="${p.id}" class="grouped-place">
-          <span class="place-name">${escapeHtml(p.name)}</span>
-        </button></li>
-      `).join("")}
-    `).join("");
+    ul.innerHTML = groups.map(g => {
+      const typeLabel = TYPE_DISPLAY[g.owner.type] || g.owner.type || "";
+      const placeWord = g.places.length === 1 ? "plats" : "platser";
+      return `
+        <li class="group-header">
+          <span class="group-name">${escapeHtml(g.owner.name || "(okänd ägare)")}</span>
+          <span class="group-meta">${escapeHtml(typeLabel)} · ${g.places.length} ${placeWord}</span>
+        </li>
+        ${g.places.map(p => `
+          <li><button data-id="${p.id}" class="grouped-place">
+            <span class="place-name">${escapeHtml(p.name)}</span>
+          </button></li>
+        `).join("")}
+      `;
+    }).join("");
     for (const btn of ul.querySelectorAll("button")) {
       btn.addEventListener("click", () => loadPlace(btn.dataset.id));
     }
