@@ -161,6 +161,16 @@ när huvuddelen råkar vara territorialvatten (Nättraby-Hasslö).
 
 ### 5d. SVK ↔ OSM kyrkokonsistens (`osm-konsistenscheck/`) ✅ Funktionell + deployad
 
+#### Utökad data per källa i popupar
+
+Fler fält skulle kunna visas per sektion:
+- **Platser-API**: adress, koordinatprecision, plats-ID (p.id), enhetsnummer
+- **KBR**: nuvarandeAnvandning (funktion/användning), arkitekt, kulturminnesklass
+  - Kräver utökning av `build_kbr.py` fields-parametern
+- **OSM**: fler befintliga taggar (building, architect, heritage, addr:*)
+- Idé: 'Visa mer'-knapp i popupen som öppnar ett sidopanel/modal med
+  samtliga rådata från alla tre källor för vald prick
+
 Live på <https://armandur.github.io/svk-api-playground/osm-konsistenscheck/>,
 byggs dagligen 04:00 UTC av GitHub Actions.
 

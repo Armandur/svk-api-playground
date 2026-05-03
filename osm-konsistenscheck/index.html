@@ -155,6 +155,27 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 .popup-status.matched { background: rgba(0, 85, 75, 0.12); color: var(--dark-green); }
 .popup-status.svk-only { background: rgba(125, 0, 55, 0.12); color: var(--wine); }
 .popup-status.osm-only { background: rgba(61, 122, 184, 0.14); color: var(--osm); }
+.popup-status.kbr-status { background: rgba(232,119,34,0.12); color: #E87722; }
+
+.popup-section {
+  border-left: 3px solid;
+  margin: 6px 0 2px;
+  padding: 3px 0 3px 8px;
+}
+.popup-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 3px;
+}
+.popup-section.platser { border-color: var(--wine); }
+.popup-section-label.platser { color: var(--wine); }
+.popup-section.osm { border-color: var(--osm); }
+.popup-section-label.osm { color: var(--osm); }
+.popup-section.kbr { border-color: #E87722; }
+.popup-section-label.kbr { color: #E87722; }
+
 .copy-tags-btn {
   font: 11px "DM Sans", Arial, sans-serif;
   background: var(--beige); color: var(--wine);
@@ -432,41 +453,58 @@ function copyTagsButton(tagLines) {
 }
 
 function popupHtml(p) {
+  const name = escapeHtml(p.svk_namn || p.osm_namn || p.name || p.kbr_namn || "?");
+
   if (p.kategori === "matched") {
     const dist = p.distance_m;
     const missing = p.osm_missing_tags || [];
     const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
     const missingTagLines = missing.map(t =>
       t === "start_date" ? `start_date=${kbrYear || ""}` : `${t}=${suggestedTagValue(t)}`);
-    const kbrInfo = p.kbr_id
-      ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR id ${escapeHtml(String(p.kbr_id))}: avviker ${p.kbr_osm_distance_m} m från OSM</div>`
-      : "";
-    const missingHtml = missing.length
-      ? `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>` +
-        `<div class="popup-meta">Förslag att lägga till i OSM:</div>` +
-        missingTagLines.map(line =>
-          `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("") +
-        copyTagsButton(missingTagLines)
-      : "";
-    const editLink = p.osm_id
-      ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit?${escapeHtml(p.osm_id.replace("/", "="))}" target="_blank" rel="noopener">Redigera i iD</a></div>`
-      : "";
-    return `<div class="popup-name">${escapeHtml(p.svk_namn || p.osm_namn || "?")}</div>` +
-      (p.svk_owner_name ? `<div class="popup-meta">${escapeHtml(p.svk_owner_name)}</div>` : "") +
-      `<div class="popup-status matched">Matchad (${dist} m mellan Platser-API och OSM)</div>` +
-      kbrInfo +
-      (p.osm_namn && p.osm_namn !== p.svk_namn
-        ? `<div class="popup-meta">OSM-namn: ${escapeHtml(p.osm_namn)}</div>` : "") +
-      (p.osm_denomination
-        ? `<div class="popup-meta">OSM-denomination: ${escapeHtml(p.osm_denomination)}</div>` : "") +
-      missingHtml +
-      `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>` +
-      editLink +
-      (p.svk_slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.svk_slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : "") +
-      (p.svk_url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.svk_url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : "");
+
+    let platserSection = `
+      <div class="popup-section platser">
+        <div class="popup-section-label platser">Platser-API</div>
+        ${p.svk_namn && p.osm_namn && p.svk_namn !== p.osm_namn ? `<div class="popup-meta">${escapeHtml(p.svk_namn)}</div>` : ""}
+        ${p.svk_owner_name ? `<div class="popup-meta">${escapeHtml(p.svk_owner_name)}</div>` : ""}
+        ${p.svk_slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.svk_slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : ""}
+        ${p.svk_url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.svk_url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : ""}
+      </div>`;
+
+    let osmSection = `
+      <div class="popup-section osm">
+        <div class="popup-section-label osm">OpenStreetMap</div>
+        ${p.osm_namn && p.osm_namn !== (p.svk_namn || p.name) ? `<div class="popup-meta">Namn: ${escapeHtml(p.osm_namn)}</div>` : ""}
+        ${p.osm_denomination ? `<div class="popup-meta">Denomination: ${escapeHtml(p.osm_denomination)}</div>` : ""}
+        ${p.osm_start_date ? `<div class="popup-meta">Invigd: ${escapeHtml(p.osm_start_date)}</div>` : ""}
+        <div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>
+        ${p.osm_id ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit?${escapeHtml(p.osm_id.replace("/", "="))}" target="_blank" rel="noopener">Redigera i iD</a></div>` : ""}
+        ${missing.length ? `
+          <div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>
+          ${missingTagLines.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
+          ${copyTagsButton(missingTagLines)}
+        ` : ""}
+      </div>`;
+
+    let kbrSection = p.kbr_id ? `
+      <div class="popup-section kbr">
+        <div class="popup-section-label kbr">KBR</div>
+        <div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>
+        ${kbrYear ? `<div class="popup-meta">Invigd: ${kbrYear}</div>` : ""}
+        ${p.kbr_nybyggnad_fran && p.kbr_nybyggnad_fran !== p.kbr_invigning ? `<div class="popup-meta">Byggnadstart: ${p.kbr_nybyggnad_fran}</div>` : ""}
+        ${p.kbr_skydd ? `<div class="popup-meta">Skydd: ${escapeHtml(p.kbr_skydd)}</div>` : ""}
+        <div class="popup-meta">${p.kbr_osm_distance_m} m från OSM</div>
+      </div>` : "";
+
+    return `<div class="popup-name">${name}</div>
+      <div class="popup-status matched">Matchad - ${dist} m mellan Platser-API och OSM</div>
+      ${platserSection}
+      ${osmSection}
+      ${kbrSection}`;
   }
+
   if (p.kategori === "svk_only") {
-    const [lon, lat] = [p._lon, p._lat];  // sätts vid render
+    const [lon, lat] = [p._lon, p._lat];
     const newNodeTags = [
       "amenity=place_of_worship",
       "religion=christian",
@@ -475,61 +513,94 @@ function popupHtml(p) {
     if (p.name) newNodeTags.push(`name=${p.name}`);
     const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
     if (kbrYear) newNodeTags.push(`start_date=${kbrYear}`);
-    const kbrInfo = p.kbr_id
-      ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR id ${escapeHtml(String(p.kbr_id))}: avviker ${p.kbr_osm_distance_m} m från Platser-API</div>`
-      : "";
-    return `<div class="popup-name">${escapeHtml(p.name || "?")}</div>` +
-      (p.owner_name ? `<div class="popup-meta">${escapeHtml(p.owner_name)}</div>` : "") +
-      (p.city ? `<div class="popup-meta">${escapeHtml(p.city)}</div>` : "") +
-      `<div class="popup-status svk-only">Saknas i OSM (eller >100 m bort)</div>` +
-      kbrInfo +
-      `<div class="popup-meta">Föreslagna OSM-taggar:</div>` +
-      newNodeTags.map(line =>
-        `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("") +
-      copyTagsButton(newNodeTags) +
-      (lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">Lägg till i iD-editor</a></div>` : "") +
-      (p.slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : "") +
-      (p.url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : "");
+
+    let platserSection = `
+      <div class="popup-section platser">
+        <div class="popup-section-label platser">Platser-API</div>
+        ${p.owner_name ? `<div class="popup-meta">${escapeHtml(p.owner_name)}</div>` : ""}
+        ${p.city ? `<div class="popup-meta">${escapeHtml(p.city)}</div>` : ""}
+        ${p.slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : ""}
+        ${p.url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : ""}
+      </div>`;
+
+    let kbrSection = p.kbr_id ? `
+      <div class="popup-section kbr">
+        <div class="popup-section-label kbr">KBR</div>
+        <div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>
+        ${kbrYear ? `<div class="popup-meta">${kbrYear}</div>` : ""}
+        <div class="popup-meta">${p.kbr_osm_distance_m} m från Platser-API</div>
+      </div>` : "";
+
+    let osmSection = `
+      <div class="popup-section osm">
+        <div class="popup-section-label osm">Lägg till i OSM</div>
+        ${newNodeTags.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
+        ${copyTagsButton(newNodeTags)}
+        ${lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">iD-editor länk</a></div>` : ""}
+      </div>`;
+
+    return `<div class="popup-name">${name}</div>
+      <div class="popup-status svk-only">Saknas i OSM (eller >100 m bort)</div>
+      ${platserSection}
+      ${kbrSection}
+      ${osmSection}`;
   }
+
   if (p.kategori === "kbr_only") {
     const [lon, lat] = [p._lon, p._lat];
-    const newNodeTags = [
-      "amenity=place_of_worship",
-      "religion=christian",
-      "denomination=lutheran",
-    ];
+    const newNodeTags = ["amenity=place_of_worship", "religion=christian", "denomination=lutheran"];
     if (p.kbr_namn) newNodeTags.push(`name=${p.kbr_namn}`);
     const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
     if (kbrYear) newNodeTags.push(`start_date=${kbrYear}`);
-    return `<div class="popup-name">${escapeHtml(p.kbr_namn || "?")}</div>` +
-      (p.stift ? `<div class="popup-meta">${escapeHtml(p.stift)}</div>` : "") +
-      (p.skydd ? `<div class="popup-meta">${escapeHtml(p.skydd)}</div>` : "") +
-      (p.kbr_id ? `<div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>` : "") +
-      (kbrYear ? `<div class="popup-meta">KBR: invigd/byggd ${kbrYear}</div>` : "") +
-      `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr}">Finns i KBR, saknar matchning i OSM/Platser-API</div>` +
-      `<div class="popup-meta">Föreslagna OSM-taggar:</div>` +
-      newNodeTags.map(line =>
-        `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("") +
-      copyTagsButton(newNodeTags) +
-      (lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">Lägg till i iD-editor</a></div>` : "");
+
+    let kbrSection = `
+      <div class="popup-section kbr">
+        <div class="popup-section-label kbr">KBR</div>
+        <div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>
+        ${p.stift ? `<div class="popup-meta">${escapeHtml(p.stift)}</div>` : ""}
+        ${p.skydd ? `<div class="popup-meta">${escapeHtml(p.skydd)}</div>` : ""}
+        ${kbrYear ? `<div class="popup-meta">${kbrYear}</div>` : ""}
+      </div>`;
+
+    let osmSection = `
+      <div class="popup-section osm">
+        <div class="popup-section-label osm">Lägg till i OSM</div>
+        ${newNodeTags.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
+        ${copyTagsButton(newNodeTags)}
+        ${lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">iD-editor länk</a></div>` : ""}
+      </div>`;
+
+    return `<div class="popup-name">${name}</div>
+      <div class="popup-status kbr-status">Finns i KBR, saknar matchning i OSM/Platser-API</div>
+      ${kbrSection}
+      ${osmSection}`;
   }
+
   // osm_only
   const statusText = p.likely_svk_miss
     ? `Wikidata pekar mot ${escapeHtml(p.wikidata_diocese || "SvK-stift")} - kanske saknas i Platser-API`
     : "Saknas i Platser-API eller annan denomination";
-  const kbrInfo = p.kbr_id
-    ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR id ${escapeHtml(String(p.kbr_id))}: avviker ${p.kbr_osm_distance_m} m från OSM</div>`
-    : "";
-  const wdLink = p.wikidata
-    ? `<div class="popup-meta"><a class="popup-link" href="https://www.wikidata.org/wiki/${escapeHtml(p.wikidata)}" target="_blank" rel="noopener">Wikidata ${escapeHtml(p.wikidata)}</a></div>`
-    : "";
-  return `<div class="popup-name">${escapeHtml(p.name || "(namnlös)")}</div>` +
-    (p.denomination ? `<div class="popup-meta">Denomination: ${escapeHtml(p.denomination)}</div>` : "") +
-    (p.operator ? `<div class="popup-meta">Operator: ${escapeHtml(p.operator)}</div>` : "") +
-    `<div class="popup-status osm-only">${statusText}</div>` +
-    kbrInfo +
-    `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>` +
-    wdLink;
+
+  let osmSection = `
+    <div class="popup-section osm">
+      <div class="popup-section-label osm">OpenStreetMap</div>
+      ${p.denomination ? `<div class="popup-meta">Denomination: ${escapeHtml(p.denomination)}</div>` : ""}
+      ${p.operator ? `<div class="popup-meta">Operator: ${escapeHtml(p.operator)}</div>` : ""}
+      <div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>
+      ${p.wikidata ? `<div class="popup-meta"><a class="popup-link" href="https://www.wikidata.org/wiki/${escapeHtml(p.wikidata)}" target="_blank" rel="noopener">Wikidata</a></div>` : ""}
+    </div>`;
+
+  let kbrSection = p.kbr_id ? `
+    <div class="popup-section kbr">
+      <div class="popup-section-label kbr">KBR</div>
+      <div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>
+      <div class="popup-meta">${p.kbr_osm_distance_m} m från OSM</div>
+    </div>` : "";
+
+  return `<div class="popup-name">${escapeHtml(p.name || "(namnlös)")}</div>
+    <div class="popup-status osm-only">${statusText}</div>
+    ${osmSection}
+    ${kbrSection}`;
 }
 
 // Ett gemensamt cluster för alla kategorier - klustermarkören visar
