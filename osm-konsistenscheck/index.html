@@ -467,7 +467,7 @@ function popupHtml(p) {
         <div class="popup-section-label platser">Platser-API</div>
         ${p.svk_namn && p.osm_namn && p.svk_namn !== p.osm_namn ? `<div class="popup-meta">Namn: ${escapeHtml(p.svk_namn)}</div>` : ""}
         ${p.svk_owner_name ? `<div class="popup-meta">Ägare: ${escapeHtml(p.svk_owner_name)}</div>` : ""}
-        ${p.svk_slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.svk_slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : ""}
+        ${p.svk_slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.svk_slug)}" target="_blank" rel="noopener">Platser-sida</a></div>` : ""}
         ${p.svk_url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.svk_url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : ""}
       </div>`;
 
@@ -519,7 +519,7 @@ function popupHtml(p) {
         <div class="popup-section-label platser">Platser-API</div>
         ${p.owner_name ? `<div class="popup-meta">Ägare: ${escapeHtml(p.owner_name)}</div>` : ""}
         ${p.city ? `<div class="popup-meta">Ort: ${escapeHtml(p.city)}</div>` : ""}
-        ${p.slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.slug)}" target="_blank" rel="noopener">SVK plats-sida</a></div>` : ""}
+        ${p.slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.slug)}" target="_blank" rel="noopener">Platser-sida</a></div>` : ""}
         ${p.url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : ""}
       </div>`;
 
