@@ -483,7 +483,7 @@ function makeIcon(color, ringColor = null) {
   return L.divIcon({
     className: "kyrka-pin",
     html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;${ring}"></div>`,
-    iconSize: [14, 14], iconAnchor: [7, 7],
+    iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -9],
   });
 }
 
@@ -491,7 +491,7 @@ function makeKbrIcon() {
   return L.divIcon({
     className: "kbr-pin",
     html: `<div style="width:10px;height:10px;border-radius:50%;background:${COLOR.kbr};border:1px solid #a04400;box-shadow:0 1px 2px rgba(0,0,0,0.3)"></div>`,
-    iconSize: [10, 10], iconAnchor: [5, 5],
+    iconSize: [10, 10], iconAnchor: [5, 5], popupAnchor: [0, -7],
   });
 }
 
@@ -556,7 +556,7 @@ function sourcePills(sources) {
   }).join("");
 }
 
-function buildMissingHtml(p, kbrYear, {noCopyButton = false} = {}) {
+function buildMissingHtml(p, kbrYear, {noCopyButton = false, noStatusLine = false} = {}) {
   const missing = p.osm_missing_tags || [];
   const evidence = p.osm_tag_evidence || {};
   if (!missing.length) return "";
@@ -575,7 +575,9 @@ function buildMissingHtml(p, kbrYear, {noCopyButton = false} = {}) {
     return `<div class="popup-meta"><code>${escapeHtml(line)}</code>${pills}</div>`;
   });
 
-  return `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>` +
+  const statusLine = noStatusLine ? "" :
+    `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>`;
+  return statusLine +
     rows.join("") +
     (copyableTags.length && !noCopyButton ? copyTagsButton(copyableTags) : "");
 }
@@ -654,7 +656,7 @@ function popupHtml(p) {
     const baseTags = ["amenity=place_of_worship", "religion=christian", "denomination=lutheran"];
     const evidenceMissing = (p.osm_missing_tags || []).filter(t =>
       !["amenity","religion","denomination"].includes(t));
-    const evidenceHtml = buildMissingHtml({...p, osm_missing_tags: evidenceMissing}, kbrYear, {noCopyButton: true});
+    const evidenceHtml = buildMissingHtml({...p, osm_missing_tags: evidenceMissing}, kbrYear, {noCopyButton: true, noStatusLine: true});
     const allCopyable = [
       ...baseTags,
       ...(p.osm_missing_tags || [])
@@ -699,7 +701,7 @@ function popupHtml(p) {
     const baseTags = ["amenity=place_of_worship", "religion=christian", "denomination=lutheran"];
     const evidenceMissing = (p.osm_missing_tags || []).filter(t =>
       !["amenity","religion","denomination"].includes(t));
-    const evidenceHtml = buildMissingHtml({...p, osm_missing_tags: evidenceMissing}, kbrYear, {noCopyButton: true});
+    const evidenceHtml = buildMissingHtml({...p, osm_missing_tags: evidenceMissing}, kbrYear, {noCopyButton: true, noStatusLine: true});
     const allCopyable = [
       ...baseTags,
       ...(p.osm_missing_tags || [])
@@ -811,8 +813,8 @@ async function init() {
     document.getElementById("stats").innerHTML =
       `<span class="matched"><b>${sum.matched}</b> matchade</span>` +
       `<span class="svk"><b>${sum.svk_only}</b> bara Platser-API</span>` +
-      `<span class="osm"><b>${sum.osm_only}</b> bara OSM</span>` +
-      (sum.kbr_only != null ? `<span class="kbr"><b>${sum.kbr_only}</b> bara KBR</span>` : "");
+      (sum.kbr_only != null ? `<span class="kbr"><b>${sum.kbr_only}</b> bara KBR</span>` : "") +
+      `<span class="osm"><b>${sum.osm_only}</b> bara OSM</span>`;
     renderFreshness(sum);
 
     const baseIcons = {
@@ -954,6 +956,11 @@ async function init() {
             `<span class="swatch" style="background:${COLOR.svk_only}"></span>` +
             `Bara Platser-API<span class="count">${sum.svk_only}</span></label>` +
           `<button data-export="svk_only">Exportera CSV</button>` +
+          `<label><input type="checkbox" data-cat="kbr_only" checked>` +
+            `<span class="swatch" style="background:${COLOR.kbr}"></span>` +
+            `KBR<span class="count">${sum.kbr_total || 0}</span></label>` +
+          `<label class="sub"><input type="checkbox" data-kbr-error>` +
+            `KBR-koordinatfel (>200 m)<span class="count">${sum.kbr_osm_errors_200m || 0}</span></label>` +
           `<label><input type="checkbox" data-cat="osm_only" checked>` +
             `<span class="swatch" style="background:${COLOR.osm_only}"></span>` +
             `Bara OSM<span class="count">${sum.osm_only}</span></label>` +
@@ -962,11 +969,6 @@ async function init() {
               `Visa bara förmodliga SVK-missar` +
               `<span class="count">${sum.osm_only_likely_svk_miss}</span></label>`
             : "") +
-          `<label><input type="checkbox" data-cat="kbr_only" checked>` +
-            `<span class="swatch" style="background:${COLOR.kbr}"></span>` +
-            `KBR<span class="count">${sum.kbr_total || 0}</span></label>` +
-          `<label class="sub"><input type="checkbox" data-kbr-error>` +
-            `KBR-koordinatfel (>200 m)<span class="count">${sum.kbr_osm_errors_200m || 0}</span></label>` +
           `<details><summary>OSM-denomination</summary>${denomList}</details>`;
         L.DomEvent.disableClickPropagation(div);
         L.DomEvent.disableScrollPropagation(div);
@@ -1053,13 +1055,53 @@ async function init() {
 
     // Popup-overlay: visa OSM- och KBR-punkt med linjer vid klick på matched-markör
     let activePopupLayer = null;
+    let activeOverlayDots = []; // [{lat, lng}] för popup-justering
+
+    // Flytta popup horisontellt om den täcker overlay-prickar.
+    // Anropas via RAF efter att popup-elementet renderats.
+    function adjustPopupClear(popup) {
+      const popupEl = popup.getElement();
+      if (!popupEl || !activeOverlayDots.length) return;
+      const mapContainer = map.getContainer();
+      const mapRect = mapContainer.getBoundingClientRect();
+      const pr = popupEl.getBoundingClientRect();
+      const pL = pr.left - mapRect.left;
+      const pR = pr.right  - mapRect.left;
+      const pT = pr.top    - mapRect.top;
+      const pB = pr.bottom - mapRect.top;
+      const mapW = mapContainer.offsetWidth;
+      const margin = 14;
+      let shiftX = 0;
+      for (const {lat, lng} of activeOverlayDots) {
+        const dp = map.latLngToContainerPoint([lat, lng]);
+        if (dp.x > pL - margin && dp.x < pR + margin &&
+            dp.y > pT - margin && dp.y < pB + margin) {
+          // Pricken täcks - flytta popup åt det håll som har mer utrymme
+          const needRight = dp.x - pL + margin;   // flytta höger med detta
+          const needLeft  = pR  - dp.x + margin;  // flytta vänster med detta
+          if (mapW - (pR + needRight) >= 0) {
+            shiftX = Math.max(shiftX, needRight);
+          } else {
+            shiftX = Math.min(shiftX, -needLeft);
+          }
+        }
+      }
+      if (Math.abs(shiftX) > 1) {
+        const cur = popup.options.offset || L.point(0, 0);
+        popup.options.offset = L.point(L.point(cur).x + shiftX, L.point(cur).y);
+        popup.options.autoPan = false;
+        popup._updatePosition();
+        popup.options.autoPan = true;
+      }
+    }
+
     map.on("popupopen", e => {
       if (activePopupLayer) { map.removeLayer(activePopupLayer); activePopupLayer = null; }
+      activeOverlayDots = [];
       const marker = e.popup._source;
       if (!marker || !marker.options) return;
       const p = marker.options.featureProps;
       if (!p || !["matched", "svk_only"].includes(p.kategori)) return;
-      // svk_only har ingen OSM-prick men kan ha en KBR-prick
       if (p.kategori === "svk_only" && !p.kbr_id) return;
 
       activePopupLayer = L.layerGroup().addTo(map);
@@ -1071,9 +1113,10 @@ async function init() {
           color: COLOR.osm_only, weight: 2, opacity: 0.85,
         }).addTo(activePopupLayer);
         L.circleMarker([olat, olon], {
-          radius: 6, color: COLOR.osm_only, fillColor: COLOR.osm_only,
-          fillOpacity: 0.85, weight: 2,
+          radius: 7, color: COLOR.osm_only, fillColor: COLOR.osm_only,
+          fillOpacity: 0.9, weight: 2,
         }).bindTooltip("OSM").addTo(activePopupLayer);
+        activeOverlayDots.push({lat: olat, lng: olon});
       }
 
       if (p.kbr_id && p.kbr_lat != null) {
@@ -1081,21 +1124,27 @@ async function init() {
           color: COLOR.kbr, weight: 1.5, opacity: 0.85, dashArray: "6, 4",
         }).addTo(activePopupLayer);
         L.circleMarker([p.kbr_lat, p.kbr_lng], {
-          radius: 6, color: COLOR.kbr, fillColor: COLOR.kbr,
-          fillOpacity: 0.85, weight: 2,
+          radius: 7, color: COLOR.kbr, fillColor: COLOR.kbr,
+          fillOpacity: 0.9, weight: 2,
         }).bindTooltip(`KBR ${p.kbr_id || ""}`).addTo(activePopupLayer);
+        activeOverlayDots.push({lat: p.kbr_lat, lng: p.kbr_lng});
       }
 
-      // Panorera så popup + overlay-prickar syns utan att täcka varandra
+      // Säkerställ att alla punkter syns, panorera utan animation om de är off-screen
       const bounds = L.latLngBounds([ll]);
       if (p.osm_lonlat) bounds.extend([p.osm_lonlat[1], p.osm_lonlat[0]]);
       if (p.kbr_id && p.kbr_lat != null) bounds.extend([p.kbr_lat, p.kbr_lng]);
-      if (bounds.getNorthEast().distanceTo(bounds.getSouthWest()) > 20) {
-        map.flyToBounds(bounds, { paddingTopLeft: [20, 20], paddingBottomRight: [20, 300], maxZoom: map.getZoom(), duration: 0.4 });
+      if (!map.getBounds().contains(bounds)) {
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: map.getZoom(), animate: false });
       }
+
+      // Justera popup-position efter att DOM renderats
+      requestAnimationFrame(() => adjustPopupClear(e.popup));
     });
-    map.on("popupclose", () => {
+    map.on("popupclose", e => {
+      if (e.popup && e.popup.options) e.popup.options.offset = L.point(0, 0);
       if (activePopupLayer) { map.removeLayer(activePopupLayer); activePopupLayer = null; }
+      activeOverlayDots = [];
     });
 
     // Sök-control top-left, under layer-väljaren
