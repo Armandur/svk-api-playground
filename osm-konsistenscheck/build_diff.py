@@ -67,11 +67,12 @@ def osm_missing_tags(osm_tags: dict | None) -> list[str]:
 def normalize_name(s: str | None) -> str:
     if not s: return ""
     s = s.lower()
-    # Ersätt vanliga substitutioner som annars sänker similarity
     s = s.replace("s:t", "sankt").replace("s:ta", "sankta")
     s = re.sub(r"\b(kyrka|kapell|church|chapel)\b", "", s)
     s = re.sub(r"[^\wåäö ]+", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
+    # Genitiv-s: "Berghamns" → "berghamn", "Tierps" → "tierp"
+    s = " ".join(w[:-1] if w.endswith("s") and len(w) > 3 else w for w in s.split())
     return s
 
 
