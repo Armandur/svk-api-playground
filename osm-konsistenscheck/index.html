@@ -614,32 +614,34 @@ async function init() {
     let onlyKbrError = false;
     let showKBR = true;
     const applyGlobalFilter = () => {
-      // Applicera alla filterregler på alla markörer
       for (const cat in markersByCat) {
         markersByCat[cat].forEach(m => {
           const fp = m.options.featureProps;
           let show = true;
-          
-          if (cat === "matched") show = matchedEnabled;
-          else if (cat === "svk_only") show = true;
-          else if (cat === "osm_only") show = true; // Hanteras även av applyOsmOnlyFilter
-          else if (cat === "kbr_only") show = showKBR;
 
-          // Om globalt KBR-fel filter är aktivt
-          if (onlyKbrError && (!fp.kbr_id || fp.kbr_osm_distance_m <= 200)) show = false;
-          
-          // Matched sub-filter
-          if (cat === "matched" && show) {
-            if (onlyMismatch && !fp.name_mismatch) show = false;
-            if (onlyTaggbrist && !(fp.osm_missing_tags || []).length) show = false;
-            if (onlyOver50m && (fp.distance_m || 0) <= 50) show = false;
+          if (cat === "matched") {
+            show = matchedEnabled;
+            if (show && onlyMismatch && !fp.name_mismatch) show = false;
+            if (show && onlyTaggbrist && !(fp.osm_missing_tags || []).length) show = false;
+            if (show && onlyOver50m && (fp.distance_m || 0) <= 50) show = false;
+          } else if (cat === "svk_only") {
+            show = true;
+          } else if (cat === "osm_only") {
+            const d = fp.denomination || "(saknas)";
+            show = osmOnlyEnabled && !denomDisabled.has(d);
+            if (show && onlyLikelySvkMiss && !fp.likely_svk_miss) show = false;
+          } else if (cat === "kbr_only") {
+            show = showKBR;
           }
+
+          if (show && onlyKbrError && (!fp.kbr_id || fp.kbr_osm_distance_m <= 200)) show = false;
 
           const inCluster = cluster.hasLayer(m);
           if (show && !inCluster) cluster.addLayer(m);
           else if (!show && inCluster) cluster.removeLayer(m);
-          
-          if (show && cat === "matched") {
+
+          if (cat === "matched") {
+            if (!show) return;
             if (onlyMismatch && fp.name_mismatch) m.setIcon(baseIcons.matched_mismatch);
             else if (onlyTaggbrist && (fp.osm_missing_tags || []).length) m.setIcon(baseIcons.matched_taggbrist);
             else m.setIcon(baseIcons.matched);
@@ -689,23 +691,10 @@ async function init() {
     }
     cluster.addTo(map);
 
-    // Filter-state per OSM-only denomination (bara aktivt om filter ändrats)
+    // Filter-state per OSM-only denomination
     const denomDisabled = new Set();
     let osmOnlyEnabled = true;
     let onlyLikelySvkMiss = false;
-    function applyOsmOnlyFilter() {
-      markersByCat.osm_only.forEach(m => {
-        const fp = m.options.featureProps;
-        const d = fp.denomination || "(saknas)";
-        const inCluster = cluster.hasLayer(m);
-        let wanted = !denomDisabled.has(d) && osmOnlyEnabled;
-        if (wanted && onlyLikelySvkMiss && !fp.likely_svk_miss) wanted = false;
-        if (wanted && onlyKbrError && (!fp.kbr_id || fp.kbr_osm_distance_m <= 200)) wanted = false;
-        
-        if (wanted && !inCluster) cluster.addLayer(m);
-        else if (!wanted && inCluster) cluster.removeLayer(m);
-      });
-    }
 
     // Filter-control
     const FilterCtrl = L.Control.extend({
@@ -767,7 +756,7 @@ async function init() {
               applyGlobalFilter();
             } else if (cat === "osm_only") {
               osmOnlyEnabled = e.target.checked;
-              applyOsmOnlyFilter();
+              applyGlobalFilter();
             } else if (cat === "kbr_only") {
               showKBR = e.target.checked;
               applyGlobalFilter();
@@ -797,14 +786,13 @@ async function init() {
           if (onlyKbrError) kbrErrorLines.addTo(map);
           else map.removeLayer(kbrErrorLines);
           applyGlobalFilter();
-          applyOsmOnlyFilter();
         });
         // Förmodliga SvK-missar (osm_only med wikidata-tagg i SvK-stift)
         const likelyMissInput = div.querySelector("input[data-likely-miss]");
         if (likelyMissInput) {
           likelyMissInput.addEventListener("change", e => {
             onlyLikelySvkMiss = e.target.checked;
-            applyOsmOnlyFilter();
+            applyGlobalFilter();
           });
         }
         // Avståndslinjer (separat lager)
@@ -818,7 +806,7 @@ async function init() {
             const d = e.target.dataset.denom;
             if (e.target.checked) denomDisabled.delete(d);
             else denomDisabled.add(d);
-            applyOsmOnlyFilter();
+            applyGlobalFilter();
           });
         });
         // Export
