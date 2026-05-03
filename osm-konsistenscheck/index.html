@@ -861,6 +861,14 @@ async function init() {
           fillOpacity: 0.85, weight: 2,
         }).bindTooltip(`KBR ${p.kbr_id || ""}`).addTo(activePopupLayer);
       }
+
+      // Panorera så popup + overlay-prickar syns utan att täcka varandra
+      const bounds = L.latLngBounds([ll]);
+      if (p.osm_lonlat) bounds.extend([p.osm_lonlat[1], p.osm_lonlat[0]]);
+      if (p.kbr_id && p.kbr_lat != null) bounds.extend([p.kbr_lat, p.kbr_lng]);
+      if (bounds.getNorthEast().distanceTo(bounds.getSouthWest()) > 20) {
+        map.flyToBounds(bounds, { paddingTopLeft: [20, 20], paddingBottomRight: [20, 300], maxZoom: map.getZoom(), duration: 0.4 });
+      }
     });
     map.on("popupclose", () => {
       if (activePopupLayer) { map.removeLayer(activePopupLayer); activePopupLayer = null; }
