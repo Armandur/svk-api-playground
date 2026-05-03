@@ -110,31 +110,106 @@ Standard HTTP, men body innehåller förklaring vid 400:
 
 Två typer under `/byggnader`:
 
-- **Kyrkor** - alla basfält + extrafält (arkitekt, byggår, kulturklassning,
-  innehåll i kyrkorum, etc).
-- **Övriga byggnader** - bara basfält.
+- **Kyrkor** (`kyrka=true`) - alla fält nedan.
+- **Övriga byggnader** (`kyrka=false`) - bara ett delmängd basfält.
 
 En byggnad **kan byta typ** via redigering i KBR - därför samma path för
 båda. Begravningsplatser har ett enhetligt fältset.
 
+Testmiljön (`api-t`) kräver kyrknätanslutning - `fields=*&testdata=true`
+fungerar inte utifrån. Fältreferensen nedan är verifierad mot prod 2026-05-03.
+
+### Fält - kyrkobyggnad (`fields=*`)
+
+Verifierat mot Linköpings domkyrka (id 32555) och Abilds kyrka (id 35789).
+**Obs:** Inget arkitekt-fält finns trots att äldre dokumentation antyder det.
+
+| Fält | Typ | Beskrivning |
+|---|---|---|
+| `id` | int | KBR-id (IdentitySVK) |
+| `namn` | str | Byggnadens namn |
+| `kyrka` | bool | true = kyrka, false = övrig byggnad |
+| `stift` | str | Stift (t.ex. "Linköpings stift") |
+| `pastorat` | str | Pastoratkod (numerisk sträng, t.ex. "020101") |
+| `agandeEnhet` | str | Ägande enhetens namn |
+| `agandeEnhetLkf` | str | LKF-kod för ägande enhet |
+| `agarkategori` | str | Ägarkategori (t.ex. "Svenska kyrkan") |
+| `geografiskEnhet` | str | Geografisk enhets namn |
+| `geografiskEnhetLkf` | str | LKF-kod för geografisk enhet |
+| `lan` | str | Länets namn |
+| `tatort` | str | Tätortstyp (t.ex. "Större stad", "Mindre tätort") |
+| `xKoordinat` | int | Easting, SWEREF99TM (EPSG:3006) |
+| `yKoordinat` | int | Northing, SWEREF99TM (EPSG:3006) |
+| `fastighetsbeteckning` | str | Fastighetsbeteckning |
+| `nuvarandeFunktion` | str | Funktion, kommaseparerat (se enum nedan) |
+| `nuvarandeAnvandning` | str | Nuvarande användning (se enum nedan) |
+| `ursprungligAnvandning` | str | Ursprunglig användning |
+| `annanAnvandning` | str | Annan användning, pipe-separerat (se nedan) |
+| `anpassningAnnanAnvandning` | str | Anpassning för annan användning, pipe-sep. |
+| `anvandningsfrekvens` | str | Användningsfrekvens (t.ex. "Daglig användning", "Visstidsanvändning – hela året") |
+| `oppenforhallande` | str | Öppethållande (t.ex. "Öppen och bemannad", "Nyckelöppen") |
+| `invigning` | int | Invigningsår |
+| `nybyggnadFran` | int | Byggnadstart (äldsta kända byggfas) |
+| `byggarea` | int | Byggnadsarea (m²) |
+| `planform` | str | Planlösning (t.ex. "Treskeppig", "Ej utrett") |
+| `takform` | str | Takform (t.ex. "Sadeltak") |
+| `takvinkel` | str | Takvinkel |
+| `materialStomme` | str | Stommaterial |
+| `materialFasad` | str | Fasadmaterial |
+| `skyddEnligtKML` | str | Skyddsklassning |
+| `identitetRAA` | str | Riksantikvarieämbetets id |
+| `teleslinga` | str | Hörselslinga (t.ex. "Teleslinga finns") |
+| `tillganglighetsanpassning` | str | Tillgänglighetsgrad |
+| `handlingsprogramTillganglighet` | str | Handlingsprogram tillgänglighet |
+| `facilityPartId` | UUID | UUID-referens till annat system (matchar **inte** Platser-API v4) |
+| `skapadDatum` | ISO 8601 | Skapad i KBR |
+| `andradDatum` | ISO 8601 | Senast ändrad i KBR |
+| `annanAnvandningKommentar` | str | Fritext om annan användning |
+| `anvandningsfrekvensKommentar` | str | Fritext om frekvens |
+| `oppenforhallandeKommentar` | str | Fritext om öppethållande |
+| `tillganglighetsanpassningKommentar` | str | Fritext om tillgänglighet |
+
+### Enum: `nuvarandeAnvandning` (verifierat 2026-05-03, n=3465)
+
+| Värde | Antal |
+|---|---|
+| Kyrka - gudstjänstkyrka | 3153 |
+| Kyrka - förrättningskyrka | 206 |
+| Kyrka - musik- och evenemangskyrka | 27 |
+| Kyrka - visningskyrka | 23 |
+| Används inte | 19 |
+| Annan | 19 |
+| Kyrka - samarbetskyrka | 13 |
+| Kyrka – profant sambruk | 3 |
+| Kyrka – profant bruk | 2 |
+
+Obs: "vinterkyrka" är inte ett eget värde i detta fält - vinterkyrkor
+klassas förmodligen som gudstjänstkyrka med låg `anvandningsfrekvens`.
+
+### Enum: `nuvarandeFunktion` (urval)
+
+Kommaseparerat, kombinationer förekommer. Verifierade exempel:
+
+- `Kyrka, kapell`
+- `Församlingshem, Kyrka, kapell`
+- `Krematorium, Kyrka, kapell`
+- `Administrationsbyggnad - församlingsexpedition, Barn - och ungdomslokal, Kyrka, kapell`
+
 ### Multipla värden i fält
 
-Vissa fält tillåter flera värden separerade med `|` (pipe):
+Pipe-separerat (`|`):
 
-- `AnnanAnvändning`
-- `AnpassningAnnanAnvandning`
-
-Båda gäller för Byggnader-resursen.
+- `annanAnvandning` - t.ex. `Konfirmationsarbete|Musikevenemang|Visningsverksamhet`
+- `anpassningAnnanAnvandning` - t.ex. `Barnverksamhet|Toaletter,kapprum`
 
 ### Fält-introspektion
 
 ```bash
-# Hämta default-fält
+# Hämta default-fält (bara namn + id)
 curl -s "${BASE}/byggnader?limit=1&apikey=${APIKEY}" | jq '.[0] | keys'
 
-# Hämta full fält-uppsättning från testdata
-curl -s "https://api-t.svenskakyrkan.se/kbr/api/byggnader?fields=*&testdata=true&apikey=${APIKEY}" \
-  | jq '.[0] | keys'
+# Alla fält på en specifik byggnad
+curl -s "${BASE}/byggnad/32555?fields=*&apikey=${APIKEY}" | jq 'keys'
 ```
 
 ## Användningsfall
