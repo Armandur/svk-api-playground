@@ -248,6 +248,29 @@ Nytt toggle-lager "KBR" (på som standard). Visar:
   `kbr_osm_distance_m > 200`, med avstånd i popup
 - Sub-filter "KBR-koordinatfel (>200 m)" filtrerar till bara de med fel
 
+**Framtida utbyggnad av KBR-lagret**
+
+KBR-byggnader med `kyrka=true` kan ha `nuvarandeAnvandning` som inte är
+aktiv gudstjänstkyrka - t.ex. "Kyrka - ej i bruk" eller "Kapell". Och
+byggnader med `kyrka=false` (församlingshem, klockstaplar, pastorsexpeditioner)
+finns i KBR men matchas inte alls idag.
+
+Konkret observerat fall: *Nora församlingsgård* (KBR id 37159) har
+`kyrka=true` och `nuvarandeAnvandning: "Kyrka - gudstjänstkyrka"` men
+heter inte "kyrka" och matchar inte OSM-noden (som också heter
+"Nora församlingsgård" men saknar `amenity=place_of_worship`). Det är
+alltså ett legitimt kbr_only-fynd - byggnaden används som kyrka vintertid
+men är otaggad i OSM.
+
+Möjliga förbättringar:
+- Använd `nuvarandeAnvandning` och `nuvarandeFunktion` för att dela upp
+  kbr_only i underkategorier: aktiv kyrka, ej i bruk, kapell.
+- Hämta `kyrka=false`-byggnader som ett separat lager (församlingshem,
+  klockstaplar m.m.) för att ge en komplett bild av Svenska kyrkans
+  byggnadsbestånd.
+- Matcha mot bredare OSM-taggar (t.ex. `building=church` utan
+  `amenity=place_of_worship`) för att fånga noder som Nora församlingsgård.
+
 Popup för berikade features utökas med:
 - "KBR: X m från OSM" (primärt)
 - "KBR: Y m från Platser" (sekundärt)
