@@ -433,7 +433,9 @@ function popupHtml(p) {
   if (p.kategori === "matched") {
     const dist = p.distance_m;
     const missing = p.osm_missing_tags || [];
-    const missingTagLines = missing.map(t => `${t}=${suggestedTagValue(t)}`);
+    const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
+    const missingTagLines = missing.map(t =>
+      t === "start_date" ? `start_date=${kbrYear || ""}` : `${t}=${suggestedTagValue(t)}`);
     const kbrInfo = p.kbr_id
       ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR id ${escapeHtml(String(p.kbr_id))}: avviker ${p.kbr_osm_distance_m} m från OSM</div>`
       : "";
