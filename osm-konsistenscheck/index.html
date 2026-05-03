@@ -155,17 +155,6 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 .popup-status.matched { background: rgba(0, 85, 75, 0.12); color: var(--dark-green); }
 .popup-status.svk-only { background: rgba(125, 0, 55, 0.12); color: var(--wine); }
 .popup-status.osm-only { background: rgba(61, 122, 184, 0.14); color: var(--osm); }
-/* Längre pil för matchade popupar - offset flyttar popupen, ::before ritar stammen */
-.popup-matched .leaflet-popup-tip-container { overflow: visible; }
-.popup-matched .leaflet-popup-tip-container::before {
-  content: ''; position: absolute; top: 100%; left: 50%;
-  transform: translateX(-50%);
-  width: 4px; height: 30px;
-  background: white;
-  border-left: 1px solid rgba(0,0,0,0.12);
-  border-right: 1px solid rgba(0,0,0,0.12);
-  box-sizing: border-box;
-}
 .copy-tags-btn {
   font: 11px "DM Sans", Arial, sans-serif;
   background: var(--beige); color: var(--wine);
@@ -675,7 +664,7 @@ async function init() {
       const m = L.marker([lat, lon], {
         icon, category: cat, featureProps: f.properties,
       });
-      m.bindPopup(popupHtml(f.properties), cat === "matched" ? { className: "popup-matched", offset: [0, -30] } : {});
+      m.bindPopup(popupHtml(f.properties));
       markersByCat[cat].push(m);
       cluster.addLayer(m);
 
