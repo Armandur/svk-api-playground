@@ -353,6 +353,14 @@ TODO om koordinatfellista nedan.
 
 - **Stift-filter** - dropdown för att filtrera på ett stift.
 
+- **Mobilens adressfält täcker UI:t** - delar av sidan täcks av webbläsarens
+  adressfält/navigeringsfält på mobil. Troligen ett `100vh`-problem: mobila
+  webbläsare räknar `100vh` som hela skärmhöjden exklusive UI-krom, men
+  adressfältet kan dyka upp ovanpå innehållet. Fix: använd `100dvh`
+  (dynamic viewport height, stöds i moderna mobilwebbläsare) med `100vh`
+  som fallback, och/eller `env(safe-area-inset-bottom)` för iOS.
+  Kontrollera att kartan och slidern inte hamnar bakom UI-krom.
+
 ### 8. KBR-kvalitetsrapport (`kbr-kvalitet/`) ✅ Funktionell
 
 Datakvalitetsverktyg som hämtar ~3 500 kyrkor från KBR och jämför mot
