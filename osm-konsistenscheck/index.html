@@ -500,6 +500,7 @@ function popupHtml(p) {
     return `<div class="popup-name">${escapeHtml(p.kbr_namn || "?")}</div>` +
       (p.stift ? `<div class="popup-meta">${escapeHtml(p.stift)}</div>` : "") +
       (p.skydd ? `<div class="popup-meta">${escapeHtml(p.skydd)}</div>` : "") +
+      (p.kbr_id ? `<div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>` : "") +
       (kbrYear ? `<div class="popup-meta">KBR: invigd/byggd ${kbrYear}</div>` : "") +
       `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr}">Finns i KBR, saknar matchning i OSM/Platser-API</div>` +
       `<div class="popup-meta">Föreslagna OSM-taggar:</div>` +
