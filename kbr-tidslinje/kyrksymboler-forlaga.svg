@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 820 440"
+     width="820" height="440"
+     font-family="'Segoe UI', system-ui, sans-serif">
+
+  <!-- Bakgrund -->
+  <rect width="820" height="440" fill="#f8f4ef"/>
+
+  <!-- Rubrik -->
+  <text x="410" y="28" text-anchor="middle" font-size="15" font-weight="600" fill="#2a2016">
+    KBR-tidslinje – kyrksymboler (förlaga, viewBox 0 0 22 30, skala 4×)
+  </text>
+
+  <!-- Era-etiketter (kolumner) -->
+  <!-- Kolumnerna börjar vid x=110, bredd 110px var -->
+  <text x="155" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#8B6914">Medeltid</text>
+  <text x="155" y="76" text-anchor="middle" font-size="10" fill="#7a6a50">&lt;1527</text>
+
+  <text x="265" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#6B3A3A">Reformationen</text>
+  <text x="265" y="76" text-anchor="middle" font-size="10" fill="#7a6a50">1527–1720</text>
+
+  <text x="375" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#8B7355">1700-tal</text>
+  <text x="375" y="76" text-anchor="middle" font-size="10" fill="#7a6a50">1720–1800</text>
+
+  <text x="485" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#C68B2E">1800-tal</text>
+  <text x="485" y="76" text-anchor="middle" font-size="10" fill="#7a6a50">1800–1900</text>
+
+  <text x="595" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#4A7BA3">1900-tal</text>
+  <text x="595" y="76" text-anchor="middle" font-size="10" fill="#7a6a50">1900–2000</text>
+
+  <text x="705" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#3A9B8C">2000-tal</text>
+  <text x="705" y="76" text-anchor="middle" font-size="10" fill="#7a6a50">2000+</text>
+
+  <!-- Rad-etiketter -->
+  <text x="104" y="185" text-anchor="end" font-size="11" fill="#3a3028">Invigd</text>
+  <text x="104" y="198" text-anchor="end" font-size="11" fill="#3a3028">(fylld)</text>
+
+  <text x="104" y="335" text-anchor="end" font-size="11" fill="#3a3028">Under</text>
+  <text x="104" y="348" text-anchor="end" font-size="11" fill="#3a3028">byggnation</text>
+  <text x="104" y="361" text-anchor="end" font-size="11" fill="#3a3028">(streckad)</text>
+
+  <!-- Avskiljare -->
+  <line x1="110" y1="85" x2="110" y2="430" stroke="#d0c8bc" stroke-width="1"/>
+  <line x1="110" y1="265" x2="820" y2="265" stroke="#d0c8bc" stroke-width="1" stroke-dasharray="4,3"/>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       RAD 1: INVIGDA (FYLLDA) SYMBOLER
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- Medeltid fylld: fill=#8B6914, stroke=#56410C, df=#61490E, wf=rgba(255,240,180,0.55) -->
+  <g id="medeltid-fylld" transform="translate(122, 90) scale(4)">
+    <polygon points="0.5,14 3.5,8 6.5,14" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
+    <line x1="0.5" y1="14" x2="0.5" y2="19" stroke="#56410C" stroke-width="1.3"/>
+    <line x1="6.5" y1="14" x2="6.5" y2="19" stroke="#56410C" stroke-width="1.3"/>
+    <circle cx="3.5" cy="16.5" r="1.1" fill="#56410C"/>
+    <polygon points="0.5,30 1,19 6,19 6.5,30" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
+    <polygon points="8,17 15,11 22,17" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
+    <rect x="8" y="17" width="14" height="13" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
+    <circle cx="15" cy="19.5" r="1.5" fill="rgba(255,240,180,0.55)" stroke="#56410C" stroke-width="0.7"/>
+    <path d="M12,30 L12,24 Q14.5,21.5 17,24 L17,30 Z" fill="#61490E" stroke="#56410C" stroke-width="0.8"/>
+  </g>
+
+  <!-- Reformationen fylld: fill=#6B3A3A, stroke=#422424, df=#4A2828 -->
+  <g id="reformationen-fylld" transform="translate(232, 90) scale(4)">
+    <polygon points="5,0 3,9 7,9" fill="#6B3A3A" stroke="#422424" stroke-width="1"/>
+    <polygon points="2,9 2.5,12 7.5,12 8,9" fill="#6B3A3A" stroke="#422424" stroke-width="1"/>
+    <rect x="2" y="11" width="6" height="19" fill="#6B3A3A" stroke="#422424" stroke-width="1"/>
+    <polygon points="7,15 15,11 22,15" fill="#6B3A3A" stroke="#422424" stroke-width="1"/>
+    <rect x="7" y="15" width="15" height="15" fill="#6B3A3A" stroke="#422424" stroke-width="1"/>
+    <path d="M10,30 L10,23 L13,20.5 L16,23 L16,30 Z" fill="#4A2828" stroke="#422424" stroke-width="0.8"/>
+  </g>
+
+  <!-- 1700-tal fylld: fill=#8B7355, stroke=#564734, df=#61503B, wf=rgba(255,240,180,0.55) -->
+  <g id="sjuttonhundra-fylld" transform="translate(342, 90) scale(4)">
+    <circle cx="5" cy="2.5" r="1.5" fill="#564734"/>
+    <rect x="4.5" y="0.5" width="1" height="2.5" fill="#564734"/>
+    <polygon points="2,5.5 2.5,9.5 7.5,9.5 8,5.5 5,1.5" fill="#8B7355" stroke="#564734" stroke-width="1"/>
+    <rect x="2" y="9" width="6" height="21" fill="#8B7355" stroke="#564734" stroke-width="1"/>
+    <polygon points="7,14 15,10.5 22,14" fill="#8B7355" stroke="#564734" stroke-width="1"/>
+    <rect x="7" y="14" width="15" height="16" fill="#8B7355" stroke="#564734" stroke-width="1"/>
+    <circle cx="14.5" cy="17.5" r="2" fill="rgba(255,240,180,0.55)" stroke="#564734" stroke-width="0.8"/>
+    <path d="M10,30 L10,23.5 Q13,21 16,23.5 L16,30 Z" fill="#61503B" stroke="#564734" stroke-width="0.8"/>
+  </g>
+
+  <!-- 1800-tal fylld: fill=#C68B2E, stroke=#7A561C, df=#8A6120, wf=rgba(255,240,180,0.55) -->
+  <g id="atttonhundra-fylld" transform="translate(452, 90) scale(4)">
+    <polygon points="4.5,0 2.5,10 6.5,10" fill="#C68B2E" stroke="#7A561C" stroke-width="1"/>
+    <rect x="2.5" y="10" width="4" height="20" fill="#C68B2E" stroke="#7A561C" stroke-width="1"/>
+    <polygon points="5,12 15,7 22,12" fill="#C68B2E" stroke="#7A561C" stroke-width="1"/>
+    <rect x="5" y="12" width="17" height="18" fill="#C68B2E" stroke="#7A561C" stroke-width="1"/>
+    <path d="M7.5,20 L7.5,15.5 L9.5,13.5 L11.5,15.5 L11.5,20 Z" fill="rgba(255,240,180,0.55)" stroke="#7A561C" stroke-width="0.7"/>
+    <path d="M14,20 L14,15.5 L16,13.5 L18,15.5 L18,20 Z" fill="rgba(255,240,180,0.55)" stroke="#7A561C" stroke-width="0.7"/>
+    <path d="M12,30 L12,22.5 L15,19.5 L18,22.5 L18,30 Z" fill="#8A6120" stroke="#7A561C" stroke-width="0.8"/>
+  </g>
+
+  <!-- 1900-tal fylld: fill=#4A7BA3, stroke=#2D4C65, df=#335672 -->
+  <g id="nittonhundra-fylld" transform="translate(562, 90) scale(4)">
+    <rect x="4" y="0.5" width="2" height="5" fill="#2D4C65"/>
+    <rect x="2.5" y="2" width="5" height="2" fill="#2D4C65"/>
+    <rect x="1" y="4.5" width="8" height="3" fill="#4A7BA3" stroke="#2D4C65" stroke-width="1"/>
+    <rect x="1" y="7" width="8" height="23" fill="#4A7BA3" stroke="#2D4C65" stroke-width="1"/>
+    <polygon points="7,15 14.5,13 22,15" fill="#4A7BA3" stroke="#2D4C65" stroke-width="1"/>
+    <rect x="7" y="15" width="15" height="15" fill="#4A7BA3" stroke="#2D4C65" stroke-width="1"/>
+    <rect x="10.5" y="23" width="5" height="7" fill="#335672" stroke="#2D4C65" stroke-width="0.8"/>
+  </g>
+
+  <!-- 2000-tal fylld: fill=#3A9B8C, stroke=#236056, df=#286C62 -->
+  <g id="modern-fylld" transform="translate(672, 90) scale(4)">
+    <rect x="10.5" y="0" width="1.5" height="7.5" fill="#236056"/>
+    <rect x="8.5" y="2" width="5.5" height="1.5" fill="#236056"/>
+    <path d="M1,16 Q6,8 11,13 Q16,18 21,11 L21,16 Z" fill="#3A9B8C" stroke="#236056" stroke-width="1"/>
+    <rect x="1" y="15" width="20" height="15" fill="#3A9B8C" stroke="#236056" stroke-width="1"/>
+    <rect x="9" y="22" width="5" height="8" fill="#286C62" stroke="#236056" stroke-width="0.8"/>
+  </g>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       RAD 2: UNDER BYGGNATION (STRECKADE) SYMBOLER
+       fill=none, stroke=#6a8aaa, dash=4,2, df=none, wf=none
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- Medeltid streckad -->
+  <g id="medeltid-streckad" transform="translate(122, 278) scale(4)">
+    <polygon points="0.5,14 3.5,8 6.5,14" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <line x1="0.5" y1="14" x2="0.5" y2="19" stroke="#6a8aaa" stroke-width="1.3" stroke-dasharray="4,2"/>
+    <line x1="6.5" y1="14" x2="6.5" y2="19" stroke="#6a8aaa" stroke-width="1.3" stroke-dasharray="4,2"/>
+    <circle cx="3.5" cy="16.5" r="1.1" fill="#6a8aaa" stroke-dasharray="4,2"/>
+    <polygon points="0.5,30 1,19 6,19 6.5,30" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <polygon points="8,17 15,11 22,17" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="8" y="17" width="14" height="13" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <circle cx="15" cy="19.5" r="1.5" fill="none" stroke="#6a8aaa" stroke-width="0.7" stroke-dasharray="4,2"/>
+    <path d="M12,30 L12,24 Q14.5,21.5 17,24 L17,30 Z" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+  </g>
+
+  <!-- Reformationen streckad -->
+  <g id="reformationen-streckad" transform="translate(232, 278) scale(4)">
+    <polygon points="5,0 3,9 7,9" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <polygon points="2,9 2.5,12 7.5,12 8,9" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="2" y="11" width="6" height="19" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <polygon points="7,15 15,11 22,15" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="7" y="15" width="15" height="15" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <path d="M10,30 L10,23 L13,20.5 L16,23 L16,30 Z" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+  </g>
+
+  <!-- 1700-tal streckad -->
+  <g id="sjuttonhundra-streckad" transform="translate(342, 278) scale(4)">
+    <circle cx="5" cy="2.5" r="1.5" fill="#6a8aaa" stroke-dasharray="4,2"/>
+    <rect x="4.5" y="0.5" width="1" height="2.5" fill="#6a8aaa" stroke-dasharray="4,2"/>
+    <polygon points="2,5.5 2.5,9.5 7.5,9.5 8,5.5 5,1.5" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="2" y="9" width="6" height="21" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <polygon points="7,14 15,10.5 22,14" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="7" y="14" width="15" height="16" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <circle cx="14.5" cy="17.5" r="2" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+    <path d="M10,30 L10,23.5 Q13,21 16,23.5 L16,30 Z" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+  </g>
+
+  <!-- 1800-tal streckad -->
+  <g id="atttonhundra-streckad" transform="translate(452, 278) scale(4)">
+    <polygon points="4.5,0 2.5,10 6.5,10" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="2.5" y="10" width="4" height="20" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <polygon points="5,12 15,7 22,12" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="5" y="12" width="17" height="18" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <path d="M7.5,20 L7.5,15.5 L9.5,13.5 L11.5,15.5 L11.5,20 Z" fill="none" stroke="#6a8aaa" stroke-width="0.7" stroke-dasharray="4,2"/>
+    <path d="M14,20 L14,15.5 L16,13.5 L18,15.5 L18,20 Z" fill="none" stroke="#6a8aaa" stroke-width="0.7" stroke-dasharray="4,2"/>
+    <path d="M12,30 L12,22.5 L15,19.5 L18,22.5 L18,30 Z" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+  </g>
+
+  <!-- 1900-tal streckad -->
+  <g id="nittonhundra-streckad" transform="translate(562, 278) scale(4)">
+    <rect x="4" y="0.5" width="2" height="5" fill="#6a8aaa" stroke-dasharray="4,2"/>
+    <rect x="2.5" y="2" width="5" height="2" fill="#6a8aaa" stroke-dasharray="4,2"/>
+    <rect x="1" y="4.5" width="8" height="3" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="1" y="7" width="8" height="23" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <polygon points="7,15 14.5,13 22,15" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="7" y="15" width="15" height="15" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="10.5" y="23" width="5" height="7" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+  </g>
+
+  <!-- 2000-tal streckad -->
+  <g id="modern-streckad" transform="translate(672, 278) scale(4)">
+    <rect x="10.5" y="0" width="1.5" height="7.5" fill="#6a8aaa" stroke-dasharray="4,2"/>
+    <rect x="8.5" y="2" width="5.5" height="1.5" fill="#6a8aaa" stroke-dasharray="4,2"/>
+    <path d="M1,16 Q6,8 11,13 Q16,18 21,11 L21,16 Z" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="1" y="15" width="20" height="15" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="9" y="22" width="5" height="8" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+  </g>
+
+  <!-- Fotnot -->
+  <text x="410" y="422" text-anchor="middle" font-size="10" fill="#7a6a50">
+    Alla symboler: viewBox 0 0 22 30 · ankarpunkt botten-mitten (11,30) · streckad = under byggnation, fylld = invigd
+  </text>
+
+</svg>
