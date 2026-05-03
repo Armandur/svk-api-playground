@@ -527,7 +527,7 @@ function popupHtml(p) {
       <div class="popup-section kbr">
         <div class="popup-section-label kbr">KBR</div>
         <div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>
-        ${kbrYear ? `<div class="popup-meta">${kbrYear}</div>` : ""}
+        ${kbrYear ? `<div class="popup-meta">Invigd/byggd: ${kbrYear}</div>` : ""}
         <div class="popup-meta">${p.kbr_osm_distance_m} m från Platser-API</div>
       </div>` : "";
 
@@ -557,9 +557,9 @@ function popupHtml(p) {
       <div class="popup-section kbr">
         <div class="popup-section-label kbr">KBR</div>
         <div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>
-        ${p.stift ? `<div class="popup-meta">${escapeHtml(p.stift)}</div>` : ""}
-        ${p.skydd ? `<div class="popup-meta">${escapeHtml(p.skydd)}</div>` : ""}
-        ${kbrYear ? `<div class="popup-meta">${kbrYear}</div>` : ""}
+        ${p.stift ? `<div class="popup-meta">Stift: ${escapeHtml(p.stift)}</div>` : ""}
+        ${p.skydd ? `<div class="popup-meta">Skydd: ${escapeHtml(p.skydd)}</div>` : ""}
+        ${kbrYear ? `<div class="popup-meta">Invigd/byggd: ${kbrYear}</div>` : ""}
       </div>`;
 
     let osmSection = `
