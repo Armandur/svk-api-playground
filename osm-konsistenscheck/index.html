@@ -733,6 +733,10 @@ async function init() {
             `Rita linje Platser↔OSM (för >50m)</label>` +
           `<label class="sub"><input type="checkbox" data-taggbrist>` +
             `Visa bara OSM-taggbrist<span class="count">${sum.matched_osm_taggbrist}</span></label>` +
+          `<label class="sub" style="padding-left:24px;font-size:11px;color:var(--muted)">` +
+            (sum.matched_osm_missing_breakdown?.denomination ? `denomination: ${sum.matched_osm_missing_breakdown.denomination}` : "") +
+            (sum.matched_osm_missing_breakdown?.start_date ? ` &middot; start_date: ${sum.matched_osm_missing_breakdown.start_date}` : "") +
+            `</label>` +
           `<label><input type="checkbox" data-cat="svk_only" checked>` +
             `<span class="swatch" style="background:${COLOR.svk_only}"></span>` +
             `Bara Platser-API<span class="count">${sum.svk_only}</span></label>` +
