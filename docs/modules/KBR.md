@@ -157,7 +157,7 @@ Verifierat mot Linköpings domkyrka (id 32555) och Abilds kyrka (id 35789).
 | `materialStomme` | str | Stommaterial |
 | `materialFasad` | str | Fasadmaterial |
 | `skyddEnligtKML` | str | Skyddsklassning |
-| `identitetRAA` | str | Riksantikvarieämbetets id |
+| `identitetRAA` | str | Internt RAÄ-id i KBR. **Obs:** är inte samma som OSM:s `ref:se:raa` som avser fornlämningsnummer. |
 | `teleslinga` | str | Hörselslinga (t.ex. "Teleslinga finns") |
 | `tillganglighetsanpassning` | str | Tillgänglighetsgrad |
 | `handlingsprogramTillganglighet` | str | Handlingsprogram tillgänglighet |

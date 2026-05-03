@@ -92,6 +92,9 @@ def main() -> int:
         owner = p.get("owner") or {}
         contact = p.get("contactInfo") or {}
         visit = p.get("visitingInfo") or {}
+        details = p.get("placeDetails") or {}
+        access = details.get("accessibility") or {}
+        geo_info = p.get("geolocationInfo") or {}
         features.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [lon, lat]},
@@ -104,6 +107,14 @@ def main() -> int:
                 "owner_type": owner.get("type"),
                 "city": visit.get("city"),
                 "url": contact.get("url"),
+                "address": (visit.get("address") or "").strip() or None,
+                "postal_code": (visit.get("postalCode") or "").strip() or None,
+                "short_description": (p.get("shortDescription") or "").strip() or None,
+                "municipality": geo_info.get("municipality") or None,
+                "has_toilet": details.get("hasToilet"),
+                "has_hearing_loop": access.get("hasHearingLoop"),
+                "has_ramp": access.get("hasRamp"),
+                "toilet_accessible": access.get("toiletAccessible"),
             },
         })
 

@@ -176,6 +176,13 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 .popup-section.kbr { border-color: #E87722; }
 .popup-section-label.kbr { color: #E87722; }
 
+.tag-source { display: inline-block; font-size: 9px; font-weight: 700;
+  padding: 1px 4px; border-radius: 3px; vertical-align: middle; margin-left: 3px; }
+.tag-source.kbr { background: rgba(232,119,34,0.18); color: #E87722; }
+.tag-source.platser { background: rgba(125,0,55,0.12); color: var(--wine); }
+.tag-conflict-row { background: rgba(180,60,0,0.08); border-left: 3px solid #b03000;
+  padding: 2px 4px 2px 8px; margin: 2px 0; font-size: 12px; color: #8b2500; }
+
 .copy-tags-btn {
   font: 11px "DM Sans", Arial, sans-serif;
   background: var(--beige); color: var(--wine);
@@ -452,21 +459,51 @@ function copyTagsButton(tagLines) {
     `Kopiera taggar</button>`;
 }
 
+function sourcePills(sources) {
+  return (sources || []).map(s => {
+    const cls = s.name === "KBR" ? "kbr" : "platser";
+    return `<span class="tag-source ${cls}">${s.name}</span>`;
+  }).join("");
+}
+
+function buildMissingHtml(p, kbrYear) {
+  const missing = p.osm_missing_tags || [];
+  const evidence = p.osm_tag_evidence || {};
+  if (!missing.length) return "";
+
+  const copyableTags = [];
+  const rows = missing.map(tag => {
+    const ev = evidence[tag];
+    if (ev && ev.conflict) {
+      const parts = ev.sources.map(s => `${s.name}: ${s.claim}`).join(" · ");
+      return `<div class="tag-conflict-row">⚠ ${escapeHtml(tag)}: ${escapeHtml(parts)} - kontrollera</div>`;
+    }
+    const value = (ev && ev.value) || (tag === "start_date" ? kbrYear : suggestedTagValue(tag)) || "";
+    const line = `${tag}=${value}`;
+    const pills = ev ? sourcePills(ev.sources) : "";
+    copyableTags.push(line);
+    return `<div class="popup-meta"><code>${escapeHtml(line)}</code>${pills}</div>`;
+  });
+
+  return `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>` +
+    rows.join("") +
+    (copyableTags.length ? copyTagsButton(copyableTags) : "");
+}
+
 function popupHtml(p) {
   const name = escapeHtml(p.svk_namn || p.osm_namn || p.name || p.kbr_namn || "?");
 
   if (p.kategori === "matched") {
     const dist = p.distance_m;
-    const missing = p.osm_missing_tags || [];
     const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
-    const missingTagLines = missing.map(t =>
-      t === "start_date" ? `start_date=${kbrYear || ""}` : `${t}=${suggestedTagValue(t)}`);
 
     let platserSection = `
       <div class="popup-section platser">
         <div class="popup-section-label platser">Platser-API</div>
         ${p.svk_namn && p.osm_namn && p.svk_namn !== p.osm_namn ? `<div class="popup-meta">Namn: ${escapeHtml(p.svk_namn)}</div>` : ""}
         ${p.svk_owner_name ? `<div class="popup-meta">Ägare: ${escapeHtml(p.svk_owner_name)}</div>` : ""}
+        ${p.svk_address ? `<div class="popup-meta">Adress: ${escapeHtml(p.svk_address)}${p.svk_postal_code ? ", " + escapeHtml(p.svk_postal_code) : ""}</div>` : ""}
+        ${p.svk_municipality ? `<div class="popup-meta">Kommun: ${escapeHtml(p.svk_municipality)}</div>` : ""}
         ${p.svk_slug ? `<div class="popup-meta"><a class="popup-link" href="https://www.svenskakyrkan.se/platser/${escapeHtml(p.svk_slug)}" target="_blank" rel="noopener">Platser-sida</a></div>` : ""}
         ${p.svk_url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.svk_url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : ""}
       </div>`;
@@ -479,11 +516,7 @@ function popupHtml(p) {
         ${p.osm_start_date ? `<div class="popup-meta">Invigd: ${escapeHtml(p.osm_start_date)}</div>` : ""}
         <div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/${escapeHtml(p.osm_id)}" target="_blank" rel="noopener">OSM ${escapeHtml(p.osm_id)}</a></div>
         ${p.osm_id ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit?${escapeHtml(p.osm_id.replace("/", "="))}" target="_blank" rel="noopener">Redigera i iD</a></div>` : ""}
-        ${missing.length ? `
-          <div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>
-          ${missingTagLines.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
-          ${copyTagsButton(missingTagLines)}
-        ` : ""}
+        ${buildMissingHtml(p, kbrYear)}
       </div>`;
 
     let kbrSection = p.kbr_id ? `
@@ -492,6 +525,10 @@ function popupHtml(p) {
         <div class="popup-meta">KBR id: ${escapeHtml(String(p.kbr_id))}</div>
         ${kbrYear ? `<div class="popup-meta">Invigd: ${kbrYear}</div>` : ""}
         ${p.kbr_nybyggnad_fran && p.kbr_nybyggnad_fran !== p.kbr_invigning ? `<div class="popup-meta">Byggnadstart: ${p.kbr_nybyggnad_fran}</div>` : ""}
+        ${p.kbr_nuvarande_anvandning ? `<div class="popup-meta">Användning: ${escapeHtml(p.kbr_nuvarande_anvandning)}</div>` : ""}
+        ${p.kbr_oppenforhallande ? `<div class="popup-meta">Öppet: ${escapeHtml(p.kbr_oppenforhallande)}</div>` : ""}
+        ${p.kbr_anvandningsfrekvens ? `<div class="popup-meta">Frekvens: ${escapeHtml(p.kbr_anvandningsfrekvens)}</div>` : ""}
+        ${p.kbr_byggarea ? `<div class="popup-meta">Area: ${p.kbr_byggarea} m²</div>` : ""}
         ${p.kbr_skydd ? `<div class="popup-meta">Skydd: ${escapeHtml(p.kbr_skydd)}</div>` : ""}
         <div class="popup-meta">${p.kbr_osm_distance_m} m från OSM</div>
       </div>` : "";

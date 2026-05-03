@@ -185,10 +185,10 @@ och `build_diff.py` (taggbrist-logik) + `index.html` (visning).
   av de två.
 - `tillganglighetsanpassning` = "Helt..." → `wheelchair=yes`,
   "Delvis..." → `wheelchair=limited`. Föreslå om OSM saknar `wheelchair`.
-- `skyddEnligtKML` icke-tomt → föreslå `heritage=2` +
-  `heritage:operator=Riksantikvarieämbetet` om OSM saknar `heritage`.
-  (Vi visar redan skyddsvärdet i popupen men föreslår det inte som tag.)
-- `identitetRAA` icke-tomt → föreslå `ref:se:raa=<värde>` om OSM saknar.
+- `skyddEnligtKML` - visas i popup men ej som OSM-taggbrist. `heritage=2`
+  är inte relevant för svenska kyrkor i OSM-kontexten.
+- `identitetRAA` - visas ej som taggbrist. OSM:s `ref:se:raa` avser
+  fornlämningsnummer, inte KBR:s interna RAÄ-id för kyrkobyggnader.
 
 **Platser-API - popup-kontext (lägg till i `build_svk.py`)**
 

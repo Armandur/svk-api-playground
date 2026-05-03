@@ -64,6 +64,121 @@ def osm_missing_tags(osm_tags: dict | None) -> list[str]:
     return missing
 
 
+def collect_tag_evidence(svk_props, kbr_feat_props, osm_tags) -> tuple[list[str], dict]:
+    """Returnerar (missing_tags_list, evidence_dict) med källhänvisning och konflikthantering."""
+    t = osm_tags or {}
+    evidence = {}
+    missing = []
+
+    # 1. amenity, religion, denomination (basskydd)
+    for tag in ["amenity", "religion", "denomination"]:
+        if tag == "denomination":
+            if t.get(tag) not in SVK_DENOMINATIONS:
+                missing.append(tag)
+        elif t.get(tag) is None:
+            missing.append(tag)
+
+    # 2. hearing_loop
+    # KBR: teleslinga == "Teleslinga finns" → claim "yes"
+    # Platser: has_hearing_loop == True → claim "yes", has_hearing_loop == False → claim "no"
+    hl_claims = []
+    if kbr_feat_props.get("kbr_teleslinga") == "Teleslinga finns":
+        hl_claims.append({"name": "KBR", "raw": "Teleslinga finns", "claim": "yes"})
+    if svk_props.get("has_hearing_loop") is True:
+        hl_claims.append({"name": "Platser", "raw": True, "claim": "yes"})
+    elif svk_props.get("has_hearing_loop") is False:
+        hl_claims.append({"name": "Platser", "raw": False, "claim": "no"})
+
+    if hl_claims and "hearing_loop" not in t:
+        yes_count = sum(1 for c in hl_claims if c["claim"] == "yes")
+        no_count = sum(1 for c in hl_claims if c["claim"] == "no")
+        conflict = yes_count > 0 and no_count > 0
+        evidence["hearing_loop"] = {
+            "value": "yes" if yes_count > 0 and not conflict else ("no" if no_count > 0 and not conflict else None),
+            "conflict": conflict,
+            "sources": hl_claims
+        }
+        missing.append("hearing_loop")
+
+    # 3. wheelchair
+    # KBR: tillganglighetsanpassning → "Helt tillgänglighetsanpassad" = "yes", "Delvis tillgänglighetsanpassad" = "limited"
+    # Platser: has_ramp == True → claim "yes"
+    wc_claims = []
+    kbr_ta = kbr_feat_props.get("kbr_tillganglighetsanpassning")
+    if kbr_ta == "Helt tillgänglighetsanpassad":
+        wc_claims.append({"name": "KBR", "raw": kbr_ta, "claim": "yes"})
+    elif kbr_ta == "Delvis tillgänglighetsanpassad":
+        wc_claims.append({"name": "KBR", "raw": kbr_ta, "claim": "limited"})
+    if svk_props.get("has_ramp") is True:
+        wc_claims.append({"name": "Platser", "raw": True, "claim": "yes"})
+
+    if wc_claims and "wheelchair" not in t:
+        claims_set = {c["claim"] for c in wc_claims}
+        conflict = len(claims_set) > 1
+        val = None
+        if not conflict:
+            val = wc_claims[0]["claim"]
+        evidence["wheelchair"] = {
+            "value": val,
+            "conflict": conflict,
+            "sources": wc_claims
+        }
+        missing.append("wheelchair")
+
+    # 4. toilets
+    if svk_props.get("has_toilet") is True and "toilets" not in t and not any(k.startswith("toilets:") for k in t):
+        evidence["toilets"] = {
+            "value": "yes",
+            "conflict": False,
+            "sources": [{"name": "Platser", "raw": True}]
+        }
+        missing.append("toilets")
+
+    # 5. toilets:wheelchair
+    if svk_props.get("toilet_accessible") is True and "toilets:wheelchair" not in t:
+        evidence["toilets:wheelchair"] = {
+            "value": "yes",
+            "conflict": False,
+            "sources": [{"name": "Platser", "raw": True}]
+        }
+        missing.append("toilets:wheelchair")
+
+    # 6. addr:street / addr:postcode
+    addr = svk_props.get("address")
+    if addr and "addr:street" not in t:
+        parts = addr.rsplit(" ", 1)
+        if len(parts) > 1 and parts[1].isdigit():
+            # "Franzéngatan 18" -> street="Franzéngatan", housenumber="18"
+            evidence["addr:street"] = {"value": parts[0], "conflict": False, "sources": [{"name": "Platser", "raw": addr}]}
+            if "addr:housenumber" not in t:
+                evidence["addr:housenumber"] = {"value": parts[1], "conflict": False, "sources": [{"name": "Platser", "raw": addr}]}
+                missing.append("addr:housenumber")
+        else:
+            evidence["addr:street"] = {"value": addr, "conflict": False, "sources": [{"name": "Platser", "raw": addr}]}
+        missing.append("addr:street")
+
+    pc = svk_props.get("postal_code")
+    if pc and "addr:postcode" not in t:
+        evidence["addr:postcode"] = {
+            "value": str(pc),
+            "conflict": False,
+            "sources": [{"name": "Platser", "raw": pc}]
+        }
+        missing.append("addr:postcode")
+
+    # 9. start_date
+    kbr_year = kbr_feat_props.get("kbr_invigning") or kbr_feat_props.get("kbr_nybyggnad_fran")
+    if kbr_year and "start_date" not in t and not (t.get("start_date") or t.get("building:start_date")):
+        evidence["start_date"] = {
+            "value": str(kbr_year),
+            "conflict": False,
+            "sources": [{"name": "KBR", "raw": kbr_year}]
+        }
+        missing.append("start_date")
+
+    return missing, evidence
+
+
 def normalize_name(s: str | None) -> str:
     if not s: return ""
     s = s.lower()
@@ -185,7 +300,7 @@ def main(argv: list[str]) -> int:
         _, osm_props, osm_lonlat = osm_rows[j]
         sim = name_similarity(svk_props.get("name"), osm_props.get("name"))
         osm_tags = osm_props.get("tags") or {}
-        missing = osm_missing_tags(osm_tags)
+        missing, evidence = collect_tag_evidence(svk_props, {}, osm_tags)
         osm_start_date = osm_tags.get("start_date") or osm_tags.get("building:start_date")
         matched.append({
             "type": "Feature",
@@ -197,14 +312,24 @@ def main(argv: list[str]) -> int:
                 "svk_slug": svk_props.get("slug"),
                 "svk_url": svk_props.get("url"),
                 "svk_owner_name": svk_props.get("owner_name"),
+                "svk_address": svk_props.get("address"),
+                "svk_postal_code": svk_props.get("postal_code"),
+                "svk_municipality": svk_props.get("municipality"),
+                # Boolean-flaggor från Platser för senare re-calc i enrichment
+                "has_toilet": svk_props.get("has_toilet"),
+                "has_hearing_loop": svk_props.get("has_hearing_loop"),
+                "has_ramp": svk_props.get("has_ramp"),
+                "toilet_accessible": svk_props.get("toilet_accessible"),
                 "osm_id": osm_props.get("osm_id"),
                 "osm_namn": osm_props.get("name"),
                 "osm_denomination": osm_props.get("denomination"),
                 "osm_lonlat": osm_lonlat,
+                "osm_tags": osm_tags,
                 "distance_m": round(d, 1),
                 "name_similarity": sim,
                 "name_mismatch": sim is not None and sim < NAME_MISMATCH_THRESHOLD,
                 "osm_missing_tags": missing,
+                "osm_tag_evidence": evidence,
                 "osm_start_date": osm_start_date,
             },
         })
@@ -311,10 +436,37 @@ def main(argv: list[str]) -> int:
                 feat_props["kbr_osm_distance_m"] = int(best_dist)
                 feat_props["kbr_invigning"] = f["properties"].get("invigning")
                 feat_props["kbr_nybyggnad_fran"] = f["properties"].get("nybyggnad_fran")
+                
+                # Nya KBR-fält
+                feat_props["kbr_skydd"] = f["properties"].get("skydd")
+                feat_props["kbr_identitet_raa"] = f["properties"].get("identitet_raa")
+                feat_props["kbr_nuvarande_anvandning"] = f["properties"].get("nuvarande_anvandning")
+                feat_props["kbr_oppenforhallande"] = f["properties"].get("oppenforhallande")
+                feat_props["kbr_anvandningsfrekvens"] = f["properties"].get("anvandningsfrekvens")
+                feat_props["kbr_byggarea"] = f["properties"].get("byggarea")
+                feat_props["kbr_teleslinga"] = f["properties"].get("teleslinga")
+                feat_props["kbr_tillganglighetsanpassning"] = f["properties"].get("tillganglighetsanpassning")
+
                 if best_anchor["type"] == "matched":
                     feat_props["kbr_platser_distance_m"] = int(haversine(kbr_lng, kbr_lat, best_anchor["svk_lonlat"][0], best_anchor["svk_lonlat"][1]))
+                    
+                    # För matched: uppdatera tag-evidence nu när vi har KBR-data
+                    # Vi mappar tillbaka de props vi har till collect_tag_evidence
+                    svk_p = {
+                        "has_hearing_loop": feat_props.get("has_hearing_loop"),
+                        "has_ramp": feat_props.get("has_ramp"),
+                        "has_toilet": feat_props.get("has_toilet"),
+                        "toilet_accessible": feat_props.get("toilet_accessible"),
+                        "address": feat_props.get("svk_address"),
+                        "postal_code": feat_props.get("svk_postal_code")
+                    }
+                    missing, evidence = collect_tag_evidence(svk_p, feat_props, feat_props.get("osm_tags"))
+                    feat_props["osm_missing_tags"] = missing
+                    feat_props["osm_tag_evidence"] = evidence
+
                 elif best_anchor["type"] == "svk_only":
                     feat_props["kbr_platser_distance_m"] = int(best_dist)
+                    # För svk_only: vi kan också berika evidence här om vi vill framöver
 
                 kbr_summary["matched"] += 1
                 if feat_props["kbr_osm_distance_m"] > 200:
@@ -335,12 +487,11 @@ def main(argv: list[str]) -> int:
                 })
                 kbr_summary["only"] += 1
 
-        # Post-pass: flagga start_date-brist för matchade kyrkor där KBR har år men OSM saknar start_date
-        for f in matched:
-            p = f["properties"]
-            kbr_year = p.get("kbr_invigning") or p.get("kbr_nybyggnad_fran")
-            if p.get("kbr_id") and kbr_year and not p.get("osm_start_date"):
-                p["osm_missing_tags"] = list(p.get("osm_missing_tags") or []) + ["start_date"]
+    # Rensa interna fält som bara behövdes under beräkning
+    _internal = {"osm_tags", "has_toilet", "has_hearing_loop", "has_ramp", "toilet_accessible"}
+    for f in matched:
+        for k in _internal:
+            f["properties"].pop(k, None)
 
     out = {
         "type": "FeatureCollection",

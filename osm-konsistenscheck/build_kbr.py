@@ -34,7 +34,7 @@ def fetch_kbr_page(offset: int) -> list[dict]:
         "kyrka": "true",
         "limit": PAGE_SIZE,
         "offset": offset,
-        "fields": "id,namn,xKoordinat,yKoordinat,stift,skyddEnligtKML,invigning,nybyggnadFran",
+        "fields": "id,namn,xKoordinat,yKoordinat,stift,skyddEnligtKML,invigning,nybyggnadFran,nuvarandeAnvandning,oppenforhallande,anvandningsfrekvens,byggarea,teleslinga,tillganglighetsanpassning,identitetRAA",
         "apikey": API_KEY
     }
     qs = urllib.parse.urlencode(params)
@@ -103,6 +103,13 @@ def main() -> int:
                     "skydd": b.get("skyddEnligtKML"),
                     "invigning": b.get("invigning"),
                     "nybyggnad_fran": b.get("nybyggnadFran"),
+                    "nuvarande_anvandning": b.get("nuvarandeAnvandning"),
+                    "oppenforhallande": b.get("oppenforhallande"),
+                    "anvandningsfrekvens": b.get("anvandningsfrekvens"),
+                    "byggarea": b.get("byggarea"),
+                    "teleslinga": b.get("teleslinga"),
+                    "tillganglighetsanpassning": b.get("tillganglighetsanpassning"),
+                    "identitet_raa": b.get("identitetRAA"),
                 }
             })
         except Exception:
