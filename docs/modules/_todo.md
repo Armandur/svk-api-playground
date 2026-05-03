@@ -161,15 +161,61 @@ när huvuddelen råkar vara territorialvatten (Nättraby-Hasslö).
 
 ### 5d. SVK ↔ OSM kyrkokonsistens (`osm-konsistenscheck/`) ✅ Funktionell + deployad
 
-#### Utökad data per källa i popupar
+#### Utökad data per källa i popupar och nya taggbristsignaler
 
-Fler fält skulle kunna visas per sektion:
-- **Platser-API**: adress, koordinatprecision, plats-ID (p.id), enhetsnummer
-- **KBR**: nuvarandeAnvandning (funktion/användning), arkitekt, kulturminnesklass
-  - Kräver utökning av `build_kbr.py` fields-parametern
-- **OSM**: fler befintliga taggar (building, architect, heritage, addr:*)
-- Idé: 'Visa mer'-knapp i popupen som öppnar ett sidopanel/modal med
-  samtliga rådata från alla tre källor för vald prick
+Fälten nedan är verifierade mot respektive API 2026-05-03.
+Kräver ändringar i `build_svk.py` (Platser), `build_kbr.py` (KBR)
+och `build_diff.py` (taggbrist-logik) + `index.html` (visning).
+
+**KBR - popup-kontext (lägg till i `build_kbr.py` fields-parametern)**
+
+- `nuvarandeAnvandning` - nuvarande användning ("Kyrka - gudstjänstkyrka",
+  "Kyrka - förrättningskyrka", "Används inte" m.fl.). Förklarar varför
+  en prick är kbr_only eller ovanlig. Visa i KBR-sektionen i popupen.
+- `oppenforhallande` - hur kyrkan hålls öppen ("Öppen och bemannad",
+  "Nyckelöppen"). Besöksrelevant kontext i popupen.
+- `anvandningsfrekvens` - hur ofta den används ("Daglig användning",
+  "Visstidsanvändning – hela året"). Förklarar ovanliga kyrkor.
+- `byggarea` - byggnadsarea i m². Storleksindikator i popupen.
+
+**KBR - taggbristsignaler (kräver nya fält i `build_kbr.py` + diff-logik)**
+
+- `teleslinga` = "Teleslinga finns" → föreslå `hearing_loop=yes` om OSM
+  saknar det. Obs: korsar med Platser `hasHearingLoop` - kan kräva ett
+  av de två.
+- `tillganglighetsanpassning` = "Helt..." → `wheelchair=yes`,
+  "Delvis..." → `wheelchair=limited`. Föreslå om OSM saknar `wheelchair`.
+- `skyddEnligtKML` icke-tomt → föreslå `heritage=2` +
+  `heritage:operator=Riksantikvarieämbetet` om OSM saknar `heritage`.
+  (Vi visar redan skyddsvärdet i popupen men föreslår det inte som tag.)
+- `identitetRAA` icke-tomt → föreslå `ref:se:raa=<värde>` om OSM saknar.
+
+**Platser-API - popup-kontext (lägg till i `build_svk.py`)**
+
+- `shortDescription` - kort fritexter om kyrkan. Visa i Platser-sektionen
+  om den är ifylld (inte alltid).
+- `visitingInfo.address` + `postalCode` - besöksadress (84%/69% ifyllt).
+  Visa i popup. Används också som grund för addr-taggbrist nedan.
+- `geolocationInfo.municipality` - kommunnamn. Komplement till `city`.
+
+**Platser-API - taggbristsignaler (kräver nya fält i `build_svk.py` + diff-logik)**
+
+- `visitingInfo.address` → föreslå `addr:street=X` om OSM saknar
+  `addr:street`. Kräver parsning av gatunamn och husnummer ur adressfältet.
+- `visitingInfo.postalCode` → föreslå `addr:postcode=X` om OSM saknar.
+- `placeDetails.hasToilet = true` → föreslå `toilets=yes` om OSM saknar
+  (56% av kyrkorna i samplet).
+- `placeDetails.accessibility.hasHearingLoop = true` → `hearing_loop=yes`
+  (43% av samplet). Korsar med KBR `teleslinga`.
+- `placeDetails.accessibility.hasRamp = true` → `wheelchair=yes` om OSM
+  saknar (14% av samplet, kan kombineras med KBR tillganglighetsanpassning).
+- `placeDetails.accessibility.toiletAccessible = true` →
+  `toilets:wheelchair=yes` om OSM saknar (13% av samplet).
+
+**Idé: "Visa mer"-panel**
+
+Knapp i popupen som öppnar ett sidopanel/modal med samtliga rådata
+från alla tre källor för vald prick.
 
 Live på <https://armandur.github.io/svk-api-playground/osm-konsistenscheck/>,
 byggs dagligen 04:00 UTC av GitHub Actions.
