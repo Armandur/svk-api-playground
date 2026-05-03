@@ -293,11 +293,13 @@ function renderFreshness(sum) {
   const rel = relativeAge(builtIso);
   const svkRel = relativeAge(sum.svk_source_at);
   const osmRel = relativeAge(sum.osm_source_at);
+  const kbrRel = relativeAge(sum.kbr_source_at);
   let src = "";
-  if (svkRel || osmRel) {
+  if (svkRel || osmRel || kbrRel) {
     const parts = [];
-    if (svkRel) parts.push(`SVK ${svkRel}`);
+    if (svkRel) parts.push(`Platser-API ${svkRel}`);
     if (osmRel) parts.push(`OSM ${osmRel}`);
+    if (kbrRel) parts.push(`KBR ${kbrRel}`);
     src = ` <span class="src">(källor: ${parts.join(", ")})</span>`;
   }
   el.innerHTML = `Senast uppdaterad: ${stamp} (${rel})` +
