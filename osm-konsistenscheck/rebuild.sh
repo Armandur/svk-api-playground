@@ -19,6 +19,7 @@ fi
 
 echo "=== $(date -Is) rebuild ==="
 uv run osm-konsistenscheck/build_svk.py
+uv run osm-konsistenscheck/build_kbr.py
 uv run osm-konsistenscheck/build_osm.py
 uv run osm-konsistenscheck/build_wikidata.py
 uv run osm-konsistenscheck/build_diff.py "${1:-100}"

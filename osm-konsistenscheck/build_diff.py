@@ -18,6 +18,7 @@ Kör: uv run osm-konsistenscheck/build_diff.py [radius_m]
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from datetime import datetime, timezone
@@ -36,6 +37,16 @@ DEFAULT_RADIUS_M = 100
 NAME_MISMATCH_THRESHOLD = 0.55
 # Denominations vi accepterar som "Svenska kyrkan" på OSM-sidan.
 SVK_DENOMINATIONS = {"lutheran", "church_of_sweden", "protestant"}
+
+
+def haversine(lon1, lat1, lon2, lat2):
+    R = 6371000  # radius of Earth in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2)**2 + \
+        math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
+    return 2 * R * math.asin(math.sqrt(a))
 
 
 def osm_missing_tags(osm_tags: dict | None) -> list[str]:
@@ -217,9 +228,108 @@ def main(argv: list[str]) -> int:
             "properties": props,
         })
 
+    # KBR-berikning
+    kbr_path = DATA / "kbr.geojson"
+    kbr_only = []
+    kbr_summary = {"total": 0, "matched": 0, "only": 0, "osm_errors_200m": 0}
+
+    if kbr_path.exists():
+        kbr_data = json.loads(kbr_path.read_text(encoding="utf-8"))["features"]
+        kbr_summary["total"] = len(kbr_data)
+
+        # Pool av ankarpunkter: matched (OSM-coord), svk_only (SVK-coord), osm_only (OSM-coord)
+        anchor_pool = []
+        for f in matched:
+            anchor_pool.append({
+                "lat": f["properties"]["osm_lonlat"][1],
+                "lng": f["properties"]["osm_lonlat"][0],
+                "feature": f,
+                "type": "matched",
+                "svk_lonlat": f["geometry"]["coordinates"]
+            })
+        for f in svk_only:
+            anchor_pool.append({
+                "lat": f["geometry"]["coordinates"][1],
+                "lng": f["geometry"]["coordinates"][0],
+                "feature": f,
+                "type": "svk_only"
+            })
+        for f in osm_only:
+            anchor_pool.append({
+                "lat": f["geometry"]["coordinates"][1],
+                "lng": f["geometry"]["coordinates"][0],
+                "feature": f,
+                "type": "osm_only"
+            })
+
+        for f in kbr_data:
+            kbr_name = f["properties"].get("namn")
+            kbr_lng, kbr_lat = f["geometry"]["coordinates"]
+            norm_kbr = normalize_name(kbr_name)
+
+            candidates = []
+            for anchor in anchor_pool:
+                feat = anchor["feature"]
+                # Match på exakt namn eller normaliserat namn
+                match_found = False
+                names_to_check = []
+                if anchor["type"] == "matched":
+                    names_to_check = [feat["properties"].get("svk_namn"), feat["properties"].get("osm_namn")]
+                elif anchor["type"] == "svk_only":
+                    names_to_check = [feat["properties"].get("name")]
+                elif anchor["type"] == "osm_only":
+                    names_to_check = [feat["properties"].get("name")]
+
+                for n in names_to_check:
+                    if not n: continue
+                    if n.lower() == kbr_name.lower() or normalize_name(n) == norm_kbr:
+                        match_found = True
+                        break
+
+                if match_found:
+                    dist = haversine(kbr_lng, kbr_lat, anchor["lng"], anchor["lat"])
+                    if dist <= 200000: # 200 km
+                        candidates.append((dist, anchor))
+
+            if candidates:
+                # Sortera på avstånd, prioritera matched/osm_only framför svk_only vid lika avstånd
+                def sort_key(c):
+                    dist, anchor = c
+                    prio = 0 if anchor["type"] in ("matched", "osm_only") else 1
+                    return (dist, prio)
+
+                candidates.sort(key=sort_key)
+                best_dist, best_anchor = candidates[0]
+                feat_props = best_anchor["feature"]["properties"]
+                feat_props["kbr_id"] = f["properties"].get("kbr_id")
+                feat_props["kbr_lat"] = kbr_lat
+                feat_props["kbr_lng"] = kbr_lng
+                feat_props["kbr_osm_distance_m"] = int(best_dist)
+                if best_anchor["type"] == "matched":
+                    feat_props["kbr_platser_distance_m"] = int(haversine(kbr_lng, kbr_lat, best_anchor["svk_lonlat"][0], best_anchor["svk_lonlat"][1]))
+                elif best_anchor["type"] == "svk_only":
+                    feat_props["kbr_platser_distance_m"] = int(best_dist)
+
+                kbr_summary["matched"] += 1
+                if feat_props["kbr_osm_distance_m"] > 200:
+                    kbr_summary["osm_errors_200m"] += 1
+            else:
+                kbr_only.append({
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [kbr_lng, kbr_lat]},
+                    "properties": {
+                        "kategori": "kbr_only",
+                        "kbr_id": f["properties"].get("kbr_id"),
+                        "kbr_namn": kbr_name,
+                        "stift": f["properties"].get("stift"),
+                        "skydd": f["properties"].get("skydd")
+                    }
+                })
+                kbr_summary["only"] += 1
+
     out = {
         "type": "FeatureCollection",
-        "features": matched + svk_only + osm_only,
+        "features": matched + svk_only + osm_only + kbr_only,
     }
     out_path = DATA / "diff.geojson"
     out_path.write_text(
@@ -261,13 +371,22 @@ def main(argv: list[str]) -> int:
         "matched_osm_taggbrist": osm_kvalitet,
         "matched_osm_missing_breakdown": osm_missing_breakdown,
         "osm_denominations": osm_denominations,
+        "kbr_total": kbr_summary["total"],
+        "kbr_matched": kbr_summary["matched"],
+        "kbr_only": kbr_summary["only"],
+        "kbr_osm_errors_200m": kbr_summary["osm_errors_200m"],
     }
+    if kbr_path.exists():
+        summary["kbr_source_at"] = datetime.fromtimestamp(
+            kbr_path.stat().st_mtime, tz=timezone.utc).isoformat(timespec="seconds")
+
     (DATA / "diff_summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nResultat (radie {radius:g} m):")
     print(f"  matched:  {len(matched):>5}  (varav {namnmismatch} namnmismatch, {long_distance} >50m)")
     print(f"  svk_only: {len(svk_only):>5}  (saknas i OSM)")
     print(f"  osm_only: {len(osm_only):>5}  (saknas i SVK eller annan denomination)")
+    print(f"  kbr_only: {len(kbr_only):>5}  (finns i KBR men inte i Platser/OSM)")
     print(f"\nSkrev {out_path.name} ({out_path.stat().st_size // 1024} KB)")
     return 0
 

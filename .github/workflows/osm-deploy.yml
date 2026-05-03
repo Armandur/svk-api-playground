@@ -63,6 +63,7 @@ jobs:
           path: |
             osm-konsistenscheck/data/diff.geojson
             osm-konsistenscheck/data/diff_summary.json
+            osm-konsistenscheck/data/kbr.geojson
           key: osm-built-${{ hashFiles('osm-konsistenscheck/build_*.py') }}
           restore-keys: osm-built-
 
@@ -72,6 +73,7 @@ jobs:
           APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
         run: |
           uv run osm-konsistenscheck/build_svk.py
+          uv run osm-konsistenscheck/build_kbr.py
           uv run osm-konsistenscheck/build_osm.py
           uv run osm-konsistenscheck/build_wikidata.py
           uv run osm-konsistenscheck/build_diff.py
@@ -100,6 +102,9 @@ jobs:
           cp osm-konsistenscheck/data/diff.geojson \
              osm-konsistenscheck/data/diff_summary.json \
              _deploy/osm-konsistenscheck/data/
+          if [ -f osm-konsistenscheck/data/kbr.geojson ]; then
+            cp osm-konsistenscheck/data/kbr.geojson _deploy/osm-konsistenscheck/data/
+          fi
 
           mkdir -p _deploy/kbr-tidslinje/data
           cp kbr-tidslinje/index.html _deploy/kbr-tidslinje/index.html

@@ -39,7 +39,7 @@ REBUILD_STATE = {
     "status": "idle",
     "step": None,
     "step_index": 0,
-    "step_total": 4,
+    "step_total": 5,
     "started_at": None,
     "finished_at": None,
     "message": "",
@@ -52,6 +52,7 @@ def run_rebuild() -> None:
     """Bakgrundstråd som kör rebuild-stegen i ordning."""
     steps = [
         ("svk", "osm-konsistenscheck/build_svk.py", "Hämtar SVK Platser..."),
+        ("kbr", "osm-konsistenscheck/build_kbr.py", "Hämtar KBR-byggnader..."),
         ("osm", "osm-konsistenscheck/build_osm.py", "Hämtar OSM via Overpass..."),
         ("wikidata", "osm-konsistenscheck/build_wikidata.py", "Hämtar SvK-stift från Wikidata..."),
         ("diff", "osm-konsistenscheck/build_diff.py", "Bygger matchning..."),
