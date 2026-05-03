@@ -197,9 +197,17 @@ eller korrekt denomination - alla har förslag på taggar i popup.
 
 **Planerat: KBR som tredje koordinatkälla (ej påbörjat)**
 
-Lägga till KBR-koordinater i osm-konsistenscheck för att synliggöra
-var KBR:s koordinater (självregistrerade av kyrkan) avviker från
-Platser+OSM. Se 8b för bakgrund och stickprov.
+Lägga till KBR som extra lager i befintlig karta. KBR-koordinater är
+självregistrerade av kyrkan - OSM är oberoende fältverifierat, vilket
+gör KBR↔OSM till den mest intressanta jämförelsen. KBR↔Platser visas
+i popup men driver inte filtret (båda är SVK-interna, kan ha samma fel).
+Se 8b för bakgrund och stickprov.
+
+_Beslutade designval:_
+- KBR visas som extra lager ovanpå befintlig karta (inte eget tab)
+- KBR-kyrkor utan matchning (`kbr_only`) visas som standard
+- Primärt kvalitetsmått: `kbr_osm_distance_m`
+- Tröskel för koordinatfel: 200 m
 
 _Implementationsplan:_
 
@@ -209,54 +217,46 @@ Hämtar KBR via `GET /kyrkobyggnadsregistret/byggnader?kyrka=true`
 (samma endpoint som kbr-kvalitet), konverterar SWEREF99TM → WGS84
 via pyproj, outputtar `data/kbr.geojson`. Fält per feature:
 `kbr_id`, `namn`, `stift`, `lat`, `lng`, `skydd`.
-Cachelagras i GitHub Actions-cache med `build_kbr.py`-hash som nyckel
-(samma mönster som övriga build-skript). Kräver `APIKEY_PROD`-secret.
+Cachelagras i GitHub Actions-cache med `build_kbr.py`-hash som nyckel.
+Kräver `APIKEY_PROD`-secret.
 
-**2. `build_diff.py` - tillägg**
+**2. `build_diff.py` - trevägsmatchning**
 
-Ny fas efter befintlig SVK↔OSM-matchning: för varje SVK-feature
-(matched + svk_only) söks närmaste KBR-kyrka med normaliserat namn
-inom 200 km (cap). Återanvänd `normalize_name()` och den geografi-
-närmaste-algoritm som kbr-kvalitet verifierat.
+Ny fas efter befintlig SVK↔OSM-matchning. KBR matchas mot den samlade
+poolen av OSM + Platser-punkter (de som redan finns i diff.geojson) via
+`normalize_name()` + geografiskt närmaste kandidat inom 200 km cap.
+Vid lika avstånd prioriteras OSM-punkt framför Platser-punkt.
 
-Join-nyckel: namn+geografi (KBR:s eget `facilityPartId` matchar inte
-Platser UUID - det är ett KBR-internt ID).
+Fyra utfall per KBR-kyrka:
 
-Nya fält på matchade features:
-- `kbr_id`, `kbr_lat`, `kbr_lng` - KBR:s koordinat
-- `kbr_distance_m` - avstånd KBR → Platser (rundad till 1 m)
-- `kbr_coord_error` - `true` om `kbr_distance_m > 200`
+1. **Matchar befintligt matched-par (Platser+OSM)** - berika med
+   `kbr_lat/lng`, `kbr_osm_distance_m`, `kbr_platser_distance_m`
+2. **Matchar osm_only** - stärker `likely_svk_miss`-flaggan; berika
+   med KBR-koordinater och avstånd mot OSM
+3. **Matchar svk_only** - berika, inget nytt signalvärde
+4. **Ingen matchning** - lägg till som ny `kbr_only`-feature med
+   orange markör; visas som standard i kartlagret
 
 Nya fält i `diff_summary.json`:
-- `kbr_matched` - antal SVK-kyrkor med KBR-matchning
-- `kbr_errors_200m` - antal med avvikelse >200 m
+- `kbr_matched`, `kbr_only_count`, `kbr_osm_errors_200m`
 
 **3. UI - `index.html`**
 
-Nytt sub-filter under "Matchade": "KBR-koordinatfel (>200 m)" -
-synliggör features med `kbr_coord_error: true`.
+Nytt toggle-lager "KBR" (på som standard). Visar:
+- Orange markör för `kbr_only`-kyrkor med popup: namn, stift, skydd
+- Orange markör + streckad linje KBR↔OSM för matched-par där
+  `kbr_osm_distance_m > 200`, med avstånd i popup
+- Sub-filter "KBR-koordinatfel (>200 m)" filtrerar till bara de med fel
 
-När filtret är aktivt:
-- Befintlig Platser-markör (röd) behålls
-- Ny KBR-markör (orange?) läggs på `kbr_lat/kbr_lng`
-- Streckad linje Platser↔KBR med avstånd i popup
-- Popup utökas: "KBR: XX m från Platser"
-
-Markörer som inte har KBR-matchning påverkas inte.
+Popup för berikade features utökas med:
+- "KBR: X m från OSM" (primärt)
+- "KBR: Y m från Platser" (sekundärt)
 
 **4. Workflow + rebuild.sh**
 
 `osm-deploy.yml`: lägg till `build_kbr.py`-steg före `build_diff.py`.
 `rebuild.sh`: lägg till `uv run build_kbr.py`-rad.
 `serve.py` rebuild-endpoint: lägg till KBR-steg i live-rebuild-flödet.
-
-**Öppna frågor - fråga Rasmus:**
-
-- Ska KBR-markörer visas som extra lager ovanpå befintlig karta, eller
-  som ett eget tab vid sidan av Koordinatavvikelser i kbr-kvalitet?
-- Ska vi även visa KBR-byggnader som saknar Platser-matchning (kyrkor
-  i KBR men inte i Platser)? Kräver ny kategori i diff.geojson.
-- Tröskel: 200 m (samma som kbr-kvalitet) eller annat?
 
 ### 5c. Pastorat & församlingar över tid (`forsamlingsindelning-historik/`) ✅ Funktionell
 
