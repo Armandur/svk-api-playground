@@ -78,6 +78,18 @@ def collect_tag_evidence(svk_props, kbr_feat_props, osm_tags) -> tuple[list[str]
         elif t.get(tag) is None:
             missing.append(tag)
 
+    # name (från Platser eller KBR)
+    svk_name = svk_props.get("name")
+    kbr_name = kbr_feat_props.get("kbr_namn")
+    if svk_name and "name" not in t:
+        evidence["name"] = {"value": svk_name, "conflict": False,
+                            "sources": [{"name": "Platser", "raw": svk_name}]}
+        missing.append("name")
+    elif kbr_name and "name" not in t:
+        evidence["name"] = {"value": kbr_name, "conflict": False,
+                            "sources": [{"name": "KBR", "raw": kbr_name}]}
+        missing.append("name")
+
     # 2. hearing_loop
     # KBR: teleslinga == "Teleslinga finns" → claim "yes"
     # Platser: has_hearing_loop == True → claim "yes", has_hearing_loop == False → claim "no"
@@ -290,10 +302,14 @@ def main(argv: list[str]) -> int:
     svk_only = []
     for i, (svk_pt, svk_props, svk_lonlat) in enumerate(svk_rows):
         if i not in svk_match:
+            svk_missing, svk_evidence = collect_tag_evidence(svk_props, {}, {})
+            svk_props_out = {**svk_props, "kategori": "svk_only",
+                             "osm_missing_tags": svk_missing,
+                             "osm_tag_evidence": svk_evidence}
             svk_only.append({
                 "type": "Feature",
                 "geometry": {"type": "Point", "coordinates": svk_lonlat},
-                "properties": {**svk_props, "kategori": "svk_only"},
+                "properties": svk_props_out,
             })
             continue
         j, d = svk_match[i]
@@ -466,12 +482,33 @@ def main(argv: list[str]) -> int:
 
                 elif best_anchor["type"] == "svk_only":
                     feat_props["kbr_platser_distance_m"] = int(best_dist)
-                    # För svk_only: vi kan också berika evidence här om vi vill framöver
+                    # Re-kalkylera evidence med KBR-data
+                    svk_p = {
+                        "name": feat_props.get("name"),
+                        "has_hearing_loop": feat_props.get("has_hearing_loop"),
+                        "has_ramp": feat_props.get("has_ramp"),
+                        "has_toilet": feat_props.get("has_toilet"),
+                        "toilet_accessible": feat_props.get("toilet_accessible"),
+                        "address": feat_props.get("address"),
+                        "postal_code": feat_props.get("postal_code"),
+                    }
+                    missing, evidence = collect_tag_evidence(svk_p, feat_props, {})
+                    feat_props["osm_missing_tags"] = missing
+                    feat_props["osm_tag_evidence"] = evidence
 
                 kbr_summary["matched"] += 1
                 if feat_props["kbr_osm_distance_m"] > 200:
                     kbr_summary["osm_errors_200m"] += 1
             else:
+                kbr_p = {
+                    "kbr_namn": kbr_name,
+                    "kbr_invigning": f["properties"].get("invigning"),
+                    "kbr_nybyggnad_fran": f["properties"].get("nybyggnad_fran"),
+                    "kbr_teleslinga": f["properties"].get("teleslinga"),
+                    "kbr_tillganglighetsanpassning": f["properties"].get("tillganglighetsanpassning"),
+                    "kbr_skydd": f["properties"].get("skydd"),
+                }
+                kbr_missing, kbr_evidence = collect_tag_evidence({}, kbr_p, {})
                 kbr_only.append({
                     "type": "Feature",
                     "geometry": {"type": "Point", "coordinates": [kbr_lng, kbr_lat]},
@@ -483,15 +520,22 @@ def main(argv: list[str]) -> int:
                         "skydd": f["properties"].get("skydd"),
                         "kbr_invigning": f["properties"].get("invigning"),
                         "kbr_nybyggnad_fran": f["properties"].get("nybyggnad_fran"),
+                        "nuvarande_anvandning": f["properties"].get("nuvarande_anvandning"),
+                        "oppenforhallande": f["properties"].get("oppenforhallande"),
+                        "anvandningsfrekvens": f["properties"].get("anvandningsfrekvens"),
+                        "osm_missing_tags": kbr_missing,
+                        "osm_tag_evidence": kbr_evidence,
                     }
                 })
                 kbr_summary["only"] += 1
 
     # Rensa interna fält som bara behövdes under beräkning
-    _internal = {"osm_tags", "has_toilet", "has_hearing_loop", "has_ramp", "toilet_accessible"}
-    for f in matched:
+    _internal = {"has_toilet", "has_hearing_loop", "has_ramp", "toilet_accessible"}
+    for f in matched + svk_only:
         for k in _internal:
             f["properties"].pop(k, None)
+    for f in matched:
+        f["properties"].pop("osm_tags", None)
 
     out = {
         "type": "FeatureCollection",

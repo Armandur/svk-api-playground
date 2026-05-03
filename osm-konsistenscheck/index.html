@@ -194,6 +194,43 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 .copy-tags-btn.copied { background: var(--dark-green); color: var(--beige);
                         border-color: var(--dark-green); }
 
+/* Info-knapp och modal */
+.info-btn {
+  font: 12px "DM Sans", Arial, sans-serif;
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--muted); border-radius: 50%;
+  width: 22px; height: 22px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; line-height: 1;
+}
+.info-btn:hover { background: var(--wine); color: var(--beige); border-color: var(--wine); }
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 9000; display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-box {
+  background: var(--beige); border: 1px solid var(--line);
+  max-width: 560px; width: 100%; max-height: 85vh;
+  overflow-y: auto; padding: 20px 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+}
+.modal-box h2 { font-size: 17px; font-weight: 500; color: var(--wine); margin-bottom: 12px; }
+.modal-box h3 { font-size: 13px; font-weight: 700; color: var(--wine); margin: 14px 0 4px; }
+.modal-box p, .modal-box li { font-size: 13px; color: var(--black); line-height: 1.5; margin-bottom: 4px; }
+.modal-box ul { padding-left: 16px; margin-bottom: 8px; }
+.modal-box .modal-close {
+  float: right; font: 14px "DM Sans", Arial, sans-serif;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--muted); margin: -4px -8px 0 0; padding: 4px 8px;
+}
+.modal-box .modal-close:hover { color: var(--wine); }
+.modal-box .warn {
+  background: rgba(125,0,55,0.07); border-left: 3px solid var(--wine);
+  padding: 6px 10px; margin: 10px 0; font-size: 12px; color: var(--black);
+}
+
 /* Egen pie-chart-cluster */
 .pie-cluster {
   background: transparent !important;
@@ -251,6 +288,7 @@ header .freshness .src { color: var(--muted); font-style: italic; }
     <div class="subtitle">Jämför Platser-API, OpenStreetMap och Kyrkobyggnadsregistret (KBR)</div>
     <div class="freshness" id="freshness" hidden></div>
   </div>
+  <button class="info-btn" id="info-btn" title="Om verktyget">?</button>
   <div class="rebuild-ctrl">
     <div id="rebuild-status" class="pulse-indicator" hidden>
       <div class="pulse-dot"></div>
@@ -263,6 +301,58 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 
 <div id="banner" class="banner" hidden></div>
 <div id="map"></div>
+
+<div class="modal-overlay" id="info-modal" hidden>
+  <div class="modal-box">
+    <button class="modal-close" id="info-modal-close">Stäng</button>
+    <h2>Om verktyget</h2>
+    <p>Jämför kyrkor och kapell i <strong>Svenska kyrkans Platser-API</strong>,
+    <strong>OpenStreetMap</strong> och <strong>Kyrkobyggnadsregistret (KBR)</strong>
+    för att hitta saknad eller felaktig data i OSM.</p>
+
+    <h3>Datakällor</h3>
+    <ul>
+      <li><strong>Platser-API</strong> - Svenska kyrkans register över
+      platser (kyrkor, kapell, församlingshem m.m.). Hämtas via
+      api.svenskakyrkan.se/platser/v4. Innehåller namn, adress,
+      tillgänglighetsinfo och öppettider.</li>
+      <li><strong>OpenStreetMap</strong> - Öppen kartdatabas.
+      Hämtas via Overpass API med filter på amenity=place_of_worship
+      + religion=christian inom Sverige.</li>
+      <li><strong>KBR (Kyrkobyggnadsregistret)</strong> - Svenska kyrkans
+      register över kyrkobyggnader. Hämtas via api.svenskakyrkan.se/kbr.
+      Innehåller byggår, skyddsklassning, tillgänglighet och nuvarande
+      användning.</li>
+    </ul>
+
+    <h3>Datakvalitet</h3>
+    <div class="warn">
+      Taggförslag baserade på Platser-API och KBR bör alltid verifieras
+      mot verkligheten innan de läggs till i OSM.
+    </div>
+    <ul>
+      <li><strong>Platser-API</strong> uppdateras av enskilda redaktörer
+      i varje församling och pastorat. Adresser, tillgänglighetsinfo och
+      andra fält kan vara felaktiga, inaktuella eller sakna data.</li>
+      <li><strong>KBR</strong> hanteras av personal i enskilda församlingar
+      och pastorat. Uppgifter om hörselslinga, tillgänglighet och byggnadsår
+      kan avvika från verkligheten eller vara äldre.</li>
+      <li>När KBR och Platser-API är <strong>oense</strong> visas en
+      varning i popupen - kontrollera på plats eller via församlingen
+      innan OSM uppdateras.</li>
+      <li>Matchning sker inom 100 m radie. Kyrkor som ligger på exakt
+      samma koordinat i Platser-API är deduplicerade.</li>
+    </ul>
+
+    <h3>Koordinater</h3>
+    <p>Platser-API använder WGS84. KBR använder SWEREF99TM (konverteras
+    vid hämtning). OSM via Overpass API i WGS84.</p>
+
+    <h3>Uppdatering</h3>
+    <p>Data byggs dagligen 04:00 UTC av GitHub Actions och deployas till
+    GitHub Pages. Tidsstämplar för respektive källa visas i headern.</p>
+  </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -466,7 +556,7 @@ function sourcePills(sources) {
   }).join("");
 }
 
-function buildMissingHtml(p, kbrYear) {
+function buildMissingHtml(p, kbrYear, {noCopyButton = false} = {}) {
   const missing = p.osm_missing_tags || [];
   const evidence = p.osm_tag_evidence || {};
   if (!missing.length) return "";
@@ -487,7 +577,7 @@ function buildMissingHtml(p, kbrYear) {
 
   return `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>` +
     rows.join("") +
-    (copyableTags.length ? copyTagsButton(copyableTags) : "");
+    (copyableTags.length && !noCopyButton ? copyTagsButton(copyableTags) : "");
 }
 
 function popupHtml(p) {
@@ -542,14 +632,7 @@ function popupHtml(p) {
 
   if (p.kategori === "svk_only") {
     const [lon, lat] = [p._lon, p._lat];
-    const newNodeTags = [
-      "amenity=place_of_worship",
-      "religion=christian",
-      "denomination=lutheran",
-    ];
-    if (p.name) newNodeTags.push(`name=${p.name}`);
     const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
-    if (kbrYear) newNodeTags.push(`start_date=${kbrYear}`);
 
     let platserSection = `
       <div class="popup-section platser">
@@ -568,11 +651,28 @@ function popupHtml(p) {
         <div class="popup-meta">${p.kbr_osm_distance_m} m från Platser-API</div>
       </div>` : "";
 
+    const baseTags = ["amenity=place_of_worship", "religion=christian", "denomination=lutheran"];
+    const evidenceMissing = (p.osm_missing_tags || []).filter(t =>
+      !["amenity","religion","denomination"].includes(t));
+    const evidenceHtml = buildMissingHtml({...p, osm_missing_tags: evidenceMissing}, kbrYear, {noCopyButton: true});
+    const allCopyable = [
+      ...baseTags,
+      ...(p.osm_missing_tags || [])
+        .filter(t => !["amenity","religion","denomination"].includes(t))
+        .filter(t => !p.osm_tag_evidence?.[t]?.conflict)
+        .map(t => {
+          const ev = p.osm_tag_evidence?.[t];
+          const val = (ev && ev.value) || (t === "start_date" ? kbrYear : suggestedTagValue(t)) || "";
+          return `${t}=${val}`;
+        })
+    ];
+
     let osmSection = `
       <div class="popup-section osm">
         <div class="popup-section-label osm">Lägg till i OSM</div>
-        ${newNodeTags.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
-        ${copyTagsButton(newNodeTags)}
+        ${baseTags.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
+        ${evidenceHtml}
+        ${allCopyable.length ? copyTagsButton(allCopyable) : ""}
         ${lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">iD-editor länk</a></div>` : ""}
       </div>`;
 
@@ -585,10 +685,7 @@ function popupHtml(p) {
 
   if (p.kategori === "kbr_only") {
     const [lon, lat] = [p._lon, p._lat];
-    const newNodeTags = ["amenity=place_of_worship", "religion=christian", "denomination=lutheran"];
-    if (p.kbr_namn) newNodeTags.push(`name=${p.kbr_namn}`);
     const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
-    if (kbrYear) newNodeTags.push(`start_date=${kbrYear}`);
 
     let kbrSection = `
       <div class="popup-section kbr">
@@ -599,11 +696,28 @@ function popupHtml(p) {
         ${kbrYear ? `<div class="popup-meta">Invigd/byggd: ${kbrYear}</div>` : ""}
       </div>`;
 
+    const baseTags = ["amenity=place_of_worship", "religion=christian", "denomination=lutheran"];
+    const evidenceMissing = (p.osm_missing_tags || []).filter(t =>
+      !["amenity","religion","denomination"].includes(t));
+    const evidenceHtml = buildMissingHtml({...p, osm_missing_tags: evidenceMissing}, kbrYear, {noCopyButton: true});
+    const allCopyable = [
+      ...baseTags,
+      ...(p.osm_missing_tags || [])
+        .filter(t => !["amenity","religion","denomination"].includes(t))
+        .filter(t => !p.osm_tag_evidence?.[t]?.conflict)
+        .map(t => {
+          const ev = p.osm_tag_evidence?.[t];
+          const val = (ev && ev.value) || (t === "start_date" ? kbrYear : suggestedTagValue(t)) || "";
+          return `${t}=${val}`;
+        })
+    ];
+
     let osmSection = `
       <div class="popup-section osm">
         <div class="popup-section-label osm">Lägg till i OSM</div>
-        ${newNodeTags.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
-        ${copyTagsButton(newNodeTags)}
+        ${baseTags.map(line => `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("")}
+        ${evidenceHtml}
+        ${allCopyable.length ? copyTagsButton(allCopyable) : ""}
         ${lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">iD-editor länk</a></div>` : ""}
       </div>`;
 
@@ -944,7 +1058,9 @@ async function init() {
       const marker = e.popup._source;
       if (!marker || !marker.options) return;
       const p = marker.options.featureProps;
-      if (!p || p.kategori !== "matched") return;
+      if (!p || !["matched", "svk_only"].includes(p.kategori)) return;
+      // svk_only har ingen OSM-prick men kan ha en KBR-prick
+      if (p.kategori === "svk_only" && !p.kbr_id) return;
 
       activePopupLayer = L.layerGroup().addTo(map);
       const ll = marker.getLatLng();
@@ -1075,6 +1191,13 @@ async function init() {
     showBanner(`<b>Fel:</b> ${escapeHtml(String(e))}`, true);
   }
 }
+
+// Info-modal
+const infoModal = document.getElementById("info-modal");
+document.getElementById("info-btn").addEventListener("click", () => infoModal.removeAttribute("hidden"));
+document.getElementById("info-modal-close").addEventListener("click", () => infoModal.setAttribute("hidden", ""));
+infoModal.addEventListener("click", e => { if (e.target === infoModal) infoModal.setAttribute("hidden", ""); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") infoModal.setAttribute("hidden", ""); });
 
 // Rebuild-logik
 const rebuildCtrl = document.querySelector(".rebuild-ctrl");
