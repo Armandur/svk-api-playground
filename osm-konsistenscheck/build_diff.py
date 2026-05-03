@@ -183,7 +183,9 @@ def main(argv: list[str]) -> int:
         j, d = svk_match[i]
         _, osm_props, osm_lonlat = osm_rows[j]
         sim = name_similarity(svk_props.get("name"), osm_props.get("name"))
-        missing = osm_missing_tags(osm_props.get("tags"))
+        osm_tags = osm_props.get("tags") or {}
+        missing = osm_missing_tags(osm_tags)
+        osm_start_date = osm_tags.get("start_date") or osm_tags.get("building:start_date")
         matched.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": svk_lonlat},
@@ -202,6 +204,7 @@ def main(argv: list[str]) -> int:
                 "name_similarity": sim,
                 "name_mismatch": sim is not None and sim < NAME_MISMATCH_THRESHOLD,
                 "osm_missing_tags": missing,
+                "osm_start_date": osm_start_date,
             },
         })
 
@@ -305,6 +308,8 @@ def main(argv: list[str]) -> int:
                 feat_props["kbr_lat"] = kbr_lat
                 feat_props["kbr_lng"] = kbr_lng
                 feat_props["kbr_osm_distance_m"] = int(best_dist)
+                feat_props["kbr_invigning"] = f["properties"].get("invigning")
+                feat_props["kbr_nybyggnad_fran"] = f["properties"].get("nybyggnad_fran")
                 if best_anchor["type"] == "matched":
                     feat_props["kbr_platser_distance_m"] = int(haversine(kbr_lng, kbr_lat, best_anchor["svk_lonlat"][0], best_anchor["svk_lonlat"][1]))
                 elif best_anchor["type"] == "svk_only":
@@ -322,10 +327,19 @@ def main(argv: list[str]) -> int:
                         "kbr_id": f["properties"].get("kbr_id"),
                         "kbr_namn": kbr_name,
                         "stift": f["properties"].get("stift"),
-                        "skydd": f["properties"].get("skydd")
+                        "skydd": f["properties"].get("skydd"),
+                        "kbr_invigning": f["properties"].get("invigning"),
+                        "kbr_nybyggnad_fran": f["properties"].get("nybyggnad_fran"),
                     }
                 })
                 kbr_summary["only"] += 1
+
+        # Post-pass: flagga start_date-brist för matchade kyrkor där KBR har år men OSM saknar start_date
+        for f in matched:
+            p = f["properties"]
+            kbr_year = p.get("kbr_invigning") or p.get("kbr_nybyggnad_fran")
+            if p.get("kbr_id") and kbr_year and not p.get("osm_start_date"):
+                p["osm_missing_tags"] = list(p.get("osm_missing_tags") or []) + ["start_date"]
 
     out = {
         "type": "FeatureCollection",

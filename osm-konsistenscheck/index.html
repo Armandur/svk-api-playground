@@ -45,6 +45,7 @@ header .stats b { font-weight: 600; }
 header .stats .matched b { color: var(--dark-green); }
 header .stats .svk b { color: var(--wine); }
 header .stats .osm b { color: var(--osm); }
+header .stats .kbr b { color: #E87722; }
 header .freshness {
   font-family: "Spectral", "Times New Roman", serif; font-style: italic;
   color: var(--muted); font-size: 12px; margin-top: 2px;
@@ -219,7 +220,7 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 <header>
   <div>
     <h1>SVK ↔ OSM kyrkokonsistens</h1>
-    <div class="subtitle">Var matchar SVK Platser och OpenStreetMap?</div>
+    <div class="subtitle">Jämför Platser-API, OpenStreetMap och Kyrkobyggnadsregistret (KBR)</div>
     <div class="freshness" id="freshness" hidden></div>
   </div>
   <div class="rebuild-ctrl">
@@ -433,7 +434,9 @@ function popupHtml(p) {
     const dist = p.distance_m;
     const missing = p.osm_missing_tags || [];
     const missingTagLines = missing.map(t => `${t}=${suggestedTagValue(t)}`);
-    const kbrInfo = p.kbr_id ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR: avviker ${p.kbr_osm_distance_m} m från OSM</div>` : "";
+    const kbrInfo = p.kbr_id
+      ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR id ${escapeHtml(String(p.kbr_id))}: avviker ${p.kbr_osm_distance_m} m från OSM</div>`
+      : "";
     const missingHtml = missing.length
       ? `<div class="popup-status osm-only">OSM saknar: ${missing.join(", ")}</div>` +
         `<div class="popup-meta">Förslag att lägga till i OSM:</div>` +
@@ -446,7 +449,7 @@ function popupHtml(p) {
       : "";
     return `<div class="popup-name">${escapeHtml(p.svk_namn || p.osm_namn || "?")}</div>` +
       (p.svk_owner_name ? `<div class="popup-meta">${escapeHtml(p.svk_owner_name)}</div>` : "") +
-      `<div class="popup-status matched">Matchad (${dist} m mellan SVK och OSM)</div>` +
+      `<div class="popup-status matched">Matchad (${dist} m mellan Platser-API och OSM)</div>` +
       kbrInfo +
       (p.osm_namn && p.osm_namn !== p.svk_namn
         ? `<div class="popup-meta">OSM-namn: ${escapeHtml(p.osm_namn)}</div>` : "") +
@@ -466,7 +469,11 @@ function popupHtml(p) {
       "denomination=lutheran",
     ];
     if (p.name) newNodeTags.push(`name=${p.name}`);
-    const kbrInfo = p.kbr_id ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR: avviker ${p.kbr_osm_distance_m} m från Platser</div>` : "";
+    const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
+    if (kbrYear) newNodeTags.push(`start_date=${kbrYear}`);
+    const kbrInfo = p.kbr_id
+      ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR id ${escapeHtml(String(p.kbr_id))}: avviker ${p.kbr_osm_distance_m} m från Platser-API</div>`
+      : "";
     return `<div class="popup-name">${escapeHtml(p.name || "?")}</div>` +
       (p.owner_name ? `<div class="popup-meta">${escapeHtml(p.owner_name)}</div>` : "") +
       (p.city ? `<div class="popup-meta">${escapeHtml(p.city)}</div>` : "") +
@@ -481,16 +488,33 @@ function popupHtml(p) {
       (p.url ? `<div class="popup-meta"><a class="popup-link" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Församlingens sida</a></div>` : "");
   }
   if (p.kategori === "kbr_only") {
+    const [lon, lat] = [p._lon, p._lat];
+    const newNodeTags = [
+      "amenity=place_of_worship",
+      "religion=christian",
+      "denomination=lutheran",
+    ];
+    if (p.kbr_namn) newNodeTags.push(`name=${p.kbr_namn}`);
+    const kbrYear = p.kbr_invigning || p.kbr_nybyggnad_fran;
+    if (kbrYear) newNodeTags.push(`start_date=${kbrYear}`);
     return `<div class="popup-name">${escapeHtml(p.kbr_namn || "?")}</div>` +
       (p.stift ? `<div class="popup-meta">${escapeHtml(p.stift)}</div>` : "") +
       (p.skydd ? `<div class="popup-meta">${escapeHtml(p.skydd)}</div>` : "") +
-      `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr}">Finns i KBR, saknar matchning i OSM/Platser</div>`;
+      (kbrYear ? `<div class="popup-meta">KBR: invigd/byggd ${kbrYear}</div>` : "") +
+      `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr}">Finns i KBR, saknar matchning i OSM/Platser-API</div>` +
+      `<div class="popup-meta">Föreslagna OSM-taggar:</div>` +
+      newNodeTags.map(line =>
+        `<div class="popup-meta"><code>${escapeHtml(line)}</code></div>`).join("") +
+      copyTagsButton(newNodeTags) +
+      (lat ? `<div class="popup-meta"><a class="popup-link" href="https://www.openstreetmap.org/edit#map=18/${lat}/${lon}" target="_blank" rel="noopener">Lägg till i iD-editor</a></div>` : "");
   }
   // osm_only
   const statusText = p.likely_svk_miss
-    ? `Wikidata pekar mot ${escapeHtml(p.wikidata_diocese || "SvK-stift")} - kanske saknas i SVK Platser`
-    : "Saknas i SVK Platser eller annan denomination";
-  const kbrInfo = p.kbr_id ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR: avviker ${p.kbr_osm_distance_m} m från OSM</div>` : "";
+    ? `Wikidata pekar mot ${escapeHtml(p.wikidata_diocese || "SvK-stift")} - kanske saknas i Platser-API`
+    : "Saknas i Platser-API eller annan denomination";
+  const kbrInfo = p.kbr_id
+    ? `<div class="popup-status" style="background:rgba(232,119,34,0.12);color:${COLOR.kbr};margin-top:4px">KBR id ${escapeHtml(String(p.kbr_id))}: avviker ${p.kbr_osm_distance_m} m från OSM</div>`
+    : "";
   const wdLink = p.wikidata
     ? `<div class="popup-meta"><a class="popup-link" href="https://www.wikidata.org/wiki/${escapeHtml(p.wikidata)}" target="_blank" rel="noopener">Wikidata ${escapeHtml(p.wikidata)}</a></div>`
     : "";
@@ -559,9 +583,9 @@ async function init() {
     const sum = await sumRes.json();
     document.getElementById("stats").innerHTML =
       `<span class="matched"><b>${sum.matched}</b> matchade</span>` +
-      `<span class="svk"><b>${sum.svk_only}</b> bara SVK</span>` +
+      `<span class="svk"><b>${sum.svk_only}</b> bara Platser-API</span>` +
       `<span class="osm"><b>${sum.osm_only}</b> bara OSM</span>` +
-      (sum.kbr_total ? `<div style="font-size:12px;color:var(--muted);width:100%;margin-top:4px">KBR: ${sum.kbr_total} byggnader, ${sum.kbr_only} utan matchning, ${sum.kbr_osm_errors_200m} koordinatfel &gt;200m</div>` : "");
+      (sum.kbr_only != null ? `<span class="kbr"><b>${sum.kbr_only}</b> bara KBR</span>` : "");
     renderFreshness(sum);
 
     const baseIcons = {
@@ -703,12 +727,12 @@ async function init() {
           `<label class="sub"><input type="checkbox" data-only50m>` +
             `Visa bara avstånd >50m<span class="count">${sum.matched_distance_over_50m}</span></label>` +
           `<label class="sub"><input type="checkbox" data-lines>` +
-            `Rita linje SVK↔OSM (för >50m)</label>` +
+            `Rita linje Platser↔OSM (för >50m)</label>` +
           `<label class="sub"><input type="checkbox" data-taggbrist>` +
             `Visa bara OSM-taggbrist<span class="count">${sum.matched_osm_taggbrist}</span></label>` +
           `<label><input type="checkbox" data-cat="svk_only" checked>` +
             `<span class="swatch" style="background:${COLOR.svk_only}"></span>` +
-            `Bara SVK<span class="count">${sum.svk_only}</span></label>` +
+            `Bara Platser-API<span class="count">${sum.svk_only}</span></label>` +
           `<button data-export="svk_only">Exportera CSV</button>` +
           `<label><input type="checkbox" data-cat="osm_only" checked>` +
             `<span class="swatch" style="background:${COLOR.osm_only}"></span>` +
@@ -807,6 +831,43 @@ async function init() {
       },
     });
     map.addControl(new FilterCtrl());
+
+    // Popup-overlay: visa OSM- och KBR-punkt med linjer vid klick på matched-markör
+    let activePopupLayer = null;
+    map.on("popupopen", e => {
+      if (activePopupLayer) { map.removeLayer(activePopupLayer); activePopupLayer = null; }
+      const marker = e.popup._source;
+      if (!marker || !marker.options) return;
+      const p = marker.options.featureProps;
+      if (!p || p.kategori !== "matched") return;
+
+      activePopupLayer = L.layerGroup().addTo(map);
+      const ll = marker.getLatLng();
+
+      if (p.osm_lonlat) {
+        const [olon, olat] = p.osm_lonlat;
+        L.polyline([[ll.lat, ll.lng], [olat, olon]], {
+          color: COLOR.osm_only, weight: 2, opacity: 0.85,
+        }).addTo(activePopupLayer);
+        L.circleMarker([olat, olon], {
+          radius: 6, color: COLOR.osm_only, fillColor: COLOR.osm_only,
+          fillOpacity: 0.85, weight: 2,
+        }).bindTooltip("OSM").addTo(activePopupLayer);
+      }
+
+      if (p.kbr_id && p.kbr_lat != null) {
+        L.polyline([[ll.lat, ll.lng], [p.kbr_lat, p.kbr_lng]], {
+          color: COLOR.kbr, weight: 1.5, opacity: 0.85, dashArray: "6, 4",
+        }).addTo(activePopupLayer);
+        L.circleMarker([p.kbr_lat, p.kbr_lng], {
+          radius: 6, color: COLOR.kbr, fillColor: COLOR.kbr,
+          fillOpacity: 0.85, weight: 2,
+        }).bindTooltip(`KBR ${p.kbr_id || ""}`).addTo(activePopupLayer);
+      }
+    });
+    map.on("popupclose", () => {
+      if (activePopupLayer) { map.removeLayer(activePopupLayer); activePopupLayer = null; }
+    });
 
     // Sök-control top-left, under layer-väljaren
     const searchIndex = [];
