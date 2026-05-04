@@ -659,8 +659,8 @@ function setYear(year, animate) {
     const eraYear              = c.invigd ?? c.bygg;
     const { color: baseColor, era } = getEraInfo(eraYear);
     const age                  = eraYear ? Math.max(0, year - eraYear) : 0;
-    const satBucket            = Math.round(ageSaturation(age) * 20) / 20;
-    const color                = desaturate(baseColor, satBucket);
+    const sat                  = ageSaturation(age);
+    const color                = desaturate(baseColor, sat);
     const existing = markers[c.id];
 
     if (!shouldExist) {
@@ -679,13 +679,13 @@ function setYear(year, animate) {
         zIndexOffset: zOff,
       }).bindPopup(popupContent(c));
       m.addTo(map);
-      markers[c.id] = { marker: m, state: newState, era, satBucket };
-    } else if (existing.state !== newState || existing.satBucket !== satBucket) {
+      markers[c.id] = { marker: m, state: newState, era, sat };
+    } else if (existing.state !== newState || Math.abs((existing.sat ?? 1) - sat) > 0.004) {
       const stateChanged = existing.state !== newState;
       existing.marker.setIcon(makeIcon(era, newState, color, stateChanged && animate));
       existing.marker.setZIndexOffset(zOff);
       existing.state = newState;
-      existing.satBucket = satBucket;
+      existing.sat = sat;
     }
   }
 
