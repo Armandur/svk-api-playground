@@ -31,21 +31,26 @@ body {
 }
 header {
   padding: 10px 16px; border-bottom: 1px solid var(--line);
-  display: flex; align-items: baseline; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap;
   background: var(--beige);
+  position: relative; z-index: 1001;
 }
-h1 { font-size: 20px; font-weight: 500; color: var(--wine); }
+.header-main { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
+h1 { font-size: 20px; font-weight: 500; color: var(--wine); white-space: nowrap; }
 header .subtitle {
   font-family: "Spectral", "Times New Roman", serif; font-style: italic;
   color: var(--muted); font-size: 13px;
 }
-header .stats { font-size: 13px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+header .stats { font-size: 13px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
 header .stats b { font-weight: 600; }
 header .stats .matched b { color: var(--dark-green); }
 header .stats .svk b { color: var(--wine); }
 header .stats .osm b { color: var(--osm); }
 header .stats .kbr b { color: #E87722; }
+header .stats .stat-item { display: flex; align-items: center; gap: 4px; }
+header .stats .dot { width: 8px; height: 8px; border-radius: 50%; display: none; }
+
 header .freshness {
   font-family: "Spectral", "Times New Roman", serif; font-style: italic;
   color: var(--muted); font-size: 12px; margin-top: 2px;
@@ -53,7 +58,66 @@ header .freshness {
 header .freshness.stale { color: var(--wine); font-style: normal; }
 header .freshness .src { color: var(--muted); font-style: italic; }
 
-#map { flex: 1; min-height: 60vh; background: var(--beige); }
+.header-actions { display: flex; align-items: center; gap: 8px; }
+
+#map { flex: 1; min-height: 50vh; background: var(--beige); }
+
+.search-bar {
+  padding: 8px 16px; background: var(--beige);
+  border-bottom: 1px solid var(--line);
+  display: flex; justify-content: center;
+  position: sticky; top: 0; z-index: 1000;
+}
+.search-box {
+  width: 100%; max-width: 400px; position: relative;
+}
+.search-box input {
+  width: 100%; border: 1px solid var(--wine); border-radius: 4px;
+  background: #fff; padding: 8px 12px;
+  font: 14px "DM Sans", Arial, sans-serif; outline: none;
+}
+.search-box .search-results {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--beige); border: 1px solid var(--wine);
+  border-top: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-height: 60vh; overflow-y: auto; z-index: 2000;
+}
+
+.filter-toggle {
+  font: 500 13px "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--wine);
+  border: 1px solid var(--wine); border-radius: 4px;
+  padding: 5px 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+}
+.filter-toggle:hover { background: var(--pink); }
+.filter-toggle svg { flex-shrink: 0; }
+
+.filter-control {
+  background: var(--beige); padding: 12px;
+  border: 1px solid var(--wine);
+  font: 13px "DM Sans", Arial, sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  min-width: 260px; max-width: 300px;
+  max-height: 80vh; overflow-y: auto;
+  position: fixed; top: 60px; right: 16px; z-index: 3000;
+  display: none;
+}
+body.filter-open .filter-control { display: block; }
+
+@media (max-width: 600px) {
+  header { padding: 8px 12px; gap: 8px; }
+  h1 { font-size: 18px; }
+  header .subtitle, header .freshness { display: none; }
+  header .stats { gap: 8px; font-size: 12px; }
+  header .stats .label { display: none; }
+  header .stats .dot { display: inline-block; }
+  .filter-control {
+    top: auto; bottom: 0; left: 0; right: 0;
+    max-width: none; max-height: 70vh;
+    border-radius: 12px 12px 0 0; border-bottom: none;
+  }
+}
 
 .banner {
   padding: 10px 16px; background: var(--pink); color: var(--wine);
@@ -61,15 +125,6 @@ header .freshness .src { color: var(--muted); font-style: italic; }
   font-size: 13px;
 }
 .banner.err { background: var(--wine); color: var(--beige); font-style: normal; }
-
-.filter-control {
-  background: var(--beige); padding: 8px 10px;
-  border: 1px solid var(--wine);
-  font: 13px "DM Sans", Arial, sans-serif;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-  min-width: 220px; max-width: 280px;
-  max-height: 75vh; overflow-y: auto;
-}
 .filter-control .fc-title {
   font-size: 11px; color: var(--wine); font-weight: 600;
   margin: 8px 0 4px;
@@ -283,12 +338,18 @@ header .freshness .src { color: var(--muted); font-style: italic; }
 <body>
 
 <header>
-  <div>
+  <div class="header-main">
     <h1>SVK ↔ OSM kyrkokonsistens</h1>
     <div class="subtitle">Jämför Platser-API, OpenStreetMap och Kyrkobyggnadsregistret (KBR)</div>
     <div class="freshness" id="freshness" hidden></div>
   </div>
-  <button class="info-btn" id="info-btn" title="Om verktyget">?</button>
+  <div class="header-actions">
+    <button class="filter-toggle" id="filter-toggle" title="Visa filter">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+      <span>Filter</span>
+    </button>
+    <button class="info-btn" id="info-btn" title="Om verktyget">?</button>
+  </div>
   <div class="rebuild-ctrl">
     <div id="rebuild-status" class="pulse-indicator" hidden>
       <div class="pulse-dot"></div>
@@ -298,6 +359,13 @@ header .freshness .src { color: var(--muted); font-style: italic; }
   </div>
   <div class="stats" id="stats">Laddar…</div>
 </header>
+
+<div id="search-bar" class="search-bar">
+  <div class="search-box">
+    <input type="search" id="search-input" placeholder="Sök kyrka...">
+    <div class="search-results" id="search-results" hidden></div>
+  </div>
+</div>
 
 <div id="banner" class="banner" hidden></div>
 <div id="map"></div>
@@ -811,10 +879,10 @@ async function init() {
     const diff = await diffRes.json();
     const sum = await sumRes.json();
     document.getElementById("stats").innerHTML =
-      `<span class="matched"><b>${sum.matched}</b> matchade</span>` +
-      `<span class="svk"><b>${sum.svk_only}</b> bara Platser-API</span>` +
-      (sum.kbr_only != null ? `<span class="kbr"><b>${sum.kbr_only}</b> bara KBR</span>` : "") +
-      `<span class="osm"><b>${sum.osm_only}</b> bara OSM</span>`;
+      `<div class="stat-item matched"><span class="dot" style="background:${COLOR.matched}"></span><b>${sum.matched}</b> <span class="label">matchade</span></div>` +
+      `<div class="stat-item svk"><span class="dot" style="background:${COLOR.svk_only}"></span><b>${sum.svk_only}</b> <span class="label">bara Platser-API</span></div>` +
+      (sum.kbr_only != null ? `<div class="stat-item kbr"><span class="dot" style="background:${COLOR.kbr}"></span><b>${sum.kbr_only}</b> <span class="label">bara KBR</span></div>` : "") +
+      `<div class="stat-item osm"><span class="dot" style="background:${COLOR.osm_only}"></span><b>${sum.osm_only}</b> <span class="label">bara OSM</span></div>`;
     renderFreshness(sum);
 
     const baseIcons = {
@@ -922,136 +990,143 @@ async function init() {
     let osmOnlyEnabled = true;
     let onlyLikelySvkMiss = false;
 
-    // Filter-control
-    const FilterCtrl = L.Control.extend({
-      options: { position: "topright" },
-      onAdd() {
-        const div = L.DomUtil.create("div", "filter-control");
-        const denomList = (sum.osm_denominations || [])
-          .slice(0, 12)  // toppen-12, övriga ryms i "(saknas)" eller övrigt
-          .map(d => {
-            const id = `dn_${d.value.replace(/\W/g, "_")}`;
-            return `<label class="sub"><input type="checkbox" id="${id}" ` +
-              `data-denom="${escapeHtml(d.value)}" checked>` +
-              `${escapeHtml(d.value)}<span class="count">${d.antal}</span></label>`;
-          }).join("");
-        div.innerHTML =
-          `<div class="fc-title">VISA</div>` +
-          `<label><input type="checkbox" data-cat="matched" checked>` +
-            `<span class="swatch" style="background:${COLOR.matched}"></span>` +
-            `Matchade<span class="count">${sum.matched}</span></label>` +
-          `<label class="sub"><input type="checkbox" data-mismatch>` +
-            `Visa bara namn-mismatch<span class="count">${sum.matched_namnmismatch}</span></label>` +
-          `<label class="sub"><input type="checkbox" data-only50m>` +
-            `Visa bara avstånd >50m<span class="count">${sum.matched_distance_over_50m}</span></label>` +
-          `<label class="sub"><input type="checkbox" data-lines>` +
-            `Rita linje Platser↔OSM (för >50m)</label>` +
-          `<label class="sub"><input type="checkbox" data-taggbrist>` +
-            `Visa bara OSM-taggbrist<span class="count">${sum.matched_osm_taggbrist}</span></label>` +
-          `<label class="sub" style="padding-left:24px;font-size:11px;color:var(--muted)">` +
-            (sum.matched_osm_missing_breakdown?.denomination ? `denomination: ${sum.matched_osm_missing_breakdown.denomination}` : "") +
-            (sum.matched_osm_missing_breakdown?.start_date ? ` &middot; start_date: ${sum.matched_osm_missing_breakdown.start_date}` : "") +
-            `</label>` +
-          `<label><input type="checkbox" data-cat="svk_only" checked>` +
-            `<span class="swatch" style="background:${COLOR.svk_only}"></span>` +
-            `Bara Platser-API<span class="count">${sum.svk_only}</span></label>` +
-          `<button data-export="svk_only">Exportera CSV</button>` +
-          `<label><input type="checkbox" data-cat="kbr_only" checked>` +
-            `<span class="swatch" style="background:${COLOR.kbr}"></span>` +
-            `KBR<span class="count">${sum.kbr_total || 0}</span></label>` +
-          `<label class="sub"><input type="checkbox" data-kbr-error>` +
-            `KBR-koordinatfel (>200 m)<span class="count">${sum.kbr_osm_errors_200m || 0}</span></label>` +
-          `<label><input type="checkbox" data-cat="osm_only" checked>` +
-            `<span class="swatch" style="background:${COLOR.osm_only}"></span>` +
-            `Bara OSM<span class="count">${sum.osm_only}</span></label>` +
-          (sum.osm_only_likely_svk_miss
-            ? `<label class="sub"><input type="checkbox" data-likely-miss>` +
-              `Visa bara förmodliga SVK-missar` +
-              `<span class="count">${sum.osm_only_likely_svk_miss}</span></label>`
-            : "") +
-          `<details><summary>OSM-denomination</summary>${denomList}</details>`;
-        L.DomEvent.disableClickPropagation(div);
-        L.DomEvent.disableScrollPropagation(div);
+    // Filter-panel (inte längre Leaflet-control, ligger i body)
+    const filterContainer = document.createElement("div");
+    filterContainer.className = "filter-control";
+    const denomList = (sum.osm_denominations || [])
+      .slice(0, 12)
+      .map(d => {
+        const id = `dn_${d.value.replace(/\W/g, "_")}`;
+        return `<label class="sub"><input type="checkbox" id="${id}" ` +
+          `data-denom="${escapeHtml(d.value)}" checked>` +
+          `${escapeHtml(d.value)}<span class="count">${d.antal}</span></label>`;
+      }).join("");
+    filterContainer.innerHTML =
+      `<div class="fc-title">VISA</div>` +
+      `<label><input type="checkbox" data-cat="matched" checked>` +
+        `<span class="swatch" style="background:${COLOR.matched}"></span>` +
+        `Matchade<span class="count">${sum.matched}</span></label>` +
+      `<label class="sub"><input type="checkbox" data-mismatch>` +
+        `Visa bara namn-mismatch<span class="count">${sum.matched_namnmismatch}</span></label>` +
+      `<label class="sub"><input type="checkbox" data-only50m>` +
+        `Visa bara avstånd >50m<span class="count">${sum.matched_distance_over_50m}</span></label>` +
+      `<label class="sub"><input type="checkbox" data-lines>` +
+        `Rita linje Platser↔OSM (för >50m)</label>` +
+      `<label class="sub"><input type="checkbox" data-taggbrist>` +
+        `Visa bara OSM-taggbrist<span class="count">${sum.matched_osm_taggbrist}</span></label>` +
+      `<label class="sub" style="padding-left:24px;font-size:11px;color:var(--muted)">` +
+        (sum.matched_osm_missing_breakdown?.denomination ? `denomination: ${sum.matched_osm_missing_breakdown.denomination}` : "") +
+        (sum.matched_osm_missing_breakdown?.start_date ? ` &middot; start_date: ${sum.matched_osm_missing_breakdown.start_date}` : "") +
+        `</label>` +
+      `<label><input type="checkbox" data-cat="svk_only" checked>` +
+        `<span class="swatch" style="background:${COLOR.svk_only}"></span>` +
+        `Bara Platser-API<span class="count">${sum.svk_only}</span></label>` +
+      `<button data-export="svk_only">Exportera CSV</button>` +
+      `<label><input type="checkbox" data-cat="kbr_only" checked>` +
+        `<span class="swatch" style="background:${COLOR.kbr}"></span>` +
+        `KBR<span class="count">${sum.kbr_total || 0}</span></label>` +
+      `<label class="sub"><input type="checkbox" data-kbr-error>` +
+        `KBR-koordinatfel (>200 m)<span class="count">${sum.kbr_osm_errors_200m || 0}</span></label>` +
+      `<label><input type="checkbox" data-cat="osm_only" checked>` +
+        `<span class="swatch" style="background:${COLOR.osm_only}"></span>` +
+        `Bara OSM<span class="count">${sum.osm_only}</span></label>` +
+      (sum.osm_only_likely_svk_miss
+        ? `<label class="sub"><input type="checkbox" data-likely-miss>` +
+          `Visa bara förmodliga SVK-missar` +
+          `<span class="count">${sum.osm_only_likely_svk_miss}</span></label>`
+        : "") +
+      `<details><summary>OSM-denomination</summary>${denomList}</details>`;
+    document.body.appendChild(filterContainer);
+    L.DomEvent.disableClickPropagation(filterContainer);
+    L.DomEvent.disableScrollPropagation(filterContainer);
 
-        // Per-kategori toggles
-        div.querySelectorAll("input[data-cat]").forEach(input => {
-          input.addEventListener("change", e => {
-            const cat = e.target.dataset.cat;
-            if (cat === "matched") {
-              matchedEnabled = e.target.checked;
-              applyGlobalFilter();
-            } else if (cat === "osm_only") {
-              osmOnlyEnabled = e.target.checked;
-              applyGlobalFilter();
-            } else if (cat === "kbr_only") {
-              showKBR = e.target.checked;
-              applyGlobalFilter();
-            } else if (e.target.checked) {
-              markersByCat[cat].forEach(m => cluster.addLayer(m));
-            } else {
-              markersByCat[cat].forEach(m => cluster.removeLayer(m));
-            }
-          });
-        });
-        // Sub-filter för matched
-        div.querySelector("input[data-mismatch]").addEventListener("change", e => {
-          onlyMismatch = e.target.checked;
-          applyGlobalFilter();
-        });
-        div.querySelector("input[data-only50m]").addEventListener("change", e => {
-          onlyOver50m = e.target.checked;
-          applyGlobalFilter();
-        });
-        div.querySelector("input[data-taggbrist]").addEventListener("change", e => {
-          onlyTaggbrist = e.target.checked;
-          applyGlobalFilter();
-        });
-        // KBR-fel filter
-        div.querySelector("input[data-kbr-error]").addEventListener("change", e => {
-          onlyKbrError = e.target.checked;
-          if (onlyKbrError) kbrErrorLines.addTo(map);
-          else map.removeLayer(kbrErrorLines);
-          applyGlobalFilter();
-        });
-        // Förmodliga SvK-missar (osm_only med wikidata-tagg i SvK-stift)
-        const likelyMissInput = div.querySelector("input[data-likely-miss]");
-        if (likelyMissInput) {
-          likelyMissInput.addEventListener("change", e => {
-            onlyLikelySvkMiss = e.target.checked;
-            applyGlobalFilter();
-          });
-        }
-        // Avståndslinjer (separat lager)
-        div.querySelector("input[data-lines]").addEventListener("change", e => {
-          if (e.target.checked) distanceLines.addTo(map);
-          else map.removeLayer(distanceLines);
-        });
-        // Per-denomination filter (för osm_only)
-        div.querySelectorAll("input[data-denom]").forEach(input => {
-          input.addEventListener("change", e => {
-            const d = e.target.dataset.denom;
-            if (e.target.checked) denomDisabled.delete(d);
-            else denomDisabled.add(d);
-            applyGlobalFilter();
-          });
-        });
-        // Export
-        div.querySelector("button[data-export]").addEventListener("click", () => {
-          const rows = [["namn", "ägare", "stad", "lon", "lat", "url"]];
-          for (const m of markersByCat.svk_only) {
-            const p = m.options.featureProps;
-            const ll = m.getLatLng();
-            rows.push([
-              p.name || "", p.owner_name || "", p.city || "",
-              ll.lng, ll.lat, p.url || "",
-            ]);
-          }
-          downloadCsv(rows, "svk_saknas_i_osm.csv");
-        });
-        return div;
-      },
+    // Filter-toggle logik
+    const filterToggle = document.getElementById("filter-toggle");
+    filterToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.body.classList.toggle("filter-open");
     });
-    map.addControl(new FilterCtrl());
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".filter-control") && !e.target.closest(".filter-toggle")) {
+        document.body.classList.remove("filter-open");
+      }
+    });
+
+    // Per-kategori toggles
+    filterContainer.querySelectorAll("input[data-cat]").forEach(input => {
+      input.addEventListener("change", e => {
+        const cat = e.target.dataset.cat;
+        if (cat === "matched") {
+          matchedEnabled = e.target.checked;
+          applyGlobalFilter();
+        } else if (cat === "osm_only") {
+          osmOnlyEnabled = e.target.checked;
+          applyGlobalFilter();
+        } else if (cat === "kbr_only") {
+          showKBR = e.target.checked;
+          applyGlobalFilter();
+        } else if (e.target.checked) {
+          markersByCat[cat].forEach(m => cluster.addLayer(m));
+        } else {
+          markersByCat[cat].forEach(m => cluster.removeLayer(m));
+        }
+      });
+    });
+    // Sub-filter för matched
+    filterContainer.querySelector("input[data-mismatch]").addEventListener("change", e => {
+      onlyMismatch = e.target.checked;
+      applyGlobalFilter();
+    });
+    filterContainer.querySelector("input[data-only50m]").addEventListener("change", e => {
+      onlyOver50m = e.target.checked;
+      applyGlobalFilter();
+    });
+    filterContainer.querySelector("input[data-taggbrist]").addEventListener("change", e => {
+      onlyTaggbrist = e.target.checked;
+      applyGlobalFilter();
+    });
+    // KBR-fel filter
+    filterContainer.querySelector("input[data-kbr-error]").addEventListener("change", e => {
+      onlyKbrError = e.target.checked;
+      if (onlyKbrError) kbrErrorLines.addTo(map);
+      else map.removeLayer(kbrErrorLines);
+      applyGlobalFilter();
+    });
+    // Förmodliga SvK-missar
+    const likelyMissInput = filterContainer.querySelector("input[data-likely-miss]");
+    if (likelyMissInput) {
+      likelyMissInput.addEventListener("change", e => {
+        onlyLikelySvkMiss = e.target.checked;
+        applyGlobalFilter();
+      });
+    }
+    // Avståndslinjer
+    filterContainer.querySelector("input[data-lines]").addEventListener("change", e => {
+      if (e.target.checked) distanceLines.addTo(map);
+      else map.removeLayer(distanceLines);
+    });
+    // Per-denomination filter
+    filterContainer.querySelectorAll("input[data-denom]").forEach(input => {
+      input.addEventListener("change", e => {
+        const d = e.target.dataset.denom;
+        if (e.target.checked) denomDisabled.delete(d);
+        else denomDisabled.add(d);
+        applyGlobalFilter();
+      });
+    });
+    // Export
+    filterContainer.querySelector("button[data-export]").addEventListener("click", () => {
+      const rows = [["namn", "ägare", "stad", "lon", "lat", "url"]];
+      for (const m of markersByCat.svk_only) {
+        const p = m.options.featureProps;
+        const ll = m.getLatLng();
+        rows.push([
+          p.name || "", p.owner_name || "", p.city || "",
+          ll.lng, ll.lat, p.url || "",
+        ]);
+      }
+      downloadCsv(rows, "svk_saknas_i_osm.csv");
+    });
 
     // Popup-overlay: visa OSM- och KBR-punkt med linjer vid klick på matched-markör
     let activePopupLayer = null;
@@ -1147,7 +1222,7 @@ async function init() {
       activeOverlayDots = [];
     });
 
-    // Sök-control top-left, under layer-väljaren
+    // Sök-logik (använder nu elementen från HTML)
     const searchIndex = [];
     for (const cat in markersByCat) {
       for (const m of markersByCat[cat]) {
@@ -1161,19 +1236,6 @@ async function init() {
         });
       }
     }
-    const SearchCtrl = L.Control.extend({
-      options: { position: "topleft" },
-      onAdd() {
-        const div = L.DomUtil.create("div", "search-control");
-        div.innerHTML =
-          `<input type="search" id="search-input" placeholder="Sök kyrka...">` +
-          `<div class="search-results" id="search-results" hidden></div>`;
-        L.DomEvent.disableClickPropagation(div);
-        L.DomEvent.disableScrollPropagation(div);
-        return div;
-      },
-    });
-    map.addControl(new SearchCtrl());
 
     const input = document.getElementById("search-input");
     const results = document.getElementById("search-results");
@@ -1186,7 +1248,7 @@ async function init() {
       if (input.value.length >= 2) doSearch(input.value);
     });
     document.addEventListener("click", e => {
-      if (!e.target.closest(".search-control")) results.hidden = true;
+      if (!e.target.closest(".search-box")) results.hidden = true;
     });
 
     function doSearch(q) {

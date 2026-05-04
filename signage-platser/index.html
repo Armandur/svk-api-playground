@@ -271,6 +271,20 @@ function buildWeekSchedule(periods, now) {
       isToday: ymd === todayYmd,
     });
   }
+
+  // Garantera att morgondagen alltid finns för statusberäkning – annars
+  // missar "öppnar imorgon" när idag är sista dagen i visningsfönstret
+  // (t.ex. söndag i week-läge) eller sista dagen i en tidsperiod.
+  const tomorrowDate = new Date(today);
+  tomorrowDate.setDate(today.getDate() + 1);
+  const tomorrowYmd = ymdLocal(tomorrowDate);
+  if (!result.some(w => w.date === tomorrowYmd)) {
+    const dayKey = DAY_KEYS[tomorrowDate.getDay()];
+    const period = activePeriod(periods, tomorrowDate);
+    const intervals = period?.days?.[dayKey] || [];
+    result.push({ date: tomorrowYmd, dayKey, intervals, isToday: false, extra: true });
+  }
+
   return result;
 }
 
@@ -312,6 +326,7 @@ function renderWeekSchedule(weekDays) {
   const tbody = document.querySelector('#schedule tbody');
   tbody.innerHTML = '';
   for (const wd of weekDays) {
+    if (wd.extra) continue;
     const tr = document.createElement('tr');
     if (wd.isToday) tr.classList.add('today');
     const cells = wd.intervals.length
