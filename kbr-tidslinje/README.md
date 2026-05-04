@@ -19,23 +19,33 @@ APIKEY_PROD=<nyckel> uv run build_data.py
 ## Animationen
 
 - **Streckad ikon** - kyrkan är under byggnation (`nybyggnadFran` nådd)
-- **Fylld ikon** - kyrkan invigd (`invigning` nådd), era-specifik symbol och färg
+- **Fylld ikon** - kyrkan invigd (`invigning` nådd)
 - Kyrkornas färgmättnad tonas ned med åldern - nybygda kyrkor syns tydligast,
   äldre tappar successivt mättnad till ett golv på 20% (vid 400+ års ålder)
 - Nyare kyrkor visas ovanpå äldre i z-led
 - Sliderpricken och årtalet byter färg med epoken
-- Play/pause + hastighetskontroll
+- Play/pause med mellanslagstangenten eller knappen + hastighetskontroll
+
+## URL-parametrar
+
+| Parameter | Värde | Funktion |
+|---|---|---|
+| `icons` | `churches` | Era-specifika kyrkoikoner (standard: enkla kors) |
+| `fullscreen` | - | Döljer spel-/zoomkontroller, för presentationsläge |
+| `speed` | `800` / `300` / `80` / `20` | Starthastighet (Långsam/Normal/Snabb/Turbo) |
+
+Exempel: `?fullscreen&speed=80&icons=churches`
 
 ## Epoker
 
-| Epok | År | Färg | Symbol |
-|---|---|---|---|
-| Medeltid | –1527 | Gyllenbrunt | Klockstapel + stenkyrka |
-| Reformationen | 1527–1720 | Mörkrött | Nålspira |
-| 1700-tal | 1720–1800 | Varm grå | Klotfinal, pyramidkap |
-| 1800-tal | 1800–1900 | Amber | Gotisk spira, spetsbågsfönster |
-| 1900-tal | 1900–2000 | Stålblå | Platt tornkrön, funktionalistisk |
-| 2000-tal | 2000– | Teal | Böljande tak, flytande kors |
+| Epok | År | Färg |
+|---|---|---|
+| Medeltid | –1527 | Gyllenbrunt |
+| Reformationen | 1527–1720 | Mörkrött |
+| 1700-tal | 1720–1800 | Varm grå |
+| 1800-tal | 1800–1900 | Amber |
+| 1900-tal | 1900–2000 | Stålblå |
+| 2000-tal | 2000– | Teal |
 
 ## Deployment
 

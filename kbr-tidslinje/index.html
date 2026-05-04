@@ -174,6 +174,30 @@ body {
 
 .leaflet-div-icon { background: none !important; border: none !important; }
 
+/* Leaflet zoom-knappar – svart med vit text */
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  background-color: #000 !important;
+  color: #fff !important;
+  border-color: #333 !important;
+}
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover { background-color: #222 !important; }
+
+/* Leaflet attribution-banner – svart */
+.leaflet-control-attribution {
+  background: rgba(0,0,0,0.7) !important;
+  color: #aaa !important;
+}
+.leaflet-control-attribution a { color: #ccc !important; }
+
+/* Fullskärmsläge (?fullscreen) */
+body.fullscreen #play-btn,
+body.fullscreen #speed-select,
+body.fullscreen .leaflet-control-zoom { display: none !important; }
+body.fullscreen #legend { justify-content: center; }
+#legend { justify-content: center; }
+
 /* Externa SVG-ikoner – streckad linje i byggnationsläge */
 .church-icon-ext.is-construction polygon,
 .church-icon-ext.is-construction path,
@@ -428,6 +452,28 @@ const ERA_SVG_FN = {
   modern:        svgModern,
 };
 
+// Standard: enkla kors. ?icons=churches → visa era-specifika kyrkoikoner.
+const SIMPLE_CROSS = new URLSearchParams(location.search).get('icons') !== 'churches';
+
+// ?fullscreen → dölj spel-kontroller och zoomknappar, centrera legend
+if (location.search.includes('fullscreen')) document.body.classList.add('fullscreen');
+
+function svgCross(fill, stroke, dash) {
+  const da = dash ? `stroke-dasharray="${dash}"` : '';
+  if (dash) {
+    // Byggnationsläge: ett tunt streckad kors utan yttre kant
+    return `
+      <line x1="11" y1="6" x2="11" y2="29" stroke="${fill}" stroke-width="1.5" stroke-linecap="round" ${da}/>
+      <line x1="3"  y1="14" x2="19" y2="14" stroke="${fill}" stroke-width="1.5" stroke-linecap="round" ${da}/>`;
+  }
+  // Invigt: yttre kant (mörkare, tjockare) + inre (erafärg)
+  return `
+    <line x1="11" y1="6" x2="11" y2="29" stroke="${stroke}" stroke-width="5"   stroke-linecap="round"/>
+    <line x1="3"  y1="14" x2="19" y2="14" stroke="${stroke}" stroke-width="5"   stroke-linecap="round"/>
+    <line x1="11" y1="6" x2="11" y2="29" stroke="${fill}"   stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="3"  y1="14" x2="19" y2="14" stroke="${fill}"   stroke-width="2.5" stroke-linecap="round"/>`;
+}
+
 // ── Externa SVG-ikoner ────────────────────────────────────────────
 const ERA_ICON_FILES = {
   medeltid: 'icons/medeltida.svg',
@@ -513,6 +559,14 @@ async function loadIconSvg(era, path) {
 function churchSVG(era, state, color) {
   const dark    = darken(color, 0.38);
   const darkest = darken(color, 0.6);
+  if (SIMPLE_CROSS) {
+    const isConst = state === 'construction';
+    const inner = isConst ? '#6a8aaa' : color;
+    const outer = isConst ? darken('#6a8aaa', 0.45) : dark;
+    const dash  = isConst ? '4,2' : '';
+    return `<svg width="22" height="30" viewBox="0 0 22 30" xmlns="http://www.w3.org/2000/svg"
+      style="overflow:visible">${svgCross(inner, outer, dash)}</svg>`;
+  }
   const cached  = ERA_ICON_CACHE[era];
 
   if (cached) {
@@ -539,7 +593,7 @@ function makeIcon(era, state, color, animate) {
   const cls = animate
     ? (state === 'construction' ? 'church-marker church-new' : 'church-marker church-consecrate')
     : 'church-marker';
-  const cached = ERA_ICON_CACHE[era];
+  const cached = SIMPLE_CROSS ? null : ERA_ICON_CACHE[era];
   const w = cached?.displayW ?? 22;
   const h = cached?.displayH ?? 30;
   return L.divIcon({
@@ -670,22 +724,53 @@ slider.addEventListener('input', () => {
 
 speedSel.addEventListener('change', () => { if (playing) { stopPlay(); startPlay(); } });
 
+// ?speed=<ms> – sätt starthastighet (800/300/80/20)
+const speedParam = new URLSearchParams(location.search).get('speed');
+if (speedParam && [...speedSel.options].some(o => o.value === speedParam))
+  speedSel.value = speedParam;
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.target.matches('input,select,textarea,button')) {
+    e.preventDefault();
+    if (playing) stopPlay();
+    else { if (currentYear >= 2025) setYear(parseInt(slider.min), false); startPlay(); }
+  }
+});
+
 // ── Ladda ikoner + data ───────────────────────────────────────────
 const iconLoaders = Object.entries(ERA_ICON_FILES).map(([era, path]) => loadIconSvg(era, path));
 Promise.allSettled(iconLoaders).then(() => {
-  // Uppdatera legend-ikoner för laddade eras
-  for (const [era, cached] of Object.entries(ERA_ICON_CACHE)) {
-    const eraColor = ERA_DEFS.find(e => e.era === era)?.color || '#888';
-    const dark     = darken(eraColor, 0.38);
-    const darkest  = darken(eraColor, 0.6);
-    for (const svgEl of document.querySelectorAll(`#legend svg[data-era="${era}"]`)) {
-      const isConst = svgEl.dataset.state === 'construction';
-      const [f, s, d] = isConst ? ['none', '#6a8aaa', 'none'] : [eraColor, dark, darkest];
-      svgEl.setAttribute('viewBox', cached.viewBox);
-      svgEl.setAttribute('preserveAspectRatio', 'xMidYMax meet');
-      svgEl.style.cssText = `--icon-fill:${f};--icon-stroke:${s};--icon-dark:${d}`;
-      if (isConst) svgEl.style.strokeDasharray = '4 2';
-      svgEl.innerHTML = cached.content;
+  if (SIMPLE_CROSS) {
+    // Ersätt alla legend-ikoner med kors
+    document.querySelectorAll('#legend .legend-item').forEach((item, idx) => {
+      const svgEl = item.querySelector('svg');
+      if (!svgEl) return;
+      const isConst = idx === 0;
+      // idx=0 → byggnation, idx=1..6 → ERA_DEFS[5..0]
+      const eraColor = isConst ? '#6a8aaa' : (ERA_DEFS[ERA_DEFS.length - idx]?.color || '#888');
+      const inner = isConst ? '#6a8aaa' : eraColor;
+      const outer = isConst ? darken('#6a8aaa', 0.45) : darken(eraColor, 0.38);
+      const dash  = isConst ? '4,2' : '';
+      svgEl.setAttribute('viewBox', '0 0 22 30');
+      svgEl.removeAttribute('preserveAspectRatio');
+      svgEl.style.cssText = '';
+      svgEl.innerHTML = svgCross(inner, outer, dash);
+    });
+  } else {
+    // Uppdatera legend-ikoner för laddade eras
+    for (const [era, cached] of Object.entries(ERA_ICON_CACHE)) {
+      const eraColor = ERA_DEFS.find(e => e.era === era)?.color || '#888';
+      const dark     = darken(eraColor, 0.38);
+      const darkest  = darken(eraColor, 0.6);
+      for (const svgEl of document.querySelectorAll(`#legend svg[data-era="${era}"]`)) {
+        const isConst = svgEl.dataset.state === 'construction';
+        const [f, s, d] = isConst ? ['none', '#6a8aaa', 'none'] : [eraColor, dark, darkest];
+        svgEl.setAttribute('viewBox', cached.viewBox);
+        svgEl.setAttribute('preserveAspectRatio', 'xMidYMax meet');
+        svgEl.style.cssText = `--icon-fill:${f};--icon-stroke:${s};--icon-dark:${d}`;
+        if (isConst) svgEl.style.strokeDasharray = '4 2';
+        svgEl.innerHTML = cached.content;
+      }
     }
   }
 
