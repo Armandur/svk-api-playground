@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Medeltida" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="16.73 32.89 228 190">
+  <!-- Generator: Adobe Illustrator 30.2.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 1)  -->
+  <defs>
+    <style>
+      .st0 {
+        stroke-linejoin: bevel;
+      }
+
+      .st0, .st1, .st2 {
+        fill: #fff;
+        stroke: #1d1d1b;
+      }
+
+      .st0, .st2 {
+        stroke-width: 5px;
+      }
+
+      .st1 {
+        stroke-width: 3px;
+      }
+
+      .st1, .st2 {
+        stroke-miterlimit: 10;
+      }
+    </style>
+  </defs>
+  <polygon class="st1" points="67.12 106.09 95.19 220.59 85.45 220.59 60.35 112.7 67.12 106.09"/>
+  <polygon class="st1" points="46.81 105.65 18.73 220.15 28.48 220.15 53.58 112.26 46.81 105.65"/>
+  <polygon class="st2" points="122.33 220.59 122.33 170.49 147.1 121.06 174.18 170.83 174.18 220.59 122.33 220.59"/>
+  <polygon class="st2" points="174.18 220.15 241.56 209.58 241.56 163.34 174.18 170.6 174.18 220.15"/>
+  <polygon class="st0" points="147.49 118.26 213.27 118.26 242.69 162.9 174.46 170.6 147.49 118.26"/>
+  <g>
+    <rect x="142.2" y="194.94" width="10.57" height="25.21"/>
+    <path d="M152.77,194.94c0-2.92-2.36-5.28-5.28-5.28s-5.28,2.36-5.28,5.28h10.57Z"/>
+  </g>
+  <polygon class="st2" points="41.08 57.73 40.64 92.74 72.57 92.74 73.01 57.73 56.83 57.73 41.08 57.73"/>
+  <polygon class="st2" points="40.64 92.74 56.83 57.73 72.57 92.74 40.64 92.74"/>
+  <line class="st1" x1="56.83" y1="56.74" x2="56.83" y2="34.89"/>
+  <line class="st1" x1="51.21" y1="42.51" x2="62.83" y2="42.51"/>
+  <rect class="st1" x="46.81" y="92.74" width="6.77" height="132.3"/>
+  <rect class="st1" x="60.35" y="92.74" width="6.77" height="132.3"/>
+</svg>

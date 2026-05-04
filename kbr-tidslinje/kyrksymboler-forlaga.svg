@@ -49,16 +49,23 @@
        ═══════════════════════════════════════════════════ -->
 
   <!-- Medeltid fylld: fill=#8B6914, stroke=#56410C, df=#61490E, wf=rgba(255,240,180,0.55) -->
+  <!-- Medeltid fylld: medeltida-01.svg, scale(0.0982,0.1616) translate(-18.73,-34.89) -->
   <g id="medeltid-fylld" transform="translate(122, 90) scale(4)">
-    <polygon points="0.5,14 3.5,8 6.5,14" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
-    <line x1="0.5" y1="14" x2="0.5" y2="19" stroke="#56410C" stroke-width="1.3"/>
-    <line x1="6.5" y1="14" x2="6.5" y2="19" stroke="#56410C" stroke-width="1.3"/>
-    <circle cx="3.5" cy="16.5" r="1.1" fill="#56410C"/>
-    <polygon points="0.5,30 1,19 6,19 6.5,30" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
-    <polygon points="8,17 15,11 22,17" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
-    <rect x="8" y="17" width="14" height="13" fill="#8B6914" stroke="#56410C" stroke-width="1"/>
-    <circle cx="15" cy="19.5" r="1.5" fill="rgba(255,240,180,0.55)" stroke="#56410C" stroke-width="0.7"/>
-    <path d="M12,30 L12,24 Q14.5,21.5 17,24 L17,30 Z" fill="#61490E" stroke="#56410C" stroke-width="0.8"/>
+    <g transform="scale(0.0982,0.1616) translate(-18.73,-34.89)">
+      <polygon points="67.12,106.09 95.19,220.59 85.45,220.59 60.35,112.7 67.12,106.09" fill="#8B6914" stroke="#56410C" stroke-width="8" stroke-miterlimit="10"/>
+      <polygon points="46.81,105.65 18.73,220.15 28.48,220.15 53.58,112.26 46.81,105.65" fill="#8B6914" stroke="#56410C" stroke-width="8" stroke-miterlimit="10"/>
+      <polygon points="122.33,220.59 122.33,170.49 147.1,121.06 174.18,170.83 174.18,220.59 122.33,220.59" fill="#8B6914" stroke="#56410C" stroke-width="8" stroke-miterlimit="10"/>
+      <polygon points="174.18,220.15 241.56,209.58 241.56,163.34 174.18,170.6 174.18,220.15" fill="#8B6914" stroke="#56410C" stroke-width="8" stroke-miterlimit="10"/>
+      <polygon points="147.49,118.26 213.27,118.26 242.69,162.9 174.46,170.6 147.49,118.26" fill="#8B6914" stroke="#56410C" stroke-width="8" stroke-linejoin="bevel"/>
+      <rect x="142.2" y="194.94" width="10.57" height="25.21" fill="#61490E"/>
+      <path d="M152.77,194.94c0-2.92-2.36-5.28-5.28-5.28s-5.28,2.36-5.28,5.28h10.57Z" fill="#61490E"/>
+      <polygon points="41.08,57.73 40.64,92.74 72.57,92.74 73.01,57.73 56.83,57.73 41.08,57.73" fill="#8B6914" stroke="#56410C" stroke-width="8" stroke-miterlimit="10"/>
+      <polygon points="40.64,92.74 56.83,57.73 72.57,92.74 40.64,92.74" fill="#8B6914" stroke="#56410C" stroke-width="8" stroke-miterlimit="10"/>
+      <line x1="56.83" y1="56.74" x2="56.83" y2="34.89" stroke="#56410C" stroke-width="8"/>
+      <line x1="51.21" y1="42.51" x2="62.83" y2="42.51" stroke="#56410C" stroke-width="8"/>
+      <rect x="46.81" y="92.74" width="6.77" height="132.3" fill="#8B6914" stroke="#56410C" stroke-width="8"/>
+      <rect x="60.35" y="92.74" width="6.77" height="132.3" fill="#8B6914" stroke="#56410C" stroke-width="8"/>
+    </g>
   </g>
 
   <!-- Reformationen fylld: fill=#6B3A3A, stroke=#422424, df=#4A2828 -->
@@ -121,16 +128,21 @@
        ═══════════════════════════════════════════════════ -->
 
   <!-- Medeltid streckad -->
+  <!-- Medeltid streckad -->
   <g id="medeltid-streckad" transform="translate(122, 278) scale(4)">
-    <polygon points="0.5,14 3.5,8 6.5,14" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
-    <line x1="0.5" y1="14" x2="0.5" y2="19" stroke="#6a8aaa" stroke-width="1.3" stroke-dasharray="4,2"/>
-    <line x1="6.5" y1="14" x2="6.5" y2="19" stroke="#6a8aaa" stroke-width="1.3" stroke-dasharray="4,2"/>
-    <circle cx="3.5" cy="16.5" r="1.1" fill="#6a8aaa" stroke-dasharray="4,2"/>
-    <polygon points="0.5,30 1,19 6,19 6.5,30" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
-    <polygon points="8,17 15,11 22,17" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
-    <rect x="8" y="17" width="14" height="13" fill="none" stroke="#6a8aaa" stroke-width="1" stroke-dasharray="4,2"/>
-    <circle cx="15" cy="19.5" r="1.5" fill="none" stroke="#6a8aaa" stroke-width="0.7" stroke-dasharray="4,2"/>
-    <path d="M12,30 L12,24 Q14.5,21.5 17,24 L17,30 Z" fill="none" stroke="#6a8aaa" stroke-width="0.8" stroke-dasharray="4,2"/>
+    <g transform="scale(0.0982,0.1616) translate(-18.73,-34.89)">
+      <polygon points="67.12,106.09 95.19,220.59 85.45,220.59 60.35,112.7 67.12,106.09" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-miterlimit="10" stroke-dasharray="32,16"/>
+      <polygon points="46.81,105.65 18.73,220.15 28.48,220.15 53.58,112.26 46.81,105.65" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-miterlimit="10" stroke-dasharray="32,16"/>
+      <polygon points="122.33,220.59 122.33,170.49 147.1,121.06 174.18,170.83 174.18,220.59 122.33,220.59" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-miterlimit="10" stroke-dasharray="32,16"/>
+      <polygon points="174.18,220.15 241.56,209.58 241.56,163.34 174.18,170.6 174.18,220.15" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-miterlimit="10" stroke-dasharray="32,16"/>
+      <polygon points="147.49,118.26 213.27,118.26 242.69,162.9 174.46,170.6 147.49,118.26" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-linejoin="bevel" stroke-dasharray="32,16"/>
+      <polygon points="41.08,57.73 40.64,92.74 72.57,92.74 73.01,57.73 56.83,57.73 41.08,57.73" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-miterlimit="10" stroke-dasharray="32,16"/>
+      <polygon points="40.64,92.74 56.83,57.73 72.57,92.74 40.64,92.74" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-miterlimit="10" stroke-dasharray="32,16"/>
+      <line x1="56.83" y1="56.74" x2="56.83" y2="34.89" stroke="#6a8aaa" stroke-width="8" stroke-dasharray="32,16"/>
+      <line x1="51.21" y1="42.51" x2="62.83" y2="42.51" stroke="#6a8aaa" stroke-width="8" stroke-dasharray="32,16"/>
+      <rect x="46.81" y="92.74" width="6.77" height="132.3" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-dasharray="32,16"/>
+      <rect x="60.35" y="92.74" width="6.77" height="132.3" fill="none" stroke="#6a8aaa" stroke-width="8" stroke-dasharray="32,16"/>
+    </g>
   </g>
 
   <!-- Reformationen streckad -->

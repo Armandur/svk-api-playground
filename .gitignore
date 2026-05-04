@@ -29,3 +29,7 @@ Thumbs.db
 .env
 .env.local
 tmp/gemini/
+
+# Lokalt synkskript och logg (ej för repo)
+sync_vmworkspace.sh
+sync.log
