@@ -251,6 +251,14 @@ eftersom många kyrkbyggnader saknar `amenity=place_of_worship`. OSM-
 taggbrist-detektion ger 418 matchade där OSM saknar amenity, religion
 eller korrekt denomination - alla har förslag på taggar i popup.
 
+**Planerat: Förbättrat mobilgränssnitt (ej påbörjat)**
+
+Både sökrutan och filterrutan täcker stor del av skärmen på mobil, och
+headern blir onödigt hög. Behöver ses över:
+- Sökruta: kompaktare eller kollapsbar på liten skärm
+- Filterruta: kollapsbar panel / bottom sheet istället för alltid synlig
+- Header: reducera höjd på mobil (stapla eller dölj delar)
+
 **Planerat: KBR som tredje koordinatkälla (ej påbörjat)**
 
 Lägga till KBR som extra lager i befintlig karta. KBR-koordinater är
