@@ -316,7 +316,8 @@ function buildTable(rs) {
             + chip(hb, r.avstand_bv_m,      '#7B1FA2', 'BV',      r.bv_lat,      r.bv_lng)
             + kbrChip
             + '</div>';
-    html += `<tr class="data-row" data-idx="${i}"><td>${b}</td><td>${r.skydd ? '<span class="kml-badge">KML</span> ' : ''}${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
+    const typBadge = r.typ && r.typ !== 'Kyrka/kapell' ? `<span class="typ-badge">${r.typ}</span>` : '';
+    html += `<tr class="data-row" data-idx="${i}"><td>${b}</td><td>${r.skydd ? '<span class="kml-badge">KML</span> ' : ''}${r.namn}${typBadge}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
     <tr class="row-detail"><td colspan="3">
       <strong>KBR (Kyrkobyggnadsregistret)</strong> ${r.kbr_lat}, ${r.kbr_lng}<br>
       ${hp ? `<strong>Platser-API</strong> ${r.platser_lat}, ${r.platser_lng}${r.platser_slug ? ` | <a href="https://www.svenskakyrkan.se/platser/${r.platser_slug}" target="_blank" style="color:#1565c0">svenskakyrkan.se/platser/${r.platser_slug}</a>` : ''}<br>` : ''}
@@ -617,6 +618,7 @@ function renderBvTab() {
   document.querySelector('.q-section:has(#cnt-bv-kbr-saknar)').style.display = showKyrka ? '' : 'none';
   document.getElementById('bv-section-begravning').style.display = showBegravning ? '' : 'none';
   document.getElementById('bv-section-begravning-saknar').style.display = showBegravning ? '' : 'none';
+  document.querySelectorAll('#bv-content .data-table').forEach(makeSortable);
 }
 
 document.getElementById('bv-typ-filter').addEventListener('change', () => {
@@ -746,6 +748,7 @@ fetch('data/quality.json').then(r=>r.json()).then(q => {
   document.getElementById('tbody-andrad').innerHTML = rows(q.andrad_gammal,['namn','stift','invigning','andradDatum','skapadDatum']);
   setCount('cnt-agare', q.agare_mismatch.length);
   document.getElementById('tbody-agare').innerHTML = rows(q.agare_mismatch,['namn','stift','agandeEnhet','geografiskEnhet']);
+  document.querySelectorAll('.quality-pane .data-table').forEach(makeSortable);
 }).catch(() => {});
 
 fetch('data/stats.json').then(r=>r.json()).then(s => {

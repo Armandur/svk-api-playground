@@ -33,3 +33,29 @@ function rows(data, fields) {
     }).join('</td><td>') + '</td>' + mapBtn(r.kbr_lat, r.kbr_lng, r.namn) + '</tr>'
   ).join('');
 }
+
+function makeSortable(table) {
+  const ths = [...table.querySelectorAll('thead th')];
+  let col = -1, asc = true;
+  ths.forEach((th, ci) => {
+    if (th.classList.contains('no-print')) return;
+    th.addEventListener('click', () => {
+      asc = col === ci ? !asc : true;
+      col = ci;
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return;
+      [...tbody.rows].sort((a, b) => {
+        const va = (a.cells[ci]?.textContent || '').trim();
+        const vb = (b.cells[ci]?.textContent || '').trim();
+        const na = parseFloat(va), nb = parseFloat(vb);
+        const cmp = (!isNaN(na) && !isNaN(nb)) ? na - nb : va.localeCompare(vb, 'sv');
+        return asc ? cmp : -cmp;
+      }).forEach(r => tbody.appendChild(r));
+      ths.forEach((h, i) => {
+        if (h.classList.contains('no-print')) return;
+        const base = h.dataset.label || (h.dataset.label = h.textContent.trim());
+        h.textContent = base + (i === ci ? (asc ? ' ▲' : ' ▼') : '');
+      });
+    });
+  });
+}
