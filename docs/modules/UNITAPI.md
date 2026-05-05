@@ -78,6 +78,43 @@ Från `swagger.json` (lokal kopia: `tmp/swagger_enheter.json`):
 `Ingen`, `Församling`, `FörsamlingE` (egen ekonomi), `Sammfällighet`,
 `Utlandet`, `Stift`, `Projekt`.
 
+#### Volymsiffror prod 2026-05-05 (totalt 2 220 enheter)
+
+| `unitType` | Antal | Anteckning |
+|---|---|---|
+| `Församling` | 908 | Församlingar utan egen ekonomi - tillhör pastorat |
+| `Projekt` | 677 | |
+| `FörsamlingE` | 354 | Församling med egen ekonomi (jure egen) |
+| `Sammfällighet` | 229 | Pastorat (felstavat - se ovan) |
+| `Utlandet` | 37 | |
+| `Stift` | 13 | `parentUnitId: null` - toppen av hierarkin |
+| `Ingen` | 2 | Kyrkokansliet m.fl. |
+
+"Ekonomiska enheter" (de som har egen ekonomi och egen budget) =
+`Stift` + `Sammfällighet` + `FörsamlingE` = 596 st.
+
+### `stiftCode` - mappning till stiftnamn
+
+`stiftCode` finns på alla typer av enheter (förutom `Projekt`). För att
+mappa till stiftnamn: hämta alla `Stift`-enheter och bygg en lookup
+`stiftCode -> name`. Stiften har sin egen kod i `stiftCode`.
+
+| `stiftCode` | Stift |
+|---|---|
+| `01` | Uppsala stift |
+| `02` | Linköpings stift |
+| `03` | Skara stift |
+| `04` | Strängnäs stift |
+| `05` | Västerås stift |
+| `06` | Växjö stift |
+| `07` | Lunds stift |
+| `08` | Göteborgs stift |
+| `09` | Karlstads stift |
+| `10` | Härnösands stift |
+| `11` | Luleå stift |
+| `12` | Visby stift |
+| `13` | Stockholms stift |
+
 > **Stavfel:** `Sammfällighet` (två m) är felstavat - korrekt svenska
 > är "Samfällighet" med ett m. Felet är genomgående i SVK:s API och
 > värde-baserat (inte bara label) så ev. rättning kräver både kodfix
@@ -167,6 +204,22 @@ curl -s "${BASE}/units?\$count=true&\$top=0" -H "SvkAuthSvc-ApiKey: ${APIKEY}"
 ```
 
 `$` måste escapas i shell (`\$`) eller skickas i query-string utan escape.
+
+### Begränsningar och fallgropar
+
+- **Max `$top` = 1000.** Större värden ger HTTP 400
+  (`The limit of '1000' for Top query has been exceeded`). Paginera med
+  `$skip` för att hämta hela datasetet.
+- **`$filter` på `unitType` med åäö är trasigt på serversidan.** Filter
+  som `$filter=unitType eq 'FörsamlingE'` ger HTTP 400 med
+  `The string 'FÃ¶rsamlingE' is not a valid enumeration type constant`
+  oavsett hur klienten encodar URL:en - servern dekodar UTF-8 som
+  Latin-1. Workaround: hämta alla enheter (2 220 st) och filtrera
+  klientside.
+- **`emailAddress` finns sällan** i svar trots att det finns i schemat.
+- **Pilot-projekt i detta repo** kan använda `scripts/serve.py`-proxyn
+  (`/api/units/...`) för att slippa hantera nyckeln klientside - se
+  `SVK_PROXY_ROUTES` i `serve.py`.
 
 ## Användningsfall
 
