@@ -2,8 +2,9 @@
 # requires-python = ">=3.12"
 # dependencies = ["httpx>=0.27"]
 # ///
-"""Hämtar alla aktuella ekonomiska enheter från UnitAPI och skriver
-namnen till data/ekonomiska_enheter.csv (en per rad).
+"""Hämtar alla aktuella ekonomiska enheter från UnitAPI och skriver:
+  - data/ekonomiska_enheter.csv: två kolumner (namn, stift) för export.
+  - data/ekonomiska_enheter.json: full data för webbsidan (Pages-deploy).
 
 Ekonomiska enheter = enheter med egen ekonomi i SVK:s organisation:
   - Stift (13 st)
@@ -19,6 +20,7 @@ Kräver APIKEY_PROD i ../.env.
 from __future__ import annotations
 
 import csv
+import json
 import os
 from datetime import date
 from pathlib import Path
@@ -27,7 +29,8 @@ import httpx
 
 ROOT = Path(__file__).resolve().parent
 ENV_PATH = ROOT.parent / ".env"
-OUT_PATH = ROOT / "data" / "ekonomiska_enheter.csv"
+CSV_PATH = ROOT / "data" / "ekonomiska_enheter.csv"
+JSON_PATH = ROOT / "data" / "ekonomiska_enheter.json"
 
 BASE = "https://api.svenskakyrkan.se/externwebb/api-v2/odata"
 PAGE_SIZE = 1000  # OData-server tillåter max 1000
@@ -50,6 +53,13 @@ ITF_UNIT_IDS = {
     99,    # Finska församlingen (Stockholm)
     774,   # Karlskrona Amiralitetsförsamling
     2436,  # Tyska Christinae församling (Göteborg)
+}
+
+# Övriga samfälligheter som inte är vanliga pastorat. Markeras
+# med "Övrig"-badge i UI:t.
+OVRIG_UNIT_IDS = {
+    3169,   # Samfälligheten Gotlands kyrkor
+    20216,  # Göteborgs begravningssamfällighet
 }
 
 
@@ -127,23 +137,45 @@ def main() -> None:
 
     ekonomiska.sort(key=lambda u: u["name"].lower())
 
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with OUT_PATH.open("w", newline="", encoding="utf-8-sig") as f:
+    def stift_for(u: dict) -> str:
+        if u["unitId"] == TROSSAMFUNDET_UNIT_ID:
+            return "Nationell nivå"
+        if u["unitType"] == "Stift":
+            return u["name"]
+        return stift_by_code.get(u.get("stiftCode") or "", "")
+
+    CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with CSV_PATH.open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
         for u in ekonomiska:
-            if u["unitId"] == TROSSAMFUNDET_UNIT_ID:
-                stift = "Nationell nivå"
-            elif u["unitType"] == "Stift":
-                stift = u["name"]
-            else:
-                stift = stift_by_code.get(u.get("stiftCode") or "", "")
-            w.writerow([u["name"], stift])
+            w.writerow([u["name"], stift_for(u)])
+
+    json_data = {
+        "generated": today,
+        "enheter": [
+            {
+                "unitId": u["unitId"],
+                "name": u["name"],
+                "unitType": u["unitType"],
+                "stift": stift_for(u),
+                "isItf": u["unitId"] in ITF_UNIT_IDS,
+                "isOvrig": u["unitId"] in OVRIG_UNIT_IDS,
+            }
+            for u in ekonomiska
+        ],
+    }
+    JSON_PATH.write_text(
+        json.dumps(json_data, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
 
     by_type: dict[str, int] = {}
     for u in ekonomiska:
         by_type[u["unitType"]] = by_type.get(u["unitType"], 0) + 1
     itf_count = sum(1 for u in ekonomiska if u["unitId"] in ITF_UNIT_IDS)
-    print(f"\nSkrev {len(ekonomiska)} aktuella ekonomiska enheter -> {OUT_PATH.relative_to(ROOT.parent)}")
+    print(f"\nSkrev {len(ekonomiska)} aktuella ekonomiska enheter")
+    print(f"  -> {CSV_PATH.relative_to(ROOT.parent)}")
+    print(f"  -> {JSON_PATH.relative_to(ROOT.parent)}")
     for t, n in sorted(by_type.items()):
         print(f"  {t}: {n}")
     print(f"  varav icke-territoriella församlingar (ITF): {itf_count}")

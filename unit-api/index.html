@@ -113,7 +113,7 @@ footer a, footer code { color: var(--wine); }
 <body>
 <header>
   <h1>Ekonomiska enheter</h1>
-  <div class="subtitle">Aktuella enheter med egen ekonomi - live från UnitAPI</div>
+  <div class="subtitle">Aktuella enheter med egen ekonomi - från UnitAPI</div>
 </header>
 
 <div class="controls">
@@ -128,41 +128,15 @@ footer a, footer code { color: var(--wine); }
 </div>
 
 <div class="stats" id="stats">Laddar ...</div>
-<div id="results"><div class="loading">Hämtar 2 220 enheter från UnitAPI ...</div></div>
+<div id="results"><div class="loading">Hämtar enheter ...</div></div>
 
 <script>
-const PAGE_SIZE = 1000;
-const SELECT = "unitId,name,unitType,validUntil,stiftCode";
-const EK_TYPES = new Set(["Stift", "Sammfällighet", "FörsamlingE"]);
 const TYPE_ORDER = { "Trossamfund": -1, "Stift": 0, "Sammfällighet": 1, "FörsamlingE": 2 };
 const TYPE_LABEL = { "Trossamfund": "Trossamfund", "Stift": "Stift", "Sammfällighet": "Pastorat", "FörsamlingE": "Församling" };
 const TYPE_CLASS = { "Trossamfund": "tross", "Stift": "stift", "Sammfällighet": "samf", "FörsamlingE": "fors" };
-
-const TROSSAMFUNDET_UNIT_ID = 1;
-const TROSSAMFUNDET_NAMN = "Trossamfundet Svenska kyrkan";
 const RIKSNIVA_LABEL = "Nationell nivå";
 
-// Icke-territoriella församlingar - se fetch_ekonomiska_enheter.py
-const ITF_UNIT_IDS = new Set([97, 98, 99, 774, 2436]);
-// Övriga specialfall (begravningssamfälligheter m.fl.)
-const OVRIG_UNIT_IDS = new Set([20216, 3169]);
-
 let ekonomiska = [];
-
-async function fetchAllUnits() {
-  const all = [];
-  let skip = 0;
-  while (true) {
-    const url = `/api/units/?$top=${PAGE_SIZE}&$skip=${skip}&$select=${SELECT}`;
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`HTTP ${r.status} på ${url}`);
-    const json = await r.json();
-    all.push(...json.value);
-    if (json.value.length < PAGE_SIZE) break;
-    skip += PAGE_SIZE;
-  }
-  return all;
-}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
@@ -222,9 +196,9 @@ function render() {
     });
     html += `<section class="stift-group"><div class="stift-header"><span>${highlight(stift, q)}</span><span class="count">${enheter.length} st</span></div><ul>${enheter.map(e => {
         let badge;
-        if (OVRIG_UNIT_IDS.has(e.unitId)) {
+        if (e.isOvrig) {
           badge = '<span class="ovrig-badge" title="Övrig samfällighet (ej pastorat)">Övrig</span>';
-        } else if (ITF_UNIT_IDS.has(e.unitId)) {
+        } else if (e.isItf) {
           badge = '<span class="itf-badge" title="Icke-territoriell församling">ITF</span>';
         } else {
           badge = `<span class="type-badge ${TYPE_CLASS[e.unitType] || ""}">${TYPE_LABEL[e.unitType] || e.unitType}</span>`;
@@ -238,41 +212,15 @@ function render() {
 
 async function init() {
   try {
-    const all = await fetchAllUnits();
-    const today = new Date().toISOString().slice(0, 10);
-
-    // Bygg stiftCode -> stiftnamn från Stift-enheter
-    const stiftByCode = {};
-    for (const u of all) {
-      if (u.unitType === "Stift" && u.stiftCode) {
-        stiftByCode[u.stiftCode] = u.name;
-      }
-    }
-
-    ekonomiska = all
-      .filter(u => EK_TYPES.has(u.unitType))
-      .filter(u => !u.validUntil || u.validUntil > today)
-      .map(u => ({
-        ...u,
-        stift: u.unitType === "Stift" ? u.name : (stiftByCode[u.stiftCode] || "")
-      }));
-
-    // Lägg till Trossamfundet (unitId=1, namnändrat från CMS-namnet)
-    const tross = all.find(u => u.unitId === TROSSAMFUNDET_UNIT_ID);
-    if (tross) {
-      ekonomiska.push({
-        ...tross,
-        name: TROSSAMFUNDET_NAMN,
-        unitType: "Trossamfund",
-        stift: RIKSNIVA_LABEL,
-      });
-    }
-
+    const r = await fetch("data/ekonomiska_enheter.json", { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const json = await r.json();
+    ekonomiska = json.enheter;
     render();
   } catch (e) {
     document.getElementById("results").innerHTML =
-      `<div class="error">Kunde inte hämta från UnitAPI: ${escapeHtml(e.message)}.
-       Kontrollera att <code>./start.sh</code> körs och att <code>APIKEY_PROD</code> finns i <code>.env</code>.</div>`;
+      `<div class="error">Kunde inte ladda data: ${escapeHtml(e.message)}.
+       Kör <code>uv run fetch_ekonomiska_enheter.py</code> först.</div>`;
     document.getElementById("stats").textContent = "";
   }
 }
