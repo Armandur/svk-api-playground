@@ -158,11 +158,11 @@ footer {
 </footer>
 
 <script>
-// Vi proxar mot svenskakyrkan.se/webapi/api-v2/churchcalendar via
-// dev-serverns /api/churchcalendar för att kringgå CORS. Se serve.py.
-// Om widgeten serveras utanför dev-servern krävs en egen proxy
-// eftersom upstream inte sätter Access-Control-Allow-Origin-headers.
-const API_BASE = "/api/churchcalendar";
+// Datat byggs av build_data.py och skrivs till data/kyrkoaret.json.
+// I dev-läget skriver scripts/serve.py samma JSON via proxy under
+// /api/churchcalendar - vi läser hellre den statiska filen så samma
+// kodväg fungerar både lokalt (./start.sh) och på Pages.
+const API_BASE = "data/kyrkoaret.json";
 
 const COLOR_HEX = {
   White: "var(--lit-white)",
