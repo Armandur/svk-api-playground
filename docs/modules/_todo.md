@@ -455,6 +455,10 @@ saknar RAA-id, 2 011 saknar planform, 1 960 saknar tillgänglighetshandlingsprog
 **Återstår:**
 
 - Lämna `report.csv` till kyrkobyggnadsavdelningen för åtgärd.
+- **TODO: Utreda LKF-mappning (Steg 0 i rebuild-final.md)** - testa om
+  `KBR.agandeEnhetLkf → UnitAPI.unitId → Platser.owner.id` fungerar för
+  >80 % av kyrkorna. Om ja: implementera Steg 6 (LKF-filter i match-logiken
+  för att eliminera kors-landsmatcher vid generiska namn).
 - Ev. komplettera med UnitAPI-validering av `agandeEnhetLkf`-koder.
 - **K-samsök/RAÄ som fjärde koordinatkälla** - se nedan.
 
