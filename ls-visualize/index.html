@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Löneservice - visualisering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --beige:      #FFEBE1;
+  --black:      #000000;
+  --wine:       #7D0037;
+  --pink:       #FFC3AA;
+  --gold:       #BC8E4C;
+  --dark-green: #00554B;
+  --muted:      #6b5f5a;
+  --line:       rgba(125, 0, 55, 0.2);
+  --ja:         #00554B;
+  --nej:        #7D0037;
+  --saknas:     #b9a89e;
+  --kart-grans: #6b5f5a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font: 15px/1.45 "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--black);
+  display: flex; flex-direction: column; min-height: 100vh;
+}
+header {
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+h1 {
+  font-size: 22px; font-weight: 500; color: var(--wine);
+  letter-spacing: -0.01em;
+}
+header .subtitle {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 13px;
+}
+header .stats { font-size: 13px; color: var(--muted); }
+header .stats b { color: var(--wine); font-weight: 600; }
+
+#map { flex: 1; min-height: 60vh; background: var(--beige); }
+.leaflet-container { font: 14px "DM Sans", Arial, sans-serif; }
+
+.popup-name {
+  font-weight: 500; color: var(--wine); font-size: 16px;
+  margin-bottom: 2px;
+}
+.popup-stift {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  color: var(--muted); font-size: 13px; margin-bottom: 8px;
+}
+.popup-status { font-weight: 500; padding: 2px 8px; border-radius: 2px;
+                display: inline-block; font-size: 13px; }
+.popup-status.ja  { background: var(--ja); color: #fff; }
+.popup-status.nej { background: var(--nej); color: #fff; }
+.popup-status.saknas { background: var(--saknas); color: #fff; }
+.popup-meta {
+  margin-top: 8px; font-size: 13px; color: var(--muted);
+  border-top: 1px solid var(--line); padding-top: 6px;
+}
+
+.panel {
+  background: var(--beige); padding: 10px 12px;
+  border: 1px solid var(--wine);
+  font: 13px "DM Sans", Arial, sans-serif;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  max-width: 320px;
+}
+.panel .lp-title {
+  font-size: 11px; color: var(--wine); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.legend .lg-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 2px 0; line-height: 1.3;
+}
+.legend .lg-swatch {
+  display: inline-block; width: 18px; height: 14px; border-radius: 2px;
+  border: 1px solid rgba(0,0,0,0.25); flex-shrink: 0;
+}
+.legend .lg-line {
+  display: inline-block; width: 18px; height: 0;
+  border-top: 2px dashed var(--kart-grans); flex-shrink: 0;
+}
+.legend .lg-pill {
+  display: inline-block; padding: 1px 6px; border-radius: 2px;
+  color: #fff; font-size: 10px; font-weight: 600;
+  border: 1px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  flex-shrink: 0;
+}
+.summary { max-width: none; }
+.summary table { border-collapse: collapse; font-size: 12px;
+                 white-space: nowrap; }
+.summary th, .summary td { padding: 2px 6px; text-align: right; }
+.summary th:first-child, .summary td:first-child { text-align: left; }
+.summary thead th { color: var(--wine); font-weight: 600;
+                    border-bottom: 1px solid var(--line); }
+.summary tr.total td { border-top: 1px solid var(--line);
+                       font-weight: 600; color: var(--wine); }
+.summary tr.separator td { border-top: 1px solid var(--line);
+                           padding: 0; height: 4px; }
+.summary tr.tross-row td { font-style: italic; }
+.summary .pct { color: var(--muted); }
+
+.toggle-row { display: flex; flex-direction: column; gap: 2px;
+              margin-bottom: 4px; }
+.toggle-row label { display: flex; align-items: center; gap: 6px;
+                    cursor: pointer; user-select: none; padding: 1px 2px; }
+.toggle-row input { accent-color: var(--wine); }
+.filter { max-width: 180px; }
+
+.offshore-badge-wrap, .offshore-arrow-wrap {
+  position: absolute; width: 0; height: 0;
+}
+.offshore-badge {
+  position: absolute; transform-origin: 0 0;
+  padding: 4px 8px; border-radius: 3px;
+  font: 500 11px "DM Sans", Arial, sans-serif;
+  white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  border: 1px solid #fff; color: #fff;
+  display: inline-block; line-height: 1.2;
+  cursor: pointer;
+}
+.offshore-badge small { display: block; font-weight: 400; opacity: 0.85;
+                        font-size: 10px; }
+.offshore-badge.ja  { background: var(--ja); }
+.offshore-badge.nej { background: var(--nej); }
+.offshore-arrow-svg {
+  position: absolute; pointer-events: none;
+  overflow: visible;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Löneservice - anslutna enheter</h1>
+    <div class="subtitle" id="subtitle">Laddar data...</div>
+    <div class="subtitle">Antal konton per 2026-05-05</div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const COLORS = {
+  ja: "#00554B",
+  nej: "#7D0037",
+  saknas: "#b9a89e",
+  wine: "#7D0037",
+  kartGrans: "#6b5f5a",
+};
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function fmtInt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
+
+const map = L.map("map", { preferCanvas: true }).setView([62.5, 16.0], 5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "© OpenStreetMap-bidragsgivare",
+}).addTo(map);
+
+let dataset = null;       // { enheter, stiftsenheter, ovrigt, trossamfund, stift_summary }
+let enheterLayer = null;  // L.geoJson över ekonomiska enheter
+let stiftLayer = null;    // L.geoJson stift-gränser
+let offshoreLayer = null; // L.layerGroup med stiftskanslier, ovrigt, trossamfund
+const offshoreItems = []; // [{ marker, status }] för filter-toggling
+const offshoreEntries = []; // [{ arrowMarker, badgeMarker, cityLatLng, dxPref, dyPref, status, width, height }]
+let layoutScheduled = false;
+const visible = { ja: true, nej: true, saknas: true };
+
+// Stiftskoder enligt Unit-API:s skpkod (stiftens kanoniska ordning).
+// Trossamfundet är inte ett stift men listas separat med högsta sort-key.
+const STIFT_KOD = {
+  "Uppsala stift": "01",
+  "Linköpings stift": "02",
+  "Skara stift": "03",
+  "Strängnäs stift": "04",
+  "Västerås stift": "05",
+  "Växjö stift": "06",
+  "Lunds stift": "07",
+  "Göteborgs stift": "08",
+  "Karlstads stift": "09",
+  "Härnösands stift": "10",
+  "Luleå stift": "11",
+  "Visby stift": "12",
+  "Stockholms stift": "13",
+};
+const TROSS_NAMN = "Trossamfundet Svenska kyrkan";
+
+// Kort visningsnamn per stift = stadsnamn utan eventuellt genitiv-s.
+const STIFT_STAD = {
+  "Uppsala stift": "Uppsala",
+  "Linköpings stift": "Linköping",
+  "Skara stift": "Skara",
+  "Strängnäs stift": "Strängnäs",
+  "Västerås stift": "Västerås",
+  "Växjö stift": "Växjö",
+  "Lunds stift": "Lund",
+  "Göteborgs stift": "Göteborg",
+  "Karlstads stift": "Karlstad",
+  "Härnösands stift": "Härnösand",
+  "Luleå stift": "Luleå",
+  "Visby stift": "Visby",
+  "Stockholms stift": "Stockholm",
+};
+
+// [stad, stiftslat, stiftslon] - centrum av huvudort.
+const STAD = {
+  Uppsala:    [59.86, 17.64],
+  Linköping:  [58.41, 15.62],
+  Skara:      [58.39, 13.44],
+  Strängnäs:  [59.38, 17.03],
+  Västerås:   [59.61, 16.55],
+  Växjö:      [56.88, 14.81],
+  Lund:       [55.70, 13.19],
+  Göteborg:   [57.71, 11.97],
+  Karlstad:   [59.40, 13.51],
+  Härnösand:  [62.63, 17.94],
+  Luleå:      [65.58, 22.16],
+  Visby:      [57.64, 18.30],
+  Stockholm:  [59.33, 18.07],
+  Karlskrona: [56.16, 15.59],
+};
+
+// Off-shore-offsets i PIXEL relativt stadens latlng. dx>0 = öster,
+// dy>0 = söder. Genom att använda pixel-space istället för lat/lon
+// stannar varje badge alltid lika långt från sin stad oavsett zoom,
+// kollar inte med varandra och hamnar i en bestämd kompass-riktning
+// (vald mot havet/insjön där det går).
+// Format: [namn-i-CSV, anchor-stad, [dx, dy]]
+const OFFSHORE_STIFT = {
+  "Göteborgs stift":    ["Göteborg",   [-150, -30]],   // Skagerack V
+  "Lunds stift":        ["Lund",       [-100,  70]],   // Öresund SV
+  "Växjö stift":        ["Växjö",      [ 130,  80]],   // Östersjön SÖ
+  "Visby stift":        ["Visby",      [-110,   0]],   // Östersjön V (om Gotland)
+  "Linköpings stift":   ["Linköping",  [ 150,   0]],   // Östersjön Ö
+  "Skara stift":        ["Skara",      [-100, -30]],   // Vänern NV
+  "Karlstads stift":    ["Karlstad",   [ -50,  90]],   // Vänern S
+  "Strängnäs stift":    ["Strängnäs",  [  90, -60]],   // Mälaren NÖ
+  "Västerås stift":     ["Västerås",   [  90,  70]],   // Mälaren SÖ
+  "Stockholms stift":   ["Stockholm",  [ 170, -90]],   // Östersjön Ö (kolumn)
+  "Uppsala stift":      ["Uppsala",    [ 180, -50]],   // Bottenhavet Ö
+  "Härnösands stift":   ["Härnösand",  [ 150,   0]],   // Bottenhavet Ö
+  "Luleå stift":        ["Luleå",      [ 160,  20]],   // Bottenviken Ö
+};
+
+// Övriga enheter (utan eget område i geojson) - mappa till orten de hör till.
+const OFFSHORE_OVRIGT = {
+  "Hovförsamlingen":                    ["Stockholm",  [ 170, -30]],
+  "Finska församlingen":                ["Stockholm",  [ 170,  30]],
+  "Tyska S:ta Gertruds församling":     ["Stockholm",  [ 170,  90]],
+  "Karlskrona Amiralitetsförsamling":   ["Karlskrona", [ 100,  50]],
+  "Göteborgs begravningssamfällighet":  ["Göteborg",   [-150,  30]],
+};
+
+// Trossamfundet (Nationell nivå) ankrar mot Uppsala, separerat från
+// Uppsala stift via olika dy.
+const OFFSHORE_TROSS = ["Uppsala", [180, 30]];
+
+function statusForFeature(props) {
+  const namn = (props.namn || "").trim();
+  const e = dataset?.enheter?.[namn];
+  if (!e) return { key: "saknas", konton: 0, stift: null };
+  return { key: e.ja ? "ja" : "nej", konton: e.konton, stift: e.stift };
+}
+
+function styleEnhet(feature) {
+  const st = statusForFeature(feature.properties);
+  const hidden = !visible[st.key];
+  return {
+    color: COLORS.kartGrans,
+    weight: 1.2,
+    opacity: hidden ? 0 : 0.7,
+    fillColor: COLORS[st.key],
+    fillOpacity: hidden ? 0 : 0.55,
+  };
+}
+
+function popupForEnhet(props) {
+  const namn = (props.namn || "").trim();
+  const st = statusForFeature(props);
+  let badge;
+  if (st.key === "ja")  badge = `<span class="popup-status ja">Ansluten till Löneservice</span>`;
+  else if (st.key === "nej") badge = `<span class="popup-status nej">Ej ansluten</span>`;
+  else                       badge = `<span class="popup-status saknas">Ingen uppgift</span>`;
+  let html = `<div class="popup-name">${escapeHtml(namn)}</div>`;
+  if (st.stift) html += `<div class="popup-stift">${escapeHtml(st.stift)}</div>`;
+  html += badge;
+  if (st.konton) {
+    html += `<div class="popup-meta">${fmtInt(st.konton)} konton</div>`;
+  }
+  return html;
+}
+
+function buildEnheterLayer(geojson) {
+  enheterLayer = L.geoJson(geojson, {
+    style: styleEnhet,
+    onEachFeature: (feature, layer) => {
+      layer.bindTooltip((feature.properties.namn || "").trim(), { sticky: true });
+      layer.bindPopup(popupForEnhet(feature.properties));
+    },
+  }).addTo(map);
+}
+
+function buildStiftLayer(geojson) {
+  stiftLayer = L.geoJson(geojson, {
+    style: {
+      color: COLORS.kartGrans, weight: 3, opacity: 0.95,
+      fillOpacity: 0, dashArray: "6 4",
+    },
+    interactive: false,
+  }).addTo(map);
+}
+
+function offshoreEntity({ namn, kortNamn, kategori, ja, konton, anchorStad,
+                          dx, dy, popupExtra }) {
+  const anchor = STAD[anchorStad];
+  const klass = ja ? "ja" : "nej";
+  const label = kortNamn || namn;
+
+  // Pil + ankar-cirkel ritas i en SVG ankrad på staden. SVG har
+  // overflow:visible så linjen kan sträckas ut åt vilket håll som
+  // helst, oberoende av zoom-nivå. Linjen uppdateras i runtime av
+  // layoutOffshore() när badgen flyttas av kollisionsupplösaren.
+  // SVG-canvas täcker 600x600 pixel centrerad på (0,0) så pilen kan
+  // ritas åt valfritt håll utan att klippas. Wrappen är 0x0 men SVG
+  // har overflow:visible och positioneras med negativ left/top så
+  // SVG-koordinat (0,0) hamnar precis på iconen-ankarpunkten = staden.
+  const ARROW_HALF = 300;
+  const arrowMarker = L.marker(anchor, {
+    icon: L.divIcon({
+      className: "offshore-arrow-wrap",
+      html: `<svg class="offshore-arrow-svg"
+                  width="${ARROW_HALF * 2}" height="${ARROW_HALF * 2}"
+                  viewBox="-${ARROW_HALF} -${ARROW_HALF} ${ARROW_HALF * 2} ${ARROW_HALF * 2}"
+                  style="left:-${ARROW_HALF}px;top:-${ARROW_HALF}px">
+               <line x1="0" y1="0" x2="${dx}" y2="${dy}"
+                     stroke="${COLORS.kartGrans}" stroke-width="1.4"
+                     stroke-dasharray="3 3" stroke-opacity="0.9"/>
+               <circle cx="0" cy="0" r="4"
+                       fill="${COLORS.kartGrans}" stroke="#fff"
+                       stroke-width="1.5"/>
+             </svg>`,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    }),
+    interactive: false, keyboard: false,
+  });
+
+  const popupHtml = `
+    <div class="popup-name">${escapeHtml(namn)}</div>
+    <div class="popup-stift">${escapeHtml(kategori)} - ${escapeHtml(anchorStad)}</div>
+    <span class="popup-status ${klass}">
+      ${ja ? "Ansluten till Löneservice" : "Ej ansluten"}
+    </span>
+    <div class="popup-meta">${fmtInt(konton)} konton</div>
+    ${popupExtra ? `<div class="popup-meta" style="font-style:italic">${popupExtra}</div>` : ""}`;
+  const badgeMarker = L.marker(anchor, {
+    icon: L.divIcon({
+      className: "offshore-badge-wrap",
+      html: `<div class="offshore-badge ${klass}"
+                  style="transform:translate(${dx}px, ${dy}px)
+                         translate(-50%, -50%);">
+               ${escapeHtml(label)}
+               <small>${fmtInt(konton)} konton</small>
+             </div>`,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    }),
+    riseOnHover: true,
+  }).bindPopup(popupHtml);
+
+  return {
+    arrowMarker, badgeMarker, cityLatLng: anchor,
+    dxPref: dx, dyPref: dy,
+    width: 130, height: 36,   // uppdateras vid measureBadges()
+  };
+}
+
+function pushEntry(entry, status) {
+  offshoreEntries.push({ ...entry, status });
+  offshoreItems.push({ marker: entry.arrowMarker, status });
+  offshoreItems.push({ marker: entry.badgeMarker, status });
+}
+
+function buildOffshoreLayer() {
+  const items = [];
+
+  for (const [namn, info] of Object.entries(dataset.stiftsenheter || {})) {
+    const cfg = OFFSHORE_STIFT[namn];
+    if (!cfg) { console.warn("ingen offshore-position för", namn); continue; }
+    const [anchorStad, [dx, dy]] = cfg;
+    const e = offshoreEntity({
+      namn, kortNamn: namn.replace(/ stift$/, " stiftskansli"),
+      kategori: "Stiftskansli",
+      ja: info.ja, konton: info.konton, anchorStad, dx, dy,
+    });
+    pushEntry(e, info.ja ? "ja" : "nej");
+    items.push(e.arrowMarker, e.badgeMarker);
+  }
+
+  // Församlingar utan eget område får "Icke-territoriell församling"
+  // som popup-extra; samfälligheter etc får ingen extra-text.
+  const ICKE_TERR = new Set([
+    "Hovförsamlingen",
+    "Finska församlingen",
+    "Tyska S:ta Gertruds församling",
+    "Karlskrona Amiralitetsförsamling",
+  ]);
+  for (const o of dataset.ovrigt || []) {
+    const cfg = OFFSHORE_OVRIGT[o.namn];
+    if (!cfg) { console.warn("ingen offshore-position för", o.namn); continue; }
+    const [anchorStad, [dx, dy]] = cfg;
+    const e = offshoreEntity({
+      namn: o.namn, kortNamn: o.namn,
+      kategori: o.stift,
+      ja: o.ja, konton: o.konton, anchorStad, dx, dy,
+      popupExtra: ICKE_TERR.has(o.namn) ? "Icke-territoriell församling" : null,
+    });
+    pushEntry(e, o.ja ? "ja" : "nej");
+    items.push(e.arrowMarker, e.badgeMarker);
+  }
+
+  if (dataset.trossamfund) {
+    const t = dataset.trossamfund;
+    const [anchorStad, [dx, dy]] = OFFSHORE_TROSS;
+    const e = offshoreEntity({
+      namn: t.namn, kortNamn: "Kyrkokansliet",
+      kategori: "Nationell nivå - Kyrkokansliet",
+      ja: t.ja, konton: t.konton, anchorStad, dx, dy,
+    });
+    pushEntry(e, t.ja ? "ja" : "nej");
+    items.push(e.arrowMarker, e.badgeMarker);
+  }
+
+  offshoreLayer = L.layerGroup(items).addTo(map);
+
+  // Mät badge-storlekar efter första render-pass så kollisions-
+  // upplösaren har korrekta dimensioner.
+  requestAnimationFrame(() => { measureBadges(); scheduleLayout(); });
+  map.on("zoomend moveend", scheduleLayout);
+}
+
+function measureBadges() {
+  for (const e of offshoreEntries) {
+    const wrap = e.badgeMarker.getElement();
+    if (!wrap) continue;
+    const badge = wrap.querySelector(".offshore-badge");
+    if (!badge) continue;
+    e.width = badge.offsetWidth || e.width;
+    e.height = badge.offsetHeight || e.height;
+  }
+}
+
+function scheduleLayout() {
+  if (layoutScheduled) return;
+  layoutScheduled = true;
+  requestAnimationFrame(() => { layoutScheduled = false; layoutOffshore(); });
+}
+
+// Anti-overlap-layout. Kör vid varje zoom/move + filter-toggle.
+// Algoritm: börja varje synlig badge på sin föredragna pixel-offset
+// från staden. Iterera N gånger och knuffa krockande badges längs
+// minsta-överlapp-axeln tills allt är fritt eller iter-budget slut.
+function layoutOffshore() {
+  if (!offshoreLayer || !offshoreEntries.length) return;
+  const active = offshoreEntries.filter(e => visible[e.status]);
+  if (!active.length) return;
+
+  const PADDING = 4;
+  for (const e of active) {
+    const cp = map.latLngToContainerPoint(e.cityLatLng);
+    e._cx = cp.x;
+    e._cy = cp.y;
+    e._x = cp.x + e.dxPref;
+    e._y = cp.y + e.dyPref;
+  }
+
+  for (let iter = 0; iter < 60; iter++) {
+    let moved = false;
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const a = active[i], b = active[j];
+        const halfAW = a.width/2 + PADDING, halfAH = a.height/2 + PADDING;
+        const halfBW = b.width/2 + PADDING, halfBH = b.height/2 + PADDING;
+        const ovX = (halfAW + halfBW) - Math.abs(a._x - b._x);
+        const ovY = (halfAH + halfBH) - Math.abs(a._y - b._y);
+        if (ovX <= 0 || ovY <= 0) continue;
+        // Knuffa längs minsta-överlapps-axeln.
+        if (ovX < ovY) {
+          const sign = a._x < b._x ? -1 : 1;
+          const push = ovX / 2 + 0.5;
+          a._x += sign * push;
+          b._x -= sign * push;
+        } else {
+          const sign = a._y < b._y ? -1 : 1;
+          const push = ovY / 2 + 0.5;
+          a._y += sign * push;
+          b._y -= sign * push;
+        }
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+
+  for (const e of active) {
+    const dx = e._x - e._cx, dy = e._y - e._cy;
+    const wrap = e.badgeMarker.getElement();
+    if (wrap) {
+      const badge = wrap.querySelector(".offshore-badge");
+      if (badge) {
+        badge.style.transform =
+          `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
+      }
+    }
+    const arrowWrap = e.arrowMarker.getElement();
+    if (arrowWrap) {
+      const line = arrowWrap.querySelector("line");
+      if (line) {
+        line.setAttribute("x2", dx);
+        line.setAttribute("y2", dy);
+      }
+    }
+  }
+}
+
+function applyOffshoreVisibility() {
+  if (!offshoreLayer) return;
+  for (const { marker, status } of offshoreItems) {
+    const should = visible[status];
+    const has = offshoreLayer.hasLayer(marker);
+    if (should && !has) offshoreLayer.addLayer(marker);
+    else if (!should && has) offshoreLayer.removeLayer(marker);
+  }
+  scheduleLayout();
+}
+
+// --- kontroller ---
+
+const LegendControl = L.Control.extend({
+  options: { position: "bottomleft" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "panel legend");
+    div.innerHTML = `<div class="lp-title">Teckenförklaring</div>
+      <div class="lg-row"><span class="lg-swatch" style="background:${COLORS.ja}"></span>
+        Ansluten till Löneservice</div>
+      <div class="lg-row"><span class="lg-swatch" style="background:${COLORS.nej}"></span>
+        Ej ansluten</div>
+      <div class="lg-row"><span class="lg-line"></span> Stiftsgräns</div>
+      <div class="lg-row" style="margin-top:6px">
+        <span class="lg-pill" style="background:${COLORS.ja}">Stift</span>
+        Kyrkokansliet, Stiftskansli, ITF, Övriga
+      </div>`;
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  },
+});
+new LegendControl().addTo(map);
+
+const FilterControl = L.Control.extend({
+  options: { position: "topright" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "panel filter");
+    div.innerHTML = `<div class="lp-title">Visa</div>
+      <div class="toggle-row">
+        <label><input type="checkbox" data-key="ja" checked> Ja</label>
+        <label><input type="checkbox" data-key="nej" checked> Nej</label>
+      </div>
+      <div class="lp-title" style="margin-top:6px">Lager</div>
+      <div class="toggle-row">
+        <label><input type="checkbox" data-layer="enheter" checked> Ekon. enheter</label>
+        <label><input type="checkbox" data-layer="stift" checked> Stiftsgränser</label>
+        <label><input type="checkbox" data-layer="offshore" checked> Off-shore-boxar</label>
+      </div>`;
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    div.querySelectorAll("input[data-key]").forEach(inp => {
+      inp.addEventListener("change", e => {
+        visible[e.target.dataset.key] = e.target.checked;
+        if (enheterLayer) enheterLayer.setStyle(styleEnhet);
+        applyOffshoreVisibility();
+      });
+    });
+    div.querySelectorAll("input[data-layer]").forEach(inp => {
+      inp.addEventListener("change", e => {
+        const layer = { enheter: enheterLayer, stift: stiftLayer,
+                        offshore: offshoreLayer }[e.target.dataset.layer];
+        if (!layer) return;
+        if (e.target.checked) map.addLayer(layer);
+        else map.removeLayer(layer);
+      });
+    });
+    return div;
+  },
+});
+new FilterControl().addTo(map);
+
+const SummaryControl = L.Control.extend({
+  options: { position: "topleft" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "panel summary");
+    div.id = "summary-panel";
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    return div;
+  },
+});
+const summaryControl = new SummaryControl();
+summaryControl.addTo(map);
+
+function pct(num, den) {
+  if (!den) return "-";
+  return `${Math.round((num / den) * 100)}%`;
+}
+
+function renderSummary() {
+  const el = document.getElementById("summary-panel");
+  if (!dataset) return;
+  // Sortera stiften enligt skpkod (Unit-API). Trossamfundet bryts ut
+  // och visas separat under en avgränsare; det räknas ändå med i totalen.
+  const stift = Object.entries(dataset.stift_summary)
+    .filter(([n]) => n !== TROSS_NAMN)
+    .sort(([a], [b]) => (STIFT_KOD[a] || "99").localeCompare(STIFT_KOD[b] || "99"));
+  const tross = dataset.stift_summary[TROSS_NAMN];
+
+  let totEnh = 0, totEnhJa = 0, totK = 0, totKJa = 0;
+  let rows = "";
+  for (const [namn, s] of stift) {
+    totEnh += s.totalt_enheter;
+    totEnhJa += s.ja_enheter;
+    totK += s.totalt_konton;
+    totKJa += s.ja_konton;
+    rows += `<tr>
+      <td>${escapeHtml(STIFT_STAD[namn] || namn)}</td>
+      <td>${s.ja_enheter}/${s.totalt_enheter}</td>
+      <td class="pct">${pct(s.ja_enheter, s.totalt_enheter)}</td>
+      <td>${fmtInt(s.ja_konton)}/${fmtInt(s.totalt_konton)}</td>
+      <td class="pct">${pct(s.ja_konton, s.totalt_konton)}</td>
+    </tr>`;
+  }
+  let trossRow = "";
+  if (tross) {
+    totEnh += tross.totalt_enheter;
+    totEnhJa += tross.ja_enheter;
+    totK += tross.totalt_konton;
+    totKJa += tross.ja_konton;
+    trossRow = `<tr class="separator"><td colspan="5"></td></tr>
+      <tr class="tross-row">
+        <td>Kyrkokansliet</td>
+        <td>${tross.ja_enheter}/${tross.totalt_enheter}</td>
+        <td class="pct">${pct(tross.ja_enheter, tross.totalt_enheter)}</td>
+        <td>${fmtInt(tross.ja_konton)}/${fmtInt(tross.totalt_konton)}</td>
+        <td class="pct">${pct(tross.ja_konton, tross.totalt_konton)}</td>
+      </tr>`;
+  }
+  el.innerHTML = `<div class="lp-title">Anslutning per stift</div>
+    <table>
+      <thead><tr>
+        <th>Stift</th><th>Enheter</th><th></th><th>Konton</th><th></th>
+      </tr></thead>
+      <tbody>${rows}${trossRow}
+        <tr class="total">
+          <td>Totalt</td>
+          <td>${totEnhJa}/${totEnh}</td>
+          <td class="pct">${pct(totEnhJa, totEnh)}</td>
+          <td>${fmtInt(totKJa)}/${fmtInt(totK)}</td>
+          <td class="pct">${pct(totKJa, totK)}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+function renderHeader() {
+  const summary = dataset.stift_summary;
+  let totEnh = 0, totEnhJa = 0, totK = 0, totKJa = 0;
+  for (const s of Object.values(summary)) {
+    totEnh += s.totalt_enheter; totEnhJa += s.ja_enheter;
+    totK += s.totalt_konton;     totKJa += s.ja_konton;
+  }
+  document.getElementById("subtitle").textContent =
+    `${totEnhJa} av ${totEnh} enheter anslutna - ${fmtInt(totKJa)} av ${fmtInt(totK)} konton`;
+  document.getElementById("stats").innerHTML =
+    `<b>${pct(totEnhJa, totEnh)}</b> av enheterna · ` +
+    `<b>${pct(totKJa, totK)}</b> av kontona`;
+}
+
+async function init() {
+  const [enheter, stift, ls] = await Promise.all([
+    fetch("data/ekonomiska_enheter.geojson").then(r => r.json()),
+    fetch("data/stift.geojson").then(r => r.json()),
+    fetch("data/loneservice.json").then(r => r.json()),
+  ]);
+  dataset = ls;
+  buildEnheterLayer(enheter);
+  buildStiftLayer(stift);
+  buildOffshoreLayer();
+  renderHeader();
+  renderSummary();
+}
+
+init().catch(err => {
+  document.getElementById("subtitle").textContent =
+    `Kunde inte ladda data: ${err.message}`;
+  console.error(err);
+});
+</script>
+</body>
+</html>

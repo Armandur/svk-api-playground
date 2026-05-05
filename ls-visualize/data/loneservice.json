@@ -1,0 +1,3027 @@
+{
+  "enheter": {
+    "Askims församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 39
+    },
+    "Backa pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 74
+    },
+    "Björketorps församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 22
+    },
+    "Bokenäsets församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 15
+    },
+    "Carl Johans pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 101
+    },
+    "Domkyrkopastoratet": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 208
+    },
+    "Falkenbergs pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 210
+    },
+    "Halmstads församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 237
+    },
+    "Herrestads församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 20
+    },
+    "Höks pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 52
+    },
+    "Kinds pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 96
+    },
+    "Kinna-Fritsla församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 26
+    },
+    "Kungsbacka pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 78
+    },
+    "Kungälv-Ytterby församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 67
+    },
+    "Laholms pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 42
+    },
+    "Lerums församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 60
+    },
+    "Lindome församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 30
+    },
+    "Ljungskile församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 26
+    },
+    "Lundby församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 69
+    },
+    "Marstrand-Torsby pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 37
+    },
+    "Munkedals församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 38
+    },
+    "Mölndals pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 129
+    },
+    "Nylöse pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 93
+    },
+    "Orusts pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 58
+    },
+    "Partille pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 82
+    },
+    "Romelanda pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 40
+    },
+    "Skepplanda pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 22
+    },
+    "Solberga pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 48
+    },
+    "Starrkärr-Kilanda församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 28
+    },
+    "Stenungsunds pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 39
+    },
+    "Stora Lundby-Östad pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 33
+    },
+    "Strömstads pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 45
+    },
+    "Särö pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 63
+    },
+    "Torestorps pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 15
+    },
+    "Torslanda-Björlanda församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 52
+    },
+    "Tvååkers pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 18
+    },
+    "Uddevalla pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 161
+    },
+    "Varbergs församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 108
+    },
+    "Västra Frölunda pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 123
+    },
+    "Öckerö församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 53
+    },
+    "Örby-Skene församling": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 25
+    },
+    "Örgryte pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": true,
+      "konton": 114
+    },
+    "Bollebygds pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 22
+    },
+    "Fjärås-Förlanda församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Getinge-Oskarströms pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 37
+    },
+    "Harplinge-Steninge församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 48
+    },
+    "Himledalens församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Istorps pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 8
+    },
+    "Landvetter-Härryda pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 35
+    },
+    "Lilla Edets pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 27
+    },
+    "Lindberga församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Lysekils pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Löftadalens pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 57
+    },
+    "Nödinge församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Onsala församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 39
+    },
+    "Råda församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 31
+    },
+    "Skallsjö församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Snöstorps församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 69
+    },
+    "Sotenäs pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 48
+    },
+    "Spekeröd-Ucklums församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 9
+    },
+    "Sätila pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 22
+    },
+    "Söndrum-Vapnö församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Tanums pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 60
+    },
+    "Tjörns pastorat": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 49
+    },
+    "Träslövs församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Veddige-Kungsäters församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Värö-Stråvalla församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Västra Marks församling": {
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Häggenås-Lit-Kyrkås församling": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 14
+    },
+    "Härjedalens pastorat": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 45
+    },
+    "Härnösands pastorat": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 88
+    },
+    "Kramfors pastorat": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 59
+    },
+    "Medelpads södra pastorat": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 257
+    },
+    "Strömsunds pastorat": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 46
+    },
+    "Sydöstra Jämtlands pastorat": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 218
+    },
+    "Östersunds församling": {
+      "stift": "Härnösands stift",
+      "ja": true,
+      "konton": 71
+    },
+    "Frösö, Sunne och Norderö församling": {
+      "stift": "Härnösands stift",
+      "ja": false,
+      "konton": 32
+    },
+    "Krokoms pastorat": {
+      "stift": "Härnösands stift",
+      "ja": false,
+      "konton": 55
+    },
+    "Medelpads norra pastorat": {
+      "stift": "Härnösands stift",
+      "ja": false,
+      "konton": 117
+    },
+    "Sollefteå pastorat": {
+      "stift": "Härnösands stift",
+      "ja": false,
+      "konton": 63
+    },
+    "Åre pastorat": {
+      "stift": "Härnösands stift",
+      "ja": false,
+      "konton": 50
+    },
+    "Örnsköldsviks norra pastorat": {
+      "stift": "Härnösands stift",
+      "ja": false,
+      "konton": 85
+    },
+    "Örnsköldsviks södra pastorat": {
+      "stift": "Härnösands stift",
+      "ja": false,
+      "konton": 180
+    },
+    "Forshaga-Munkfors församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 46
+    },
+    "Färgelanda-Högsäters församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 30
+    },
+    "Grava församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 24
+    },
+    "Hagfors pastorat": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 37
+    },
+    "Hammarö församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 36
+    },
+    "Karlstads pastorat": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 282
+    },
+    "Kristinehamns församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 107
+    },
+    "Melleruds församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 59
+    },
+    "Nordmarkens pastorat": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 59
+    },
+    "Nor-Segerstads församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 14
+    },
+    "Steneby församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 21
+    },
+    "Storfors församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 22
+    },
+    "Sunne pastorat": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 67
+    },
+    "Säffle pastorat": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 107
+    },
+    "Åmåls församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 40
+    },
+    "Övre Älvdals församling": {
+      "stift": "Karlstads stift",
+      "ja": true,
+      "konton": 28
+    },
+    "Arvika pastorat": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 61
+    },
+    "Brålandabygdens församling": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Dals-Eds församling": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Eda-Köla pastorat": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 23
+    },
+    "Ekshärads församling": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Filipstads församling": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 33
+    },
+    "Fryksände pastorat": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 30
+    },
+    "Frändefors församling": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Grums pastorat": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 32
+    },
+    "Kils pastorat": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Lysviks församling": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 5
+    },
+    "Södra Bergslagens pastorat": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 109
+    },
+    "Ärtemarks pastorat": {
+      "stift": "Karlstads stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Vimmerby pastorat": {
+      "stift": "Linköpings stift",
+      "ja": true,
+      "konton": 60
+    },
+    "Vist/Vårdnäs pastorat": {
+      "stift": "Linköpings stift",
+      "ja": true,
+      "konton": 32
+    },
+    "Åkerbo församling": {
+      "stift": "Linköpings stift",
+      "ja": true,
+      "konton": 78
+    },
+    "Östra Ryds församling": {
+      "stift": "Linköpings stift",
+      "ja": true,
+      "konton": 14
+    },
+    "Aneby pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Aspelands pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 52
+    },
+    "Borensbergs pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 79
+    },
+    "Finspångs församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 76
+    },
+    "Folkungabygdens pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 176
+    },
+    "Kinda pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 42
+    },
+    "Kärna församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Linköpings domkyrkopastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 240
+    },
+    "Motala församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 72
+    },
+    "Norra Tjusts pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Norrköpings pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 284
+    },
+    "Rimforsa församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Slaka-Nykils pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 42
+    },
+    "Söderköping S:t Anna församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 89
+    },
+    "Södra Tjusts pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 141
+    },
+    "Södra Vedbo pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 83
+    },
+    "Södra Vi-Djursdala församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 9
+    },
+    "Tranås pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 52
+    },
+    "Vadstena pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 71
+    },
+    "Valdemarsviks-Ringarums pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 26
+    },
+    "Vikingstads församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Vreta klosters församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 31
+    },
+    "Västra Vikbolandets församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Ydre pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Åtvids församling": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Östra Vikbolandets pastorat": {
+      "stift": "Linköpings stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Arjeplog-Arvidsjaurs pastorat": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 29
+    },
+    "Bodens pastorat": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 76
+    },
+    "Bureå församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 19
+    },
+    "Burträsk-Lövångers pastorat": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 35
+    },
+    "Bygdeå församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 32
+    },
+    "Holmsunds församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 32
+    },
+    "Hortlax församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 30
+    },
+    "Hörnefors församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 26
+    },
+    "Kiruna pastorat": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 56
+    },
+    "Luleå domkyrkoförsamling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 90
+    },
+    "Nederluleå församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 76
+    },
+    "Nordmalings församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 29
+    },
+    "Norrfjärdens församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 24
+    },
+    "Norsjö församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 12
+    },
+    "Pajala församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 25
+    },
+    "Piteå församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 131
+    },
+    "Råneå församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 12
+    },
+    "Sävar-Holmöns församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 89
+    },
+    "Södra Lapplands pastorat": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 97
+    },
+    "Tärna församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 8
+    },
+    "Umeå pastorat": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 300
+    },
+    "Vindelns församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 37
+    },
+    "Vännäs-Bjurholms pastorat": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 47
+    },
+    "Älvsby församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 16
+    },
+    "Övertorneå församling": {
+      "stift": "Luleå stift",
+      "ja": true,
+      "konton": 11
+    },
+    "Gällivare församling": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 31
+    },
+    "Haparanda församling": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Jokkmokks församling": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Kalix församling": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 43
+    },
+    "Malå-Sorsele pastorat": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Skellefteå pastorat": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 118
+    },
+    "Skellefteå S:t Örjans församling": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Överkalix församling": {
+      "stift": "Luleå stift",
+      "ja": false,
+      "konton": 8
+    },
+    "Allerums pastorat": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 48
+    },
+    "Asarum-Ringamåla församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 28
+    },
+    "Brunnby församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 12
+    },
+    "Brösarp-Tranås församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 14
+    },
+    "Båstad-Östra Karups församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 21
+    },
+    "Dalby församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 22
+    },
+    "Förslöv-Grevie församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 18
+    },
+    "Hjärnarp-Tåstarps församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 24
+    },
+    "Häljarps församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 20
+    },
+    "Höörs församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 42
+    },
+    "Karlskrona-Aspö församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 122
+    },
+    "Kropps församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 33
+    },
+    "Kvidinge församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 14
+    },
+    "Kävlinge församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 73
+    },
+    "Lackalänga-Stävie församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 14
+    },
+    "Landskrona församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 105
+    },
+    "Lunds pastorat": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 402
+    },
+    "Löddebygdens församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 26
+    },
+    "Malmö pastorat": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 773
+    },
+    "Skivarps församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 15
+    },
+    "Trelleborgs församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 56
+    },
+    "Tyringe församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 39
+    },
+    "Ängelholms församling": {
+      "stift": "Lunds stift",
+      "ja": true,
+      "konton": 119
+    },
+    "Anderslövs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Araslövs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Barkåkra församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Bjuvs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 30
+    },
+    "Bjärnums pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Bjärreds församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Björnekulla-Västra Broby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 26
+    },
+    "Blentarps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Broby-Emmislövs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Bromölla pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Burlövs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 43
+    },
+    "Dalköpinge församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 5
+    },
+    "Degeberga-Everöds församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Dösjebro församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Eslövs pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 90
+    },
+    "Fjälkinge församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 23
+    },
+    "Fridlevstads församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Genarps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 17
+    },
+    "Glimåkra-Hjärsås församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Gärsnäs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 20
+    },
+    "Hammarlövs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Helsingborgs pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 252
+    },
+    "Hässleholms församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 67
+    },
+    "Höganäs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 23
+    },
+    "Hörby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Jämjö pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 22
+    },
+    "Jämshögs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Karlshamns församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 52
+    },
+    "Kiviks församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Klippans pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 59
+    },
+    "Knislinge pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 22
+    },
+    "Kristianstads pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 56
+    },
+    "Kulla pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 33
+    },
+    "Kvistofta församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 32
+    },
+    "Kyrkhults församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Källstorps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 30
+    },
+    "Kågeröd-Röstånga församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Ljunits församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Lomma församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Lyckå församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 33
+    },
+    "Löderups församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 6
+    },
+    "Lövestads församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 5
+    },
+    "Mjällby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Munka Ljungby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Mörrum-Elleholms församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Nosaby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Näsets pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 47
+    },
+    "Nättraby-Hasslö församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Oppmanna-Vånga församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Osby pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 61
+    },
+    "Perstorps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Ringsjö församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Ronneby pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 96
+    },
+    "Rödeby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 11
+    },
+    "S:t Staffans församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 43
+    },
+    "Simrishamns församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 36
+    },
+    "Sjöbo församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Skurups församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Smedstorps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 9
+    },
+    "Stora Köpinge församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 9
+    },
+    "Strövelstorps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Svalövsbygdens pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Svedala församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 31
+    },
+    "Södra Sandby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Sölvesborgs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 22
+    },
+    "Sösdala församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Tollarps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 20
+    },
+    "Tomelillabygdens församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 33
+    },
+    "Uppåkra församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Veberöds församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 17
+    },
+    "Vellinge-Månstorps församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Villie församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Vinslövs församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Vittsjö-Verums pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Vollsjö församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 9
+    },
+    "Vä-Skepparslövs pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 29
+    },
+    "Värby församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Västra Bjäre pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Ystad-Sövestads församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 50
+    },
+    "Åhus församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Örkelljunga pastorat": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 39
+    },
+    "Örkeneds församling": {
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Amnehärad-Lyrestads pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 15
+    },
+    "Borås församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 216
+    },
+    "Falköpings pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 51
+    },
+    "Floby pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 33
+    },
+    "Fristads församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 38
+    },
+    "Grästorps pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 37
+    },
+    "Hjo pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 33
+    },
+    "Kinnarumma pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 16
+    },
+    "Mullsjö-Sandhems församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 33
+    },
+    "Norra Billings pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 36
+    },
+    "Rommele församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 18
+    },
+    "Sandhult-Bredareds församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 37
+    },
+    "Skara pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 75
+    },
+    "Skövde pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 146
+    },
+    "Stenstorps pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 26
+    },
+    "Tibro pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 32
+    },
+    "Toarps församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 35
+    },
+    "Trollhättans församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 126
+    },
+    "Ulricehamns pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 101
+    },
+    "Varabygdens församling": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 81
+    },
+    "Västra Tunhems pastorat": {
+      "stift": "Skara stift",
+      "ja": true,
+      "konton": 61
+    },
+    "Alingsås pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 99
+    },
+    "Bjärke församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 23
+    },
+    "Essunga pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 30
+    },
+    "Götene pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 52
+    },
+    "Habo pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Herrljungabygdens församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 36
+    },
+    "Karlsborgs pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 33
+    },
+    "Lidköpings församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Lugnås-Ullervads pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 20
+    },
+    "Mariestads församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 37
+    },
+    "Norra Mo församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Sunnersbergs församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Sävare församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 35
+    },
+    "Södra Kållands pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 38
+    },
+    "Tidaholms pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 119
+    },
+    "Töreboda pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Vänersborg och Väne-Ryrs församling": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 58
+    },
+    "Värsås pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Vårgårda pastorat": {
+      "stift": "Skara stift",
+      "ja": false,
+      "konton": 44
+    },
+    "Adolf Fredriks församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 24
+    },
+    "Boo församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 75
+    },
+    "Botkyrka församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 90
+    },
+    "Danderyds församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 140
+    },
+    "Djurö, Möja och Nämdö församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 15
+    },
+    "Ekerö pastorat": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 93
+    },
+    "Enskede-Årsta församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 87
+    },
+    "Haninge pastorat": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 143
+    },
+    "Hässelby församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 24
+    },
+    "Högalids församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 32
+    },
+    "Maria Magdalena församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 41
+    },
+    "S:t Johannes församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 17
+    },
+    "S:t Matteus församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 41
+    },
+    "Sollentuna församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 231
+    },
+    "Täby församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 170
+    },
+    "Upplands Väsby pastorat": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 71
+    },
+    "Vallentuna församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 129
+    },
+    "Vällingby församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 29
+    },
+    "Västerleds församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 29
+    },
+    "Västermalms församling": {
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 94
+    },
+    "Bromma församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 41
+    },
+    "Brännkyrka församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 57
+    },
+    "Engelbrekts församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 25
+    },
+    "Farsta församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 79
+    },
+    "Färingsö församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 27
+    },
+    "Gustav Vasa församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Gustavsberg-Ingarö församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 48
+    },
+    "Hedvig Eleonora och Oscars församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 116
+    },
+    "Huddinge pastorat": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 213
+    },
+    "Hägerstens församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 75
+    },
+    "Järfälla församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 125
+    },
+    "Katarina församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 78
+    },
+    "Lidingö församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 66
+    },
+    "Nacka församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 80
+    },
+    "Saltsjöbadens församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 27
+    },
+    "Skarpnäcks församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 64
+    },
+    "Skärholmens församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 36
+    },
+    "Sofia församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 37
+    },
+    "Solna församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 84
+    },
+    "Spånga-Kista församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 55
+    },
+    "Stockholms domkyrkoförsamling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 48
+    },
+    "Sundbybergs församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 46
+    },
+    "Tyresö församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 61
+    },
+    "Vantörs församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 32
+    },
+    "Vaxholms församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 38
+    },
+    "Värmdö församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 35
+    },
+    "Össeby församling": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Österåkers pastorat": {
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 109
+    },
+    "Bodarne pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 28
+    },
+    "Eskilstuna pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 335
+    },
+    "Flen, Helgesta-Hyltinge församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 29
+    },
+    "Grödinge församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 9
+    },
+    "Hallsbergs församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 22
+    },
+    "Hovsta pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 39
+    },
+    "Hölö-Mörkö församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 13
+    },
+    "Järna-Vårdinge pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 35
+    },
+    "Kafjärdens församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 27
+    },
+    "Katrineholmsbygdens församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 80
+    },
+    "Kvismare församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 18
+    },
+    "Mellösa församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 8
+    },
+    "Salems församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 30
+    },
+    "Sorunda församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 14
+    },
+    "Stallarholmens församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 7
+    },
+    "Stenkvista-Ärla församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 9
+    },
+    "Södertälje pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 196
+    },
+    "Trosa församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 28
+    },
+    "Västra Vingåkers och Österåkers pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 17
+    },
+    "Åker-Länna församling": {
+      "stift": "Strängnäs stift",
+      "ja": true,
+      "konton": 21
+    },
+    "Asker-Lännäs församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Askersunds pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 43
+    },
+    "Bettna församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 8
+    },
+    "Björkviks församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 5
+    },
+    "Daga församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Dunker-Lilla Malma församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 17
+    },
+    "Frustuna församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 32
+    },
+    "Husby-Rekarne o Näshulta pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 34
+    },
+    "Hällby församling med Tumbo och Råby-Rekarne": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Kiladalens församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 32
+    },
+    "Knista församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 34
+    },
+    "Kumla pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 48
+    },
+    "Mariefreds församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 22
+    },
+    "Nyköpings församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 149
+    },
+    "Nynäshamns församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Oxelösunds församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Rönö församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Sköllersta församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 20
+    },
+    "Stigtomta-Vrena församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 26
+    },
+    "Strängnäs domkyrkoförsamling med Aspö": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 60
+    },
+    "Torshälla församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Tunabergs församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 9
+    },
+    "Turinge-Taxinge församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 46
+    },
+    "Tysslinge församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Tystbergabygdens församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 8
+    },
+    "Viby församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Vårfruberga-Härads församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 4
+    },
+    "Örebro pastorat": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 307
+    },
+    "Ösmo-Torö församling": {
+      "stift": "Strängnäs stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Alunda församling": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 16
+    },
+    "Danmark-Funbo församling": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 45
+    },
+    "Gävle församling": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 148
+    },
+    "Håbo pastorat": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 56
+    },
+    "Knivsta pastorat": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 84
+    },
+    "Kungsängen-Västra Ryds församling": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 28
+    },
+    "Ockelbo församling": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 18
+    },
+    "Roslagens norra pastorat": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 57
+    },
+    "Roslagens östra pastorat": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 120
+    },
+    "Sandvikens pastorat": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 82
+    },
+    "Tierps pastorat": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 44
+    },
+    "Tierp-Söderfors församling": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 17
+    },
+    "Vattholma pastorat": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 33
+    },
+    "Älvkarleby-Skutskärs församling": {
+      "stift": "Uppsala stift",
+      "ja": true,
+      "konton": 27
+    },
+    "Alfta-Ovanåkers församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 38
+    },
+    "Almunge pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Balingsta pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Bergsjö församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Björklinge-Skuttunge-Viksta pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Bollnäs pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 139
+    },
+    "Bro församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 29
+    },
+    "Bälingebygdens församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 38
+    },
+    "Dannemorabygdens församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Dellenbygdens pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Enköpings pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 145
+    },
+    "Enånger-Njutångers församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 17
+    },
+    "Forsa-Högs församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 6
+    },
+    "Gimo pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Gästrikekustens pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 33
+    },
+    "Hofors församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Hudiksvallsbygdens församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 62
+    },
+    "Lagunda församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Ljusnans pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 50
+    },
+    "Märsta pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 54
+    },
+    "Nora församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 9
+    },
+    "Nordanstigskustens församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 20
+    },
+    "Norra Hagunda församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 34
+    },
+    "Norrala-Trönö församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 8
+    },
+    "Ovansjö-Järbo församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 23
+    },
+    "Rasbo pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Roslagens västra pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 52
+    },
+    "Sigtuna församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 27
+    },
+    "Söderala pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 20
+    },
+    "Söderhamn-Sandarne församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 27
+    },
+    "Torsåkers församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Uppsala pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 349
+    },
+    "Valbo-Hedesunda pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 34
+    },
+    "Vendel-Tegelsmora församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 20
+    },
+    "Vittinge församling": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 8
+    },
+    "Västerlövsta pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Östervåla-Harbo pastorat": {
+      "stift": "Uppsala stift",
+      "ja": false,
+      "konton": 17
+    },
+    "Burs pastorat": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 7
+    },
+    "Fardhem-Garde pastorat": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 9
+    },
+    "Klinte pastorat": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 22
+    },
+    "Norra Gotlands pastorat": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 52
+    },
+    "Romaklosters pastorat": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 30
+    },
+    "Stenkumla församling": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 10
+    },
+    "Sudrets pastorat": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 22
+    },
+    "Visby domkyrkoförsamling": {
+      "stift": "Visby stift",
+      "ja": true,
+      "konton": 98
+    },
+    "Eskelhems pastorat": {
+      "stift": "Visby stift",
+      "ja": false,
+      "konton": 8
+    },
+    "Falu pastorat": {
+      "stift": "Västerås stift",
+      "ja": true,
+      "konton": 104
+    },
+    "Stora Tuna och Torsångs pastorat": {
+      "stift": "Västerås stift",
+      "ja": true,
+      "konton": 85
+    },
+    "Arbogabygdens församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 68
+    },
+    "Avesta-Grytnäs församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 28
+    },
+    "Bjursås församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 9
+    },
+    "By-Folkärna pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 36
+    },
+    "Bärke pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 56
+    },
+    "Gagnefs pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 33
+    },
+    "Gränge-Säfsnäs församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Hallstahammar-Kolbäcks församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 37
+    },
+    "Hedemora, Husby och Garpenbergs församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 62
+    },
+    "Idre-Särna församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Järna med Nås och Äppelbo församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Kumla, Tärna och Kila församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Kungsörs församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 17
+    },
+    "Köpings pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Leksands pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 43
+    },
+    "Lima-Transtrands församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Linde-Ljusnarsbergs pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 91
+    },
+    "Ludvika församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 44
+    },
+    "Malungs församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 21
+    },
+    "Mora församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 45
+    },
+    "Noraskogs pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 54
+    },
+    "Norberg-Karbennings församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Orsa församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 22
+    },
+    "Rättviks pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 29
+    },
+    "Sala-Norrby-Möklinta pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 40
+    },
+    "Skinnskatteberg med Hed och Gunnilbo församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 16
+    },
+    "Sura-Ramnäs församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Svärdsjö, Envikens och Sundborns pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 31
+    },
+    "Säterbygdens församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 31
+    },
+    "Västanfors-Västervåla församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 36
+    },
+    "Västerfärnebo-Fläckebo församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 18
+    },
+    "Västerås pastorat": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 242
+    },
+    "Älvdalens församling": {
+      "stift": "Västerås stift",
+      "ja": false,
+      "konton": 27
+    },
+    "Berga pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 18
+    },
+    "Bredaryds pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 18
+    },
+    "Byarums pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 25
+    },
+    "Emmaboda pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 27
+    },
+    "Forshedabygdens församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 23
+    },
+    "Förlösa-Kläckeberga församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 24
+    },
+    "Gislaveds pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 98
+    },
+    "Gnosjö pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 28
+    },
+    "Gränna-Visingsö pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 43
+    },
+    "Hyltebruks pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 36
+    },
+    "Jönköpings församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 182
+    },
+    "Kalmar pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 112
+    },
+    "Lessebo församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 24
+    },
+    "Ljungby pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 70
+    },
+    "Norra Ölands pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 52
+    },
+    "Norrahammars församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 19
+    },
+    "Nybro pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 51
+    },
+    "Oskarshamns församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 77
+    },
+    "Rogberga-Öggestorps församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 17
+    },
+    "Ryssby pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 16
+    },
+    "Ryssby-Åby pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 20
+    },
+    "Skatelövs pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 16
+    },
+    "Skillingaryds församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 19
+    },
+    "Skärstad-Ölmstads församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 16
+    },
+    "Stenbrohults församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 8
+    },
+    "Sävsjö pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 41
+    },
+    "Södermöre pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 80
+    },
+    "Södra Ljunga församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 15
+    },
+    "Tingsryds pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 46
+    },
+    "Torsås pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 27
+    },
+    "Uppvidinge pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 29
+    },
+    "Vetlanda pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 133
+    },
+    "Virestad-Härlunda församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 11
+    },
+    "Växjö pastorat": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 237
+    },
+    "Älmhults församling": {
+      "stift": "Växjö stift",
+      "ja": true,
+      "konton": 26
+    },
+    "Alvesta församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Bankeryds församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 24
+    },
+    "Barnarp-Ödestugu församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Döderhults församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 41
+    },
+    "Dörby-Hossmo pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Göteryds pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Huskvarna pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 108
+    },
+    "Högsby pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Lekeryds församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Markaryds församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 14
+    },
+    "Moheda pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Månsarps församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 19
+    },
+    "Mönsterås-Fliseryds pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 53
+    },
+    "Nässjö pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 59
+    },
+    "Rydaholms församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 11
+    },
+    "Södra Ölands pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 71
+    },
+    "Traryd-Hinneryds pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 10
+    },
+    "Vislanda-Blädinge församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 13
+    },
+    "Voxtorps pastorat": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 15
+    },
+    "Värnamo församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 42
+    },
+    "Ålems församling": {
+      "stift": "Växjö stift",
+      "ja": false,
+      "konton": 13
+    }
+  },
+  "stiftsenheter": {
+    "Göteborgs stift": {
+      "ja": true,
+      "konton": 185
+    },
+    "Härnösands stift": {
+      "ja": true,
+      "konton": 115
+    },
+    "Karlstads stift": {
+      "ja": true,
+      "konton": 99
+    },
+    "Linköpings stift": {
+      "ja": true,
+      "konton": 139
+    },
+    "Luleå stift": {
+      "ja": true,
+      "konton": 74
+    },
+    "Lunds stift": {
+      "ja": true,
+      "konton": 106
+    },
+    "Skara stift": {
+      "ja": true,
+      "konton": 116
+    },
+    "Stockholms stift": {
+      "ja": true,
+      "konton": 110
+    },
+    "Strängnäs stift": {
+      "ja": true,
+      "konton": 121
+    },
+    "Uppsala stift": {
+      "ja": true,
+      "konton": 125
+    },
+    "Visby stift": {
+      "ja": true,
+      "konton": 47
+    },
+    "Västerås stift": {
+      "ja": false,
+      "konton": 175
+    },
+    "Växjö stift": {
+      "ja": true,
+      "konton": 123
+    }
+  },
+  "ovrigt": [
+    {
+      "namn": "Göteborgs begravningssamfällighet",
+      "stift": "Göteborgs stift",
+      "ja": false,
+      "konton": 477
+    },
+    {
+      "namn": "Karlskrona Amiralitetsförsamling",
+      "stift": "Lunds stift",
+      "ja": false,
+      "konton": 14
+    },
+    {
+      "namn": "Finska församlingen",
+      "stift": "Stockholms stift",
+      "ja": true,
+      "konton": 21
+    },
+    {
+      "namn": "Hovförsamlingen",
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 3
+    },
+    {
+      "namn": "Tyska S:ta Gertruds församling",
+      "stift": "Stockholms stift",
+      "ja": false,
+      "konton": 15
+    }
+  ],
+  "trossamfund": {
+    "namn": "Trossamfundet Svenska kyrkan",
+    "ja": true,
+    "konton": 954
+  },
+  "stift_summary": {
+    "Göteborgs stift": {
+      "ja_enheter": 43,
+      "totalt_enheter": 70,
+      "ja_konton": 3081,
+      "totalt_konton": 4372
+    },
+    "Härnösands stift": {
+      "ja_enheter": 9,
+      "totalt_enheter": 16,
+      "ja_konton": 913,
+      "totalt_konton": 1495
+    },
+    "Karlstads stift": {
+      "ja_enheter": 17,
+      "totalt_enheter": 30,
+      "ja_konton": 1078,
+      "totalt_konton": 1468
+    },
+    "Linköpings stift": {
+      "ja_enheter": 5,
+      "totalt_enheter": 31,
+      "ja_konton": 323,
+      "totalt_konton": 2116
+    },
+    "Luleå stift": {
+      "ja_enheter": 26,
+      "totalt_enheter": 34,
+      "ja_konton": 1413,
+      "totalt_konton": 1688
+    },
+    "Lunds stift": {
+      "ja_enheter": 24,
+      "totalt_enheter": 107,
+      "ja_konton": 2146,
+      "totalt_konton": 4406
+    },
+    "Skara stift": {
+      "ja_enheter": 22,
+      "totalt_enheter": 41,
+      "ja_konton": 1362,
+      "totalt_konton": 2156
+    },
+    "Stockholms stift": {
+      "ja_enheter": 22,
+      "totalt_enheter": 52,
+      "ja_konton": 1706,
+      "totalt_konton": 3470
+    },
+    "Strängnäs stift": {
+      "ja_enheter": 21,
+      "totalt_enheter": 50,
+      "ja_konton": 1086,
+      "totalt_konton": 2188
+    },
+    "Trossamfundet Svenska kyrkan": {
+      "ja_enheter": 1,
+      "totalt_enheter": 1,
+      "ja_konton": 954,
+      "totalt_konton": 954
+    },
+    "Uppsala stift": {
+      "ja_enheter": 15,
+      "totalt_enheter": 52,
+      "ja_konton": 900,
+      "totalt_konton": 2355
+    },
+    "Visby stift": {
+      "ja_enheter": 9,
+      "totalt_enheter": 10,
+      "ja_konton": 297,
+      "totalt_konton": 305
+    },
+    "Västerås stift": {
+      "ja_enheter": 2,
+      "totalt_enheter": 36,
+      "ja_konton": 189,
+      "totalt_konton": 1672
+    },
+    "Växjö stift": {
+      "ja_enheter": 36,
+      "totalt_enheter": 57,
+      "ja_konton": 1807,
+      "totalt_konton": 2402
+    }
+  },
+  "_meta": {
+    "kalla": "Löneservice.csv (vmworkspace)",
+    "antal_enheter_matchade": 568,
+    "antal_geojson": 568,
+    "antal_ovrigt": 5
+  }
+}
