@@ -67,7 +67,7 @@
     </div>
     <div id="sidebar">
       <div id="sidebar-header">
-        <input type="search" id="search-name" placeholder="Sök kyrka..." autocomplete="off">
+        <input type="search" id="search-name" placeholder="Sök byggnadsverk..." autocomplete="off">
       </div>
       <div id="sidebar-list"><div id="no-data">Laddar data...</div></div>
     </div>
@@ -299,19 +299,27 @@ function buildTable(rs) {
   if (!rs.length) { sb.innerHTML = '<div id="no-data">Inga avvikelser</div>'; return; }
   const si = col => sortCol === col ? (sortAsc ? ' ▲' : ' ▼') : '';
   let html = `<table class="data-table"><thead><tr>
-    <th data-col="avstand_m">Avvikelse${si('avstand_m')}</th>
-    <th data-col="namn">Kyrka${si('namn')}</th>
+    <th data-col="avstand_m">Avvikelse från KBR${si('avstand_m')}</th>
+    <th data-col="namn">Byggnadsverk${si('namn')}</th>
     <th data-col="stift">Stift${si('stift')}</th>
   </tr></thead><tbody>`;
   rs.forEach((r, i) => {
     const hp = r.avstand_platser_m != null, ho = r.avstand_osm_m != null, hb = r.bv_lat != null;
-    const b = (hp ? `<span class="dist-badge" style="background:${distColor(r.avstand_platser_m)}">${fmtDist(r.avstand_platser_m)}</span><span class="src-label"><span class="src-dot" style="background:#1565c0"></span>Platser</span>` : '')
-            + (ho ? ` <span class="dist-badge" style="background:${distColor(r.avstand_osm_m)}">${fmtDist(r.avstand_osm_m)}</span><span class="src-label"><span class="src-dot" style="background:#2e7d32"></span>OSM</span>` : '')
-            + (hb ? ` <span class="dist-badge" style="background:${distColor(r.avstand_bv_m)}">${fmtDist(r.avstand_bv_m)}</span><span class="src-label"><span class="src-dot" style="background:#7B1FA2"></span>BV</span>` : '');
-    html += `<tr class="data-row" data-idx="${i}"><td style="white-space:nowrap">${b}</td><td>${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
+    const safe = (r.namn||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const chip = (has, dist, dot, label, lat, lng) => has
+      ? `<button class="src-chip" onclick="jumpToKBR(${lat},${lng},'${safe}')"><span class="src-dot-lg" style="background:${dot}"></span><span class="dist-badge" style="background:${distColor(dist)}">${fmtDist(dist)}</span>${label}</button>`
+      : '';
+    const kbrChip = `<button class="src-chip" onclick="jumpToKBR(${r.kbr_lat},${r.kbr_lng},'${safe}')"><span class="src-dot-lg" style="background:#f57c00"></span><span class="dist-badge" style="background:#f57c00">Visa</span>KBR</button>`;
+    const b = '<div style="display:flex;flex-direction:column;gap:1px">'
+            + chip(hp, r.avstand_platser_m, '#1565c0', 'Platser', r.platser_lat, r.platser_lng)
+            + chip(ho, r.avstand_osm_m,     '#2e7d32', 'OSM',     r.osm_lat,     r.osm_lng)
+            + chip(hb, r.avstand_bv_m,      '#7B1FA2', 'BV',      r.bv_lat,      r.bv_lng)
+            + kbrChip
+            + '</div>';
+    html += `<tr class="data-row" data-idx="${i}"><td>${b}</td><td>${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
     <tr class="row-detail"><td colspan="3">
       <strong>KBR (Kyrkobyggnadsregistret)</strong> ${r.kbr_lat}, ${r.kbr_lng}<br>
-      ${hp ? `<strong>Platser-API</strong> ${r.platser_lat}, ${r.platser_lng}<br>` : ''}
+      ${hp ? `<strong>Platser-API</strong> ${r.platser_lat}, ${r.platser_lng}${r.platser_slug ? ` | <a href="https://www.svenskakyrkan.se/platser/${r.platser_slug}" target="_blank" style="color:#1565c0">svenskakyrkan.se/platser/${r.platser_slug}</a>` : ''}<br>` : ''}
       ${ho ? `<strong>OSM</strong> ${r.osm_lat}, ${r.osm_lng}<br>` : ''}
       ${hb ? `<strong>BV</strong> ${r.bv_lat}, ${r.bv_lng}<br>` : ''}
       KBR-id: ${r.kbr_id}${r.skydd ? ' | <strong>KML-skyddad</strong>' : ''}
@@ -323,12 +331,9 @@ function buildTable(rs) {
     sortCol = th.dataset.col;
     applyFilter();
   }));
-  sb.querySelectorAll('.data-row').forEach(tr => tr.addEventListener('click', () => {
+  sb.querySelectorAll('.data-row').forEach(tr => tr.addEventListener('click', e => {
+    if (e.target.closest('.src-chip')) return;
     tr.classList.toggle('expanded');
-    const r = rs[+tr.dataset.idx];
-    const lats = [r.kbr_lat, r.platser_lat, r.osm_lat, r.bv_lat].filter(Boolean);
-    const lngs = [r.kbr_lng, r.platser_lng, r.osm_lng, r.bv_lng].filter(Boolean);
-    map.setView([(Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2], Math.max(map.getZoom(),13));
   }));
 }
 
