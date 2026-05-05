@@ -112,10 +112,12 @@ jobs:
         run: uv run kbr-tidslinje/build_data.py
 
       # Församlingsindelning-historik: shapefiles 2008-2026 från SVK:s
-      # publika kartor-endpoint (ingen API-nyckel). Ändras sällan.
+      # publika kartor-endpoint (ingen API-nyckel). Publicerade års
+      # data ändras aldrig hos SVK, så cachen är permanent giltig
+      # tills DEFAULT_YEARS i scriptet utökas (vilket invaliderar
+      # cachen via hashFiles).
       - name: Restore församlingsindelning cache
         id: forind-cache
-        if: github.event_name == 'push'
         uses: actions/cache@v4
         with:
           path: forsamlingsindelning-historik/data
@@ -123,13 +125,13 @@ jobs:
           restore-keys: forind-built-
 
       - name: Build forsamlingsindelning-historik
-        if: github.event_name != 'push' || steps.forind-cache.outputs.cache-hit != 'true'
+        if: steps.forind-cache.outputs.cache-hit != 'true'
         run: uv run forsamlingsindelning-historik/build_historik.py
 
-      # Enklaver: shapefile från publik kartor-endpoint.
+      # Enklaver: shapefile från publik kartor-endpoint. Samma logik -
+      # cachen invalideras bara om scriptet ändras.
       - name: Restore enklaver cache
         id: enkl-cache
-        if: github.event_name == 'push'
         uses: actions/cache@v4
         with:
           path: forsamlingskarta-enklaver/data
@@ -137,7 +139,7 @@ jobs:
           restore-keys: enkl-built-
 
       - name: Build forsamlingskarta-enklaver
-        if: github.event_name != 'push' || steps.enkl-cache.outputs.cache-hit != 'true'
+        if: steps.enkl-cache.outputs.cache-hit != 'true'
         run: uv run forsamlingskarta-enklaver/build_enclaves.py
 
       # unit-api: hämta aktuella ekonomiska enheter, skriv JSON som
