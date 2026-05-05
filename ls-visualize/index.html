@@ -110,6 +110,55 @@ header .stats b { color: var(--wine); font-weight: 600; }
                            padding: 0; height: 4px; }
 .summary tr.tross-row td { font-style: italic; }
 .summary .pct { color: var(--muted); }
+.summary td.bar-cell { width: 80px; padding: 4px 6px; }
+.summary .konto-bar {
+  position: relative; height: 8px; width: 100%;
+  background: rgba(125, 0, 55, 0.18); border-radius: 1px;
+  overflow: hidden;
+}
+.summary .konto-bar > span {
+  position: absolute; top: 0; left: 0; height: 100%;
+  background: var(--ja);
+}
+.summary tr.total .konto-bar { background: rgba(125, 0, 55, 0.25); }
+
+.tabs { display: flex; gap: 0; margin-bottom: 6px;
+        border-bottom: 1px solid var(--line); }
+.tabs button {
+  background: none; border: none; cursor: pointer;
+  padding: 4px 8px; font: 500 11px "DM Sans", Arial, sans-serif;
+  color: var(--muted); letter-spacing: 0.02em; text-transform: uppercase;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tabs button:hover { color: var(--wine); }
+.tabs button.active {
+  color: var(--wine); border-bottom-color: var(--wine);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.top-list ol { list-style: none; counter-reset: rank;
+               padding: 0; margin: 0; font-size: 12px; }
+.top-list li {
+  display: grid; grid-template-columns: 18px 1fr auto;
+  gap: 6px; align-items: baseline;
+  padding: 3px 0; border-bottom: 1px dotted var(--line);
+}
+.top-list li:last-child { border-bottom: none; }
+.top-list li::before {
+  counter-increment: rank; content: counter(rank);
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.top-list .top-namn { font-weight: 500; }
+.top-list .top-stift {
+  font-family: "Spectral", serif; font-style: italic;
+  color: var(--muted); font-size: 11px; display: block;
+}
+.top-list .top-konton {
+  font-variant-numeric: tabular-nums; color: var(--wine);
+  font-weight: 500;
+}
 
 .toggle-row { display: flex; flex-direction: column; gap: 2px;
               margin-bottom: 4px; }
@@ -146,7 +195,6 @@ header .stats b { color: var(--wine); font-weight: 600; }
   <div>
     <h1>Löneservice - anslutna enheter</h1>
     <div class="subtitle" id="subtitle">Laddar data...</div>
-    <div class="subtitle">Antal konton per 2026-05-05</div>
   </div>
   <div class="stats" id="stats"></div>
 </header>
@@ -170,13 +218,18 @@ function escapeHtml(s) {
 
 function fmtInt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
 
-const map = L.map("map", { preferCanvas: true }).setView([62.5, 16.0], 5);
+const map = L.map("map", {
+  preferCanvas: true,
+  zoomControl: false,
+}).setView([62.5, 16.0], 5);
+L.control.zoom({ position: "bottomright" }).addTo(map);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: "© OpenStreetMap-bidragsgivare",
 }).addTo(map);
 
 let dataset = null;       // { enheter, stiftsenheter, ovrigt, trossamfund, stift_summary }
+let accountsLayer = null;
 let enheterLayer = null;  // L.geoJson över ekonomiska enheter
 let stiftLayer = null;    // L.geoJson stift-gränser
 let offshoreLayer = null; // L.layerGroup med stiftskanslier, ovrigt, trossamfund
@@ -327,6 +380,36 @@ function buildStiftLayer(geojson) {
     },
     interactive: false,
   }).addTo(map);
+}
+
+// Cirkel-overlay där varje territoriell enhet får en cirkel proportionell
+// mot antal konton (radius = sqrt(konton) * skala). Kombinerar "var" och
+// "hur mycket" på samma vy. Default avstängd för att inte täcka polygonerna.
+function buildAccountsLayer(geojson) {
+  accountsLayer = L.layerGroup();
+  for (const f of geojson.features) {
+    const namn = (f.properties.namn || "").trim();
+    const e = dataset?.enheter?.[namn];
+    if (!e || !e.konton) continue;
+    let center;
+    try {
+      center = L.geoJSON(f).getBounds().getCenter();
+    } catch {
+      continue;
+    }
+    const radius = Math.sqrt(e.konton) * 1500;  // meters
+    const m = L.circle(center, {
+      radius,
+      color: COLORS.kartGrans,
+      weight: 0.8,
+      opacity: 0.6,
+      fillColor: e.ja ? COLORS.ja : COLORS.nej,
+      fillOpacity: 0.55,
+      interactive: true,
+    });
+    m.bindTooltip(`${namn} - ${fmtInt(e.konton)} konton`, { sticky: true });
+    accountsLayer.addLayer(m);
+  }
 }
 
 function offshoreEntity({ namn, kortNamn, kategori, ja, konton, anchorStad,
@@ -587,6 +670,7 @@ const FilterControl = L.Control.extend({
         <label><input type="checkbox" data-layer="enheter" checked> Ekon. enheter</label>
         <label><input type="checkbox" data-layer="stift" checked> Stiftsgränser</label>
         <label><input type="checkbox" data-layer="offshore" checked> Off-shore-boxar</label>
+        <label><input type="checkbox" data-layer="accounts"> Storlekscirklar</label>
       </div>`;
     L.DomEvent.disableClickPropagation(div);
     L.DomEvent.disableScrollPropagation(div);
@@ -600,7 +684,8 @@ const FilterControl = L.Control.extend({
     div.querySelectorAll("input[data-layer]").forEach(inp => {
       inp.addEventListener("change", e => {
         const layer = { enheter: enheterLayer, stift: stiftLayer,
-                        offshore: offshoreLayer }[e.target.dataset.layer];
+                        offshore: offshoreLayer,
+                        accounts: accountsLayer }[e.target.dataset.layer];
         if (!layer) return;
         if (e.target.checked) map.addLayer(layer);
         else map.removeLayer(layer);
@@ -629,6 +714,11 @@ function pct(num, den) {
   return `${Math.round((num / den) * 100)}%`;
 }
 
+function bar(num, den) {
+  const p = den ? (num / den) * 100 : 0;
+  return `<div class="konto-bar"><span style="width:${p.toFixed(1)}%"></span></div>`;
+}
+
 function renderSummary() {
   const el = document.getElementById("summary-panel");
   if (!dataset) return;
@@ -652,6 +742,7 @@ function renderSummary() {
       <td class="pct">${pct(s.ja_enheter, s.totalt_enheter)}</td>
       <td>${fmtInt(s.ja_konton)}/${fmtInt(s.totalt_konton)}</td>
       <td class="pct">${pct(s.ja_konton, s.totalt_konton)}</td>
+      <td class="bar-cell">${bar(s.ja_konton, s.totalt_konton)}</td>
     </tr>`;
   }
   let trossRow = "";
@@ -660,30 +751,79 @@ function renderSummary() {
     totEnhJa += tross.ja_enheter;
     totK += tross.totalt_konton;
     totKJa += tross.ja_konton;
-    trossRow = `<tr class="separator"><td colspan="5"></td></tr>
+    trossRow = `<tr class="separator"><td colspan="6"></td></tr>
       <tr class="tross-row">
         <td>Kyrkokansliet</td>
         <td>${tross.ja_enheter}/${tross.totalt_enheter}</td>
         <td class="pct">${pct(tross.ja_enheter, tross.totalt_enheter)}</td>
         <td>${fmtInt(tross.ja_konton)}/${fmtInt(tross.totalt_konton)}</td>
         <td class="pct">${pct(tross.ja_konton, tross.totalt_konton)}</td>
+        <td class="bar-cell">${bar(tross.ja_konton, tross.totalt_konton)}</td>
       </tr>`;
   }
-  el.innerHTML = `<div class="lp-title">Anslutning per stift</div>
-    <table>
-      <thead><tr>
-        <th>Stift</th><th>Enheter</th><th></th><th>Konton</th><th></th>
-      </tr></thead>
-      <tbody>${rows}${trossRow}
-        <tr class="total">
-          <td>Totalt</td>
-          <td>${totEnhJa}/${totEnh}</td>
-          <td class="pct">${pct(totEnhJa, totEnh)}</td>
-          <td>${fmtInt(totKJa)}/${fmtInt(totK)}</td>
-          <td class="pct">${pct(totKJa, totK)}</td>
-        </tr>
-      </tbody>
-    </table>`;
+  el.innerHTML = `
+    <div class="tabs" role="tablist">
+      <button data-tab="stift" class="active">Per stift</button>
+      <button data-tab="top">Största ej-anslutna</button>
+    </div>
+    <div class="tab-panel active" data-panel="stift">
+      <table>
+        <thead><tr>
+          <th>Stift</th><th>Enheter</th><th></th><th>Konton</th><th></th><th></th>
+        </tr></thead>
+        <tbody>${rows}${trossRow}
+          <tr class="total">
+            <td>Totalt</td>
+            <td>${totEnhJa}/${totEnh}</td>
+            <td class="pct">${pct(totEnhJa, totEnh)}</td>
+            <td>${fmtInt(totKJa)}/${fmtInt(totK)}</td>
+            <td class="pct">${pct(totKJa, totK)}</td>
+            <td class="bar-cell">${bar(totKJa, totK)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tab-panel" data-panel="top">
+      ${renderTopEjAnslutna()}
+    </div>`;
+  el.querySelectorAll(".tabs button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      el.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b === btn));
+      el.querySelectorAll(".tab-panel").forEach(p =>
+        p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
+    });
+  });
+}
+
+function renderTopEjAnslutna() {
+  // 10 största enheter (efter antal konton) som inte är anslutna.
+  const enheter = dataset?.enheter || {};
+  const ovrigt = dataset?.ovrigt || [];
+  const stiftsenheter = dataset?.stiftsenheter || {};
+  const all = [];
+  for (const [namn, e] of Object.entries(enheter)) {
+    all.push({ namn, stift: e.stift, ja: e.ja, konton: e.konton });
+  }
+  for (const o of ovrigt) {
+    all.push({ namn: o.namn, stift: o.stift, ja: o.ja, konton: o.konton });
+  }
+  for (const [namn, s] of Object.entries(stiftsenheter)) {
+    all.push({ namn, stift: namn, ja: s.ja, konton: s.konton });
+  }
+  const top = all
+    .filter(e => !e.ja && e.konton > 0)
+    .sort((a, b) => b.konton - a.konton)
+    .slice(0, 10);
+  if (!top.length) return '<div class="empty">Inga ej-anslutna enheter.</div>';
+  const items = top.map(e => `
+    <li>
+      <div>
+        <span class="top-namn">${escapeHtml(e.namn)}</span>
+        <span class="top-stift">${escapeHtml(e.stift || "")}</span>
+      </div>
+      <span class="top-konton">${fmtInt(e.konton)}</span>
+    </li>`).join("");
+  return `<div class="top-list"><ol>${items}</ol></div>`;
 }
 
 function renderHeader() {
@@ -694,7 +834,7 @@ function renderHeader() {
     totK += s.totalt_konton;     totKJa += s.ja_konton;
   }
   document.getElementById("subtitle").textContent =
-    `${totEnhJa} av ${totEnh} enheter anslutna - ${fmtInt(totKJa)} av ${fmtInt(totK)} konton`;
+    `${totEnhJa} av ${totEnh} enheter anslutna - ${fmtInt(totKJa)} av ${fmtInt(totK)} konton (2026-05-05)`;
   document.getElementById("stats").innerHTML =
     `<b>${pct(totEnhJa, totEnh)}</b> av enheterna · ` +
     `<b>${pct(totKJa, totK)}</b> av kontona`;
@@ -709,6 +849,7 @@ async function init() {
   dataset = ls;
   buildEnheterLayer(enheter);
   buildStiftLayer(stift);
+  buildAccountsLayer(enheter);
   buildOffshoreLayer();
   renderHeader();
   renderSummary();
