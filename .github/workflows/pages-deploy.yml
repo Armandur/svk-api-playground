@@ -1,0 +1,333 @@
+name: Deploy to Pages
+
+# Bygger och publicerar alla Pages-projekt till
+# https://armandur.github.io/svk-api-playground/
+#
+# Projekt:
+#   - osm-konsistenscheck/         - SVK + OSM-jämförelse, dygnsfärsk
+#   - kbr-tidslinje/               - KBR kyrkobyggnader tidslinje
+#   - forsamlingsindelning-historik/ - Församlingsgränser 2008-2026
+#   - forsamlingskarta-enklaver/   - Enklaver/exklaver i församlingar
+#   - ls-visualize/                - Löneservice-visualisering (statisk)
+#   - signage-platser/             - Härnösands domkyrka som demo
+#   - kyrkoaret-widget/            - Dagens kyrkohögtid (publik endpoint)
+#   - unit-api/                    - Aktuella ekonomiska enheter
+#
+# Trigger:
+#   - Dagligen 04:00 UTC - bygger om alla projekt med färsk data
+#   - Push - bygger om bara det/de projekt vars filer ändrades
+#   - Manuellt via "Run workflow"
+#
+# Krav:
+#   - Repo-secret APIKEY_PROD (Svenska kyrkans API-nyckel)
+#   - Settings -> Pages -> Source: GitHub Actions
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'osm-konsistenscheck/**'
+      - '!osm-konsistenscheck/**.md'
+      - '!osm-konsistenscheck/rebuild.sh'
+      - 'kbr-tidslinje/**'
+      - '!kbr-tidslinje/**.md'
+      - 'forsamlingsindelning-historik/**'
+      - '!forsamlingsindelning-historik/**.md'
+      - 'forsamlingskarta-enklaver/**'
+      - '!forsamlingskarta-enklaver/**.md'
+      - 'ls-visualize/**'
+      - '!ls-visualize/**.md'
+      - 'signage-platser/**'
+      - '!signage-platser/**.md'
+      - 'kyrkoaret-widget/**'
+      - '!kyrkoaret-widget/**.md'
+      - 'unit-api/**'
+      - '!unit-api/**.md'
+      - '.github/workflows/pages-deploy.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      # OSM: dygnsfärsk data behövs, byggs alltid vid schedule/manuell
+      # körning. Vid push återanvänds cache om build-skripten inte ändrats.
+      - name: Restore OSM cache
+        id: osm-cache
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
+        with:
+          path: |
+            osm-konsistenscheck/data/diff.geojson
+            osm-konsistenscheck/data/diff_summary.json
+            osm-konsistenscheck/data/kbr.geojson
+          key: osm-built-${{ hashFiles('osm-konsistenscheck/build_*.py') }}
+          restore-keys: osm-built-
+
+      - name: Build SVK + OSM + Wikidata + diff
+        if: github.event_name != 'push' || steps.osm-cache.outputs.cache-hit != 'true'
+        env:
+          APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
+        run: |
+          uv run osm-konsistenscheck/build_svk.py
+          uv run osm-konsistenscheck/build_kbr.py
+          uv run osm-konsistenscheck/build_osm.py
+          uv run osm-konsistenscheck/build_wikidata.py
+          uv run osm-konsistenscheck/build_diff.py
+
+      # KBR: byggnadsregistret ändras sällan. Cache baseras på build-skriptets
+      # hash - ändras skriptet invalideras cachen automatiskt.
+      - name: Restore KBR cache
+        id: kbr-cache
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
+        with:
+          path: kbr-tidslinje/data/churches.json
+          key: kbr-built-${{ hashFiles('kbr-tidslinje/build_data.py') }}
+          restore-keys: kbr-built-
+
+      - name: Build KBR-tidslinje
+        if: github.event_name != 'push' || steps.kbr-cache.outputs.cache-hit != 'true'
+        env:
+          APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
+        run: uv run kbr-tidslinje/build_data.py
+
+      # Församlingsindelning-historik: shapefiles 2008-2026 från SVK:s
+      # publika kartor-endpoint (ingen API-nyckel). Ändras sällan.
+      - name: Restore församlingsindelning cache
+        id: forind-cache
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
+        with:
+          path: forsamlingsindelning-historik/data
+          key: forind-built-${{ hashFiles('forsamlingsindelning-historik/build_historik.py') }}
+          restore-keys: forind-built-
+
+      - name: Build forsamlingsindelning-historik
+        if: github.event_name != 'push' || steps.forind-cache.outputs.cache-hit != 'true'
+        run: uv run forsamlingsindelning-historik/build_historik.py
+
+      # Enklaver: shapefile från publik kartor-endpoint.
+      - name: Restore enklaver cache
+        id: enkl-cache
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
+        with:
+          path: forsamlingskarta-enklaver/data
+          key: enkl-built-${{ hashFiles('forsamlingskarta-enklaver/build_enclaves.py') }}
+          restore-keys: enkl-built-
+
+      - name: Build forsamlingskarta-enklaver
+        if: github.event_name != 'push' || steps.enkl-cache.outputs.cache-hit != 'true'
+        run: uv run forsamlingskarta-enklaver/build_enclaves.py
+
+      # unit-api: hämta aktuella ekonomiska enheter, skriv JSON som
+      # klienten läser. CSV produceras också men används inte på Pages.
+      - name: Build unit-api
+        env:
+          APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
+        run: uv run unit-api/fetch_ekonomiska_enheter.py
+
+      # signage-platser: hämta Härnösands domkyrka (default plats).
+      - name: Build signage-platser (Härnösands domkyrka)
+        env:
+          APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
+        run: uv run signage-platser/refresh.py
+
+      # kyrkoaret-widget: hämta hela kyrkoåret. Publik klientside-nyckel,
+      # ingen secret behövs. Kyrkoåret skiftar 1 advent - daglig CI-körning
+      # säkerställer att rätt år hämtas runt övergången.
+      - name: Build kyrkoaret-widget
+        run: uv run kyrkoaret-widget/build_data.py
+
+      - name: Prepare deploy folder
+        run: |
+          # osm-konsistenscheck
+          mkdir -p _deploy/osm-konsistenscheck/data
+          cp osm-konsistenscheck/index.html _deploy/osm-konsistenscheck/index.html
+          cp osm-konsistenscheck/data/diff.geojson \
+             osm-konsistenscheck/data/diff_summary.json \
+             _deploy/osm-konsistenscheck/data/
+          if [ -f osm-konsistenscheck/data/kbr.geojson ]; then
+            cp osm-konsistenscheck/data/kbr.geojson _deploy/osm-konsistenscheck/data/
+          fi
+
+          # kbr-tidslinje
+          mkdir -p _deploy/kbr-tidslinje/data
+          cp kbr-tidslinje/index.html _deploy/kbr-tidslinje/index.html
+          cp kbr-tidslinje/data/churches.json _deploy/kbr-tidslinje/data/
+
+          # forsamlingsindelning-historik
+          mkdir -p _deploy/forsamlingsindelning-historik/data
+          cp forsamlingsindelning-historik/index.html \
+             forsamlingsindelning-historik/app.css \
+             forsamlingsindelning-historik/app.js \
+             _deploy/forsamlingsindelning-historik/
+          cp forsamlingsindelning-historik/data/*.geojson \
+             forsamlingsindelning-historik/data/summary.json \
+             _deploy/forsamlingsindelning-historik/data/
+
+          # forsamlingskarta-enklaver
+          mkdir -p _deploy/forsamlingskarta-enklaver/data
+          cp forsamlingskarta-enklaver/index.html _deploy/forsamlingskarta-enklaver/
+          cp forsamlingskarta-enklaver/data/enklaver.geojson \
+             _deploy/forsamlingskarta-enklaver/data/
+
+          # ls-visualize - data committad i repo
+          mkdir -p _deploy/ls-visualize/data
+          cp ls-visualize/index.html _deploy/ls-visualize/
+          cp ls-visualize/data/loneservice.json \
+             ls-visualize/data/ekonomiska_enheter.geojson \
+             ls-visualize/data/stift.geojson \
+             _deploy/ls-visualize/data/
+
+          # signage-platser
+          mkdir -p _deploy/signage-platser
+          cp signage-platser/index.html _deploy/signage-platser/
+          cp signage-platser/place.json _deploy/signage-platser/
+
+          # kyrkoaret-widget
+          mkdir -p _deploy/kyrkoaret-widget/data
+          cp kyrkoaret-widget/index.html _deploy/kyrkoaret-widget/
+          cp kyrkoaret-widget/data/kyrkoaret.json _deploy/kyrkoaret-widget/data/
+
+          # unit-api
+          mkdir -p _deploy/unit-api/data
+          cp unit-api/index.html _deploy/unit-api/
+          cp unit-api/data/ekonomiska_enheter.json \
+             unit-api/data/ekonomiska_enheter.csv \
+             _deploy/unit-api/data/
+
+          cat > _deploy/index.html <<'HTML'
+          <!doctype html>
+          <html lang="sv">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>svk-api-playground</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+          <style>
+          :root { --beige: #FFEBE1; --black: #000; --wine: #7D0037; --gold: #BC8E4C; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: "DM Sans", Arial, sans-serif; background: var(--beige);
+                 color: var(--black); min-height: 100vh; padding: clamp(24px, 5vw, 64px); }
+          .wrap { max-width: 720px; margin: 0 auto; }
+          h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 500; color: var(--wine);
+               letter-spacing: -0.02em; }
+          h1 em { font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+                  font-weight: 400; color: var(--black); }
+          .lead { font-size: 17px; margin: 16px 0 32px; max-width: 580px; line-height: 1.5; }
+          .card { display: block; padding: 18px 22px; background: #fff;
+                  border: 2px solid var(--black); border-radius: 4px;
+                  text-decoration: none; color: inherit; margin-bottom: 12px;
+                  transition: transform 0.1s, background 0.1s; }
+          .card:hover { transform: translateY(-2px); background: var(--wine); color: var(--beige); }
+          .card h2 { font-size: 19px; font-weight: 500; margin-bottom: 4px; }
+          .card p { font-size: 14px; }
+          .card .url { font-size: 12px; font-family: ui-monospace, monospace;
+                       color: var(--gold); margin-top: 6px; display: block; }
+          .card:hover .url { color: var(--beige); opacity: 0.8; }
+          footer { font-size: 13px; color: #555; margin-top: 48px;
+                   border-top: 1px solid var(--black); padding-top: 12px; }
+          footer a { color: var(--wine); }
+          </style>
+          </head>
+          <body>
+          <div class="wrap">
+            <h1>svk-api-playground</h1>
+            <p class="lead">Lekplats för Svenska kyrkans publika API:er. <em>Statiska
+            byggen från huvud-repo:t, dagligen uppdaterade.</em></p>
+
+            <a class="card" href="osm-konsistenscheck/">
+              <h2>SVK ↔ OSM kyrkokonsistens</h2>
+              <p>Karta som visar var Svenska kyrkans Platser-API och OpenStreetMap
+              skiljer sig åt.</p>
+              <span class="url">/osm-konsistenscheck/</span>
+            </a>
+
+            <a class="card" href="kbr-tidslinje/">
+              <h2>KBR-tidslinje</h2>
+              <p>Animerad karta över 3 500 svenska kyrkobyggnader från år 1000 till
+              idag, baserad på Kyrkobyggnadsregistret.</p>
+              <span class="url">/kbr-tidslinje/</span>
+            </a>
+
+            <a class="card" href="forsamlingsindelning-historik/">
+              <h2>Församlingsindelning 2008-2026</h2>
+              <p>Hur Svenska kyrkans församlings- och pastoratsgränser har förändrats
+              över åren.</p>
+              <span class="url">/forsamlingsindelning-historik/</span>
+            </a>
+
+            <a class="card" href="forsamlingskarta-enklaver/">
+              <h2>Enklaver och exklaver</h2>
+              <p>Församlingar med geografiskt åtskilda delar - exklaver - och
+              församlingsdelar omslutna av andra församlingar.</p>
+              <span class="url">/forsamlingskarta-enklaver/</span>
+            </a>
+
+            <a class="card" href="ls-visualize/">
+              <h2>Löneservice</h2>
+              <p>Visualisering av vilka ekonomiska enheter som använder Svenska
+              kyrkans gemensamma löneservice.</p>
+              <span class="url">/ls-visualize/</span>
+            </a>
+
+            <a class="card" href="unit-api/">
+              <h2>Ekonomiska enheter</h2>
+              <p>Aktuella stift, pastorat och församlingar med egen ekonomi -
+              grupperade per stift med sök.</p>
+              <span class="url">/unit-api/</span>
+            </a>
+
+            <a class="card" href="kyrkoaret-widget/">
+              <h2>Kyrkoåret-widget</h2>
+              <p>Dagens kyrkohögtid med liturgisk färg, kyrkoårsdel och dagens
+              bibeltexter.</p>
+              <span class="url">/kyrkoaret-widget/</span>
+            </a>
+
+            <a class="card" href="signage-platser/">
+              <h2>Signage-platser (demo)</h2>
+              <p>Signage-vy med öppettider för Härnösands domkyrka. Kan användas
+              för en infällbar zon på en signage-skärm.</p>
+              <span class="url">/signage-platser/</span>
+            </a>
+
+            <footer>
+              Källkod: <a href="https://github.com/Armandur/svk-api-playground">github.com/Armandur/svk-api-playground</a>
+            </footer>
+          </div>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _deploy
+
+      - name: Deploy to Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
