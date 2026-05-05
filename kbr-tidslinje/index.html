@@ -338,25 +338,6 @@ function darken(hex, amt) {
   return `#${((r << 16)|(g << 8)|b).toString(16).padStart(6,'0')}`;
 }
 
-function desaturate(hex, factor) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 0xff;
-  const g = (n >>  8) & 0xff;
-  const b = (n >>  0) & 0xff;
-  const grey = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-  const nr = Math.round(grey + (r - grey) * factor);
-  const ng = Math.round(grey + (g - grey) * factor);
-  const nb = Math.round(grey + (b - grey) * factor);
-  return `#${((nr << 16)|(ng << 8)|nb).toString(16).padStart(6,'0')}`;
-}
-
-const MIN_SAT      = 0.20;
-const MAX_FADE_AGE = 400;
-
-function ageSaturation(age) {
-  if (age <= 0) return 1.0;
-  return Math.max(MIN_SAT, 1 - (age / MAX_FADE_AGE) * (1 - MIN_SAT));
-}
 
 // ── Era SVG builders ──────────────────────────────────────────────
 // All: viewBox 0 0 22 30, tower left, nave right
@@ -658,9 +639,7 @@ function setYear(year, animate) {
     const newState    = isActive ? 'active' : 'construction';
     const eraYear              = c.invigd ?? c.bygg;
     const { color: baseColor, era } = getEraInfo(eraYear);
-    const age                  = eraYear ? Math.max(0, year - eraYear) : 0;
-    const sat                  = ageSaturation(age);
-    const color                = desaturate(baseColor, sat);
+    const color                = baseColor;
     const existing = markers[c.id];
 
     if (!shouldExist) {
@@ -679,13 +658,11 @@ function setYear(year, animate) {
         zIndexOffset: zOff,
       }).bindPopup(popupContent(c));
       m.addTo(map);
-      markers[c.id] = { marker: m, state: newState, era, sat };
-    } else if (existing.state !== newState || Math.abs((existing.sat ?? 1) - sat) > 0.004) {
-      const stateChanged = existing.state !== newState;
-      existing.marker.setIcon(makeIcon(era, newState, color, stateChanged && animate));
+      markers[c.id] = { marker: m, state: newState, era };
+    } else if (existing.state !== newState) {
+      existing.marker.setIcon(makeIcon(era, newState, color, animate));
       existing.marker.setZIndexOffset(zOff);
       existing.state = newState;
-      existing.sat = sat;
     }
   }
 
