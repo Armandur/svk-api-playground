@@ -293,8 +293,116 @@ let accountsLayer = null;
 let choroplethLayer = null;
 let minKonton = 0;        // storleksfilter: dölj enheter med < N konton
 let focusStift = "";      // stift-fokus: "" = visa alla, annars stiftnamn
+let activeTab = "overview"; // statspanelens aktiva flik
 const stiftBounds = {};   // stiftnamn -> L.LatLngBounds (cachat från geojson)
 const enhetLayers = {};   // enhetsnamn -> L.Layer (cachat för klick-zoom)
+const offshoreAnchors = {}; // enhetsnamn -> [lat, lng] för off-shore-zoom
+const offshoreBadges = {};  // enhetsnamn -> badge-marker för popup-öppning
+
+// URL-hash state - delbara vyer.
+// Default: alla statusfärger visas, lager enheter+stift+offshore på,
+// accounts+choropleth av, ingen min-storlek, inget stift-fokus,
+// fliken Översikt aktiv. Bara avvikelser från default skrivs till hash.
+const layersOn = {
+  enheter: true, stift: true, offshore: true,
+  accounts: false, choropleth: false,
+};
+let suppressHashWrite = false;  // hindrar oändlig loop när vi själva sätter hash
+
+function readHash() {
+  const params = new URLSearchParams(location.hash.replace(/^#/, ""));
+  return {
+    tab: params.get("tab") || "overview",
+    stift: params.get("stift") || "",
+    min: parseInt(params.get("min"), 10) || 0,
+    ja: params.get("ja") !== "0",
+    nej: params.get("nej") !== "0",
+    enheter: params.get("enheter") !== "0",
+    stiftLager: params.get("stiftLager") !== "0",
+    offshore: params.get("offshore") !== "0",
+    accounts: params.get("accounts") === "1",
+    choropleth: params.get("choropleth") === "1",
+  };
+}
+
+function writeHash() {
+  if (suppressHashWrite) return;
+  const params = new URLSearchParams();
+  if (activeTab !== "overview") params.set("tab", activeTab);
+  if (focusStift) params.set("stift", focusStift);
+  if (minKonton) params.set("min", String(minKonton));
+  if (!visible.ja) params.set("ja", "0");
+  if (!visible.nej) params.set("nej", "0");
+  if (!layersOn.enheter) params.set("enheter", "0");
+  if (!layersOn.stift) params.set("stiftLager", "0");
+  if (!layersOn.offshore) params.set("offshore", "0");
+  if (layersOn.accounts) params.set("accounts", "1");
+  if (layersOn.choropleth) params.set("choropleth", "1");
+  const s = params.toString();
+  const newHash = s ? "#" + s : "";
+  if (location.hash !== newHash) {
+    history.replaceState(null, "",
+      location.pathname + location.search + newHash);
+  }
+}
+
+function applyHashState() {
+  const state = readHash();
+  suppressHashWrite = true;
+
+  // Filter och status-toggles
+  visible.ja = state.ja;
+  visible.nej = state.nej;
+  minKonton = state.min;
+  focusStift = state.stift;
+
+  // Lager-toggles
+  layersOn.enheter = state.enheter;
+  layersOn.stift = state.stiftLager;
+  layersOn.offshore = state.offshore;
+  layersOn.accounts = state.accounts;
+  layersOn.choropleth = state.choropleth;
+
+  // Synka UI-kontroller
+  document.querySelectorAll('input[data-key="ja"]').forEach(i => i.checked = state.ja);
+  document.querySelectorAll('input[data-key="nej"]').forEach(i => i.checked = state.nej);
+  const minSel = document.getElementById("min-konton");
+  if (minSel) minSel.value = String(state.min);
+  const stiftSel = document.getElementById("focus-stift");
+  if (stiftSel) stiftSel.value = state.stift;
+  for (const [key, on] of Object.entries(layersOn)) {
+    document.querySelectorAll(`input[data-layer="${key}"]`).forEach(i => i.checked = on);
+  }
+
+  // Applicera på kartan
+  const layerByKey = {
+    enheter: enheterLayer, stift: stiftLayer, offshore: offshoreLayer,
+    accounts: accountsLayer, choropleth: choroplethLayer,
+  };
+  for (const [key, on] of Object.entries(layersOn)) {
+    const layer = layerByKey[key];
+    if (!layer) continue;
+    if (on && !map.hasLayer(layer)) map.addLayer(layer);
+    else if (!on && map.hasLayer(layer)) map.removeLayer(layer);
+  }
+  if (enheterLayer) enheterLayer.setStyle(styleEnhet);
+  applyAccountsVisibility();
+  applyOffshoreVisibility();
+  document.getElementById("choro-scale")?.classList.toggle("show", state.choropleth);
+
+  // Stift-fokus = zooma till bounds
+  const b = focusStift && stiftBounds[focusStift];
+  if (b) map.fitBounds(b, { padding: [20, 20] });
+
+  // Aktiv flik
+  activeTab = state.tab;
+  document.querySelectorAll(".tabs button").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.tab === activeTab));
+  document.querySelectorAll(".tab-panel").forEach(p =>
+    p.classList.toggle("active", p.dataset.panel === activeTab));
+
+  suppressHashWrite = false;
+}
 let enheterLayer = null;  // L.geoJson över ekonomiska enheter
 let stiftLayer = null;    // L.geoJson stift-gränser
 let offshoreLayer = null; // L.layerGroup med stiftskanslier, ovrigt, trossamfund
@@ -458,10 +566,18 @@ function buildEnheterLayer(geojson) {
 
 function zoomToEnhet(namn) {
   const layer = enhetLayers[namn];
-  if (!layer) return;
-  const bounds = layer.getBounds();
-  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 });
-  layer.openPopup(bounds.getCenter());
+  if (layer) {
+    const bounds = layer.getBounds();
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 });
+    layer.openPopup(bounds.getCenter());
+    return;
+  }
+  const anchor = offshoreAnchors[namn];
+  const badge = offshoreBadges[namn];
+  if (anchor) {
+    map.setView(anchor, 9);
+    if (badge) badge.openPopup();
+  }
 }
 
 function buildStiftLayer(geojson) {
@@ -632,10 +748,11 @@ function offshoreEntity({ namn, kortNamn, kategori, ja, konton, anchorStad,
   };
 }
 
-function pushEntry(entry, status, stift) {
+function pushEntry(entry, status, stift, namn) {
   offshoreEntries.push({ ...entry, status });
   offshoreItems.push({ marker: entry.arrowMarker, status, stift });
   offshoreItems.push({ marker: entry.badgeMarker, status, stift });
+  if (namn) offshoreBadges[namn] = entry.badgeMarker;
 }
 
 function buildOffshoreLayer() {
@@ -645,12 +762,13 @@ function buildOffshoreLayer() {
     const cfg = OFFSHORE_STIFT[namn];
     if (!cfg) { console.warn("ingen offshore-position för", namn); continue; }
     const [anchorStad, [dx, dy]] = cfg;
+    if (STAD[anchorStad]) offshoreAnchors[namn] = STAD[anchorStad];
     const e = offshoreEntity({
       namn, kortNamn: namn.replace(/ stift$/, " stiftskansli"),
       kategori: "Stiftskansli",
       ja: info.ja, konton: info.konton, anchorStad, dx, dy,
     });
-    pushEntry(e, info.ja ? "ja" : "nej", namn);
+    pushEntry(e, info.ja ? "ja" : "nej", namn, namn);
     items.push(e.arrowMarker, e.badgeMarker);
   }
 
@@ -666,25 +784,27 @@ function buildOffshoreLayer() {
     const cfg = OFFSHORE_OVRIGT[o.namn];
     if (!cfg) { console.warn("ingen offshore-position för", o.namn); continue; }
     const [anchorStad, [dx, dy]] = cfg;
+    if (STAD[anchorStad]) offshoreAnchors[o.namn] = STAD[anchorStad];
     const e = offshoreEntity({
       namn: o.namn, kortNamn: o.namn,
       kategori: o.stift,
       ja: o.ja, konton: o.konton, anchorStad, dx, dy,
       popupExtra: ICKE_TERR.has(o.namn) ? "Icke-territoriell församling" : null,
     });
-    pushEntry(e, o.ja ? "ja" : "nej", o.stift);
+    pushEntry(e, o.ja ? "ja" : "nej", o.stift, o.namn);
     items.push(e.arrowMarker, e.badgeMarker);
   }
 
   if (dataset.trossamfund) {
     const t = dataset.trossamfund;
     const [anchorStad, [dx, dy]] = OFFSHORE_TROSS;
+    if (STAD[anchorStad]) offshoreAnchors[t.namn] = STAD[anchorStad];
     const e = offshoreEntity({
       namn: t.namn, kortNamn: "Kyrkokansliet",
       kategori: "Nationell nivå - Kyrkokansliet",
       ja: t.ja, konton: t.konton, anchorStad, dx, dy,
     });
-    pushEntry(e, t.ja ? "ja" : "nej", null);
+    pushEntry(e, t.ja ? "ja" : "nej", null, t.namn);
     items.push(e.arrowMarker, e.badgeMarker);
   }
 
@@ -865,12 +985,14 @@ const FilterControl = L.Control.extend({
         if (enheterLayer) enheterLayer.setStyle(styleEnhet);
         applyOffshoreVisibility();
         applyAccountsVisibility();
+        writeHash();
       });
     });
     div.querySelector("#min-konton").addEventListener("change", e => {
       minKonton = parseInt(e.target.value, 10) || 0;
       if (enheterLayer) enheterLayer.setStyle(styleEnhet);
       applyAccountsVisibility();
+      writeHash();
     });
     div.querySelector("#focus-stift").addEventListener("change", e => {
       focusStift = e.target.value;
@@ -880,19 +1002,23 @@ const FilterControl = L.Control.extend({
       const b = focusStift && stiftBounds[focusStift];
       if (b) map.fitBounds(b, { padding: [20, 20] });
       else map.setView([62.5, 16.0], 5);
+      writeHash();
     });
     div.querySelectorAll("input[data-layer]").forEach(inp => {
       inp.addEventListener("change", e => {
+        const key = e.target.dataset.layer;
         const layer = { enheter: enheterLayer, stift: stiftLayer,
                         offshore: offshoreLayer,
                         accounts: accountsLayer,
-                        choropleth: choroplethLayer }[e.target.dataset.layer];
+                        choropleth: choroplethLayer }[key];
         if (!layer) return;
+        layersOn[key] = e.target.checked;
         if (e.target.checked) map.addLayer(layer);
         else map.removeLayer(layer);
-        if (e.target.dataset.layer === "choropleth") {
+        if (key === "choropleth") {
           document.getElementById("choro-scale").classList.toggle("show", e.target.checked);
         }
+        writeHash();
       });
     });
     return div;
@@ -1000,9 +1126,11 @@ function renderSummary() {
     </div>`;
   el.querySelectorAll(".tabs button").forEach(btn => {
     btn.addEventListener("click", () => {
+      activeTab = btn.dataset.tab;
       el.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b === btn));
       el.querySelectorAll(".tab-panel").forEach(p =>
-        p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
+        p.classList.toggle("active", p.dataset.panel === activeTab));
+      writeHash();
     });
   });
   el.querySelectorAll(".top-list li.klickbar").forEach(li => {
@@ -1134,7 +1262,7 @@ function renderTopEjAnslutna() {
     .slice(0, 10);
   if (!top.length) return '<div class="empty">Inga ej-anslutna enheter.</div>';
   const items = top.map(e => {
-    const klickbar = enhetLayers[e.namn] ? "klickbar" : "";
+    const klickbar = (enhetLayers[e.namn] || offshoreAnchors[e.namn]) ? "klickbar" : "";
     return `
     <li class="${klickbar}" data-namn="${escapeHtml(e.namn)}">
       <div>
@@ -1173,6 +1301,8 @@ async function init() {
   populateStiftDropdown();
   renderHeader();
   renderSummary();
+  applyHashState();
+  window.addEventListener("hashchange", applyHashState);
 }
 
 function populateStiftDropdown() {

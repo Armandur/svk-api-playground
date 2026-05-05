@@ -54,8 +54,13 @@ först. `[KLAR]`-markerade är implementerade.
 
 - `[KLAR]` **Bonus: klick-zoom från top-listan**
   Klick på en enhet i "Största ej-anslutna" zoomar kartan till enhetens
-  polygon och öppnar dess popup. Off-shore-enheter (utan polygon)
-  hoppas över.
+  polygon och öppnar dess popup. Off-shore-enheter (utan polygon) zoomar
+  istället till sin anchor-stad och öppnar badgens popup.
+
+- `[KLAR]` **Bonus: URL-hash för delbara vyer**
+  Aktiv flik, stift-fokus, min-storlek, status- och lager-toggles
+  sparas i URL-hashen. Bara avvikelser från default skrivs ut, så
+  basal URL är ren. Stödjer browser-back/forward.
 
 ## Datalager
 
