@@ -39,6 +39,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).parent))
 from matching import MAX_MATCH_M, closest_match, haversine, normalize, sweref_to_wgs84  # noqa: E402
+from quality import run_all_checks  # noqa: E402
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -76,8 +77,6 @@ out tags center;
 OUT_DIR          = Path(__file__).parent / "data"
 MIN_AVSTAND_M    = 200
 LANG_BYGG        = 300    # år
-STALE_DATE       = datetime(2020, 1, 1)
-STATUS_EJ_AKTIV  = {"Kyrkan används inte"}
 
 # -------------------------------------------------------------------------
 # Hämta KBR
@@ -95,28 +94,8 @@ FIELDS = (
     "andradDatum,skapadDatum"
 )
 
-kbr_churches: list[dict] = []
-
-# Befintliga kvalitetslistor
-q_datum_omojligt:   list[dict] = []
-q_datum_samma_ar:   list[dict] = []
-q_datum_saknas:     list[dict] = []
-q_byggnadstid_lang: list[dict] = []
-q_koord_utanfor:    list[dict] = []
-q_koord_rundad:     list[dict] = []
-
-# Nya kvalitetslistor
-q_status_ej_aktiv:     list[dict] = []
-q_funktion_andrad:     list[dict] = []
-q_raa_saknas:          list[dict] = []
-q_byggarea_saknas:     list[dict] = []
-q_fastighet_saknas:    list[dict] = []
-q_planform_saknas:     list[dict] = []
-q_material_saknas:     list[dict] = []
-q_tillg_ej_prog:       list[dict] = []
-q_ej_tillganglig:      list[dict] = []
-q_andrad_gammal:       list[dict] = []
-q_agare_mismatch:      list[dict] = []
+kbr_churches:     list[dict] = []
+kbr_churches_raw: list[dict] = []
 
 offset = 0
 with httpx.Client(timeout=30) as client:
@@ -142,90 +121,7 @@ with httpx.Client(timeout=30) as client:
                     "funktion": b.get("nuvarandeFunktion", ""),
                     "kbr_lat": lat, "kbr_lng": lng}
 
-            # --- Datumkvalitet ---
-            if bygg and invigd:
-                if bygg > invigd:
-                    q_datum_omojligt.append({**base, "nybyggnadFran": bygg,
-                                             "invigning": invigd, "diff_år": invigd - bygg})
-                elif bygg == invigd:
-                    q_datum_samma_ar.append({**base, "år": bygg})
-                elif invigd - bygg > LANG_BYGG:
-                    q_byggnadstid_lang.append({**base, "nybyggnadFran": bygg,
-                                               "invigning": invigd, "byggnadstid": invigd - bygg})
-            elif bygg is None and invigd is None:
-                q_datum_saknas.append({**base, "saknas": "båda"})
-            elif bygg is None:
-                q_datum_saknas.append({**base, "saknas": "nybyggnadFran", "invigning": invigd})
-            else:
-                q_datum_saknas.append({**base, "saknas": "invigning", "nybyggnadFran": bygg})
-
-            # --- Koordinatkvalitet ---
-            if not (55.0 < lat < 70.5 and 10.0 < lng < 25.0):
-                q_koord_utanfor.append({**base, "kbr_lat": lat, "kbr_lng": lng})
-            if int(x) % 1000 == 0 and int(y) % 1000 == 0:
-                q_koord_rundad.append({**base, "kbr_x": int(x), "kbr_y": int(y)})
-
-            # --- Status ---
-            freq = b.get("anvandningsfrekvens", "")
-            if freq in STATUS_EJ_AKTIV:
-                q_status_ej_aktiv.append({**base, "anvandningsfrekvens": freq,
-                                          "invigning": invigd})
-
-            nuv = b.get("nuvarandeAnvandning", "")
-            ursp = b.get("ursprungligAnvandning", "")
-            if nuv and ursp:
-                nuv_kyrka  = nuv.lower().startswith("kyrka")
-                ursp_kyrka = ursp.lower().startswith("kyrka")
-                if nuv_kyrka != ursp_kyrka:
-                    q_funktion_andrad.append({**base, "ursprunglig": ursp,
-                                              "nuvarande": nuv, "invigning": invigd})
-
-            # --- Komplettering ---
-            if not b.get("identitetRAA"):
-                q_raa_saknas.append({**base, "invigning": invigd,
-                                     "skyddEnligtKML": b.get("skyddEnligtKML", "")})
-            if not b.get("byggarea"):
-                q_byggarea_saknas.append({**base, "invigning": invigd})
-            if not b.get("fastighetsbeteckning"):
-                q_fastighet_saknas.append({**base, "invigning": invigd})
-            if not b.get("planform"):
-                q_planform_saknas.append({**base, "invigning": invigd})
-            stomme = b.get("materialStomme") or ""
-            fasad  = b.get("materialFasad") or ""
-            if not stomme or not fasad:
-                saknar = "båda" if (not stomme and not fasad) \
-                         else ("stomme" if not stomme else "fasad")
-                q_material_saknas.append({**base, "saknar": saknar,
-                                          "materialStomme": stomme or "-",
-                                          "materialFasad": fasad or "-"})
-
-            # --- Tillgänglighet ---
-            prog  = b.get("handlingsprogramTillganglighet") or ""
-            anp   = b.get("tillganglighetsanpassning") or ""
-            if not prog or prog == "Handlingsprogram finns inte":
-                q_tillg_ej_prog.append({**base, "program": prog or "(tomt)", "anpassning": anp})
-            if anp == "Inte tillgänglighetsanpassad":
-                q_ej_tillganglig.append({**base, "anpassning": anp, "program": prog})
-
-            # --- Förvaltning ---
-            agare = b.get("agandeEnhet") or ""
-            geo   = b.get("geografiskEnhet") or ""
-            if agare and geo and agare != geo:
-                q_agare_mismatch.append({**base, "agandeEnhet": agare,
-                                         "geografiskEnhet": geo})
-
-            andrad_str = b.get("andradDatum") or ""
-            if andrad_str:
-                try:
-                    andrad = datetime.fromisoformat(andrad_str)
-                    if andrad.replace(tzinfo=None) < STALE_DATE:
-                        q_andrad_gammal.append({**base,
-                            "andradDatum": andrad_str[:10],
-                            "skapadDatum": (b.get("skapadDatum") or "")[:10],
-                            "invigning": invigd})
-                except ValueError:
-                    pass
-
+            kbr_churches_raw.append(b)
             kbr_churches.append({
                 "kbr_id": b["id"], "facilityPartId": b.get("facilityPartId"),
                 "namn": namn, "stift": stift, "funktion": b.get("nuvarandeFunktion", ""),
@@ -275,25 +171,7 @@ with httpx.Client(timeout=30) as client:
         offset += 100
 print(f"\n  KBR Begravningsplatser klar: {len(kbr_begravningsplatser)}", flush=True)
 
-# Duplikatkoordinater + namn
-coord_groups: dict[tuple, list] = defaultdict(list)
-for c in kbr_churches:
-    coord_groups[(c["kbr_lat"], c["kbr_lng"])].append(
-        {"kbr_id": c["kbr_id"], "namn": c["namn"], "stift": c["stift"]})
-q_koord_duplikat = [
-    {"kbr_lat": k[0], "kbr_lng": k[1], "kyrkor": v}
-    for k, v in coord_groups.items() if len(v) > 1
-]
-
-name_stift: dict[str, list] = defaultdict(list)
-for c in kbr_churches:
-    name_stift[f"{c['namn']}||{c['stift']}"].append(
-        {"kbr_id": c["kbr_id"], "stift": c["stift"],
-         "kbr_lat": c["kbr_lat"], "kbr_lng": c["kbr_lng"]})
-q_namn_duplikat = [
-    {"namn": k.split("||")[0], "stift": k.split("||")[1], "kyrkor": v}
-    for k, v in name_stift.items() if len(v) > 1
-]
+q = run_all_checks(kbr_churches_raw)
 
 # -------------------------------------------------------------------------
 # Hämta SVK Platser
@@ -630,25 +508,25 @@ stats = {
     "avvikelse_500m":     sum(1 for r in matched if r["avstand_m"] >= 500),
     "avvikelse_1km":      sum(1 for r in matched if r["avstand_m"] >= 1000),
     "avvikelse_5km":      sum(1 for r in matched if r["avstand_m"] >= 5000),
-    "datum_omojligt":     len(q_datum_omojligt),
-    "datum_samma_ar":     len(q_datum_samma_ar),
-    "datum_saknas":       len(q_datum_saknas),
-    "byggnadstid_lang":   len(q_byggnadstid_lang),
-    "koord_utanfor":      len(q_koord_utanfor),
-    "koord_rundad":       len(q_koord_rundad),
-    "koord_duplikat":     len(q_koord_duplikat),
-    "namn_duplikat":      len(q_namn_duplikat),
-    "status_ej_aktiv":    len(q_status_ej_aktiv),
-    "funktion_andrad":    len(q_funktion_andrad),
-    "raa_saknas":         len(q_raa_saknas),
-    "byggarea_saknas":    len(q_byggarea_saknas),
-    "fastighet_saknas":   len(q_fastighet_saknas),
-    "planform_saknas":    len(q_planform_saknas),
-    "material_saknas":    len(q_material_saknas),
-    "tillg_ej_prog":      len(q_tillg_ej_prog),
-    "ej_tillganglig":     len(q_ej_tillganglig),
-    "andrad_gammal":      len(q_andrad_gammal),
-    "agare_mismatch":     len(q_agare_mismatch),
+    "datum_omojligt":     len(q["datum_omojligt"]),
+    "datum_samma_ar":     len(q["datum_samma_ar"]),
+    "datum_saknas":       len(q["datum_saknas"]),
+    "byggnadstid_lang":   len(q["byggnadstid_lang"]),
+    "koord_utanfor":      len(q["koord_utanfor"]),
+    "koord_rundad":       len(q["koord_rundad"]),
+    "koord_duplikat":     len(q["koord_duplikat"]),
+    "namn_duplikat":      len(q["namn_duplikat"]),
+    "status_ej_aktiv":    len(q["status_ej_aktiv"]),
+    "funktion_andrad":    len(q["funktion_andrad"]),
+    "raa_saknas":         len(q["raa_saknas"]),
+    "byggarea_saknas":    len(q["byggarea_saknas"]),
+    "fastighet_saknas":   len(q["fastighet_saknas"]),
+    "planform_saknas":    len(q["planform_saknas"]),
+    "material_saknas":    len(q["material_saknas"]),
+    "tillg_ej_prog":      len(q["tillg_ej_prog"]),
+    "ej_tillganglig":     len(q["ej_tillganglig"]),
+    "andrad_gammal":      len(q["andrad_gammal"]),
+    "agare_mismatch":     len(q["agare_mismatch"]),
     "kbr_begravningsplatser": len(kbr_begravningsplatser),
     "osm_begravningsplatser": sum(1 for o in osm_list if o.get("osm_typ") == "begravningsplats"),
     "osm_krematorium":        sum(1 for o in osm_list if o.get("osm_typ") == "krematorium"),
@@ -690,28 +568,7 @@ print(f"Skrev kbr_begravningsplatser.json ({len(kbr_begravningsplatser)} poster)
     encoding="utf-8")
 print(f"Skrev platser_extra.json ({len(platser_extra_list)} poster)")
 
-quality = {
-    "generated":          stats["generated"],
-    "datum_omojligt":     q_datum_omojligt,
-    "datum_samma_ar":     q_datum_samma_ar,
-    "datum_saknas":       q_datum_saknas,
-    "byggnadstid_lang":   q_byggnadstid_lang,
-    "koord_utanfor":      q_koord_utanfor,
-    "koord_rundad":       q_koord_rundad,
-    "koord_duplikat":     q_koord_duplikat,
-    "namn_duplikat":      q_namn_duplikat,
-    "status_ej_aktiv":    q_status_ej_aktiv,
-    "funktion_andrad":    q_funktion_andrad,
-    "raa_saknas":         q_raa_saknas,
-    "byggarea_saknas":    q_byggarea_saknas,
-    "fastighet_saknas":   q_fastighet_saknas,
-    "planform_saknas":    q_planform_saknas,
-    "material_saknas":    q_material_saknas,
-    "tillg_ej_prog":      q_tillg_ej_prog,
-    "ej_tillganglig":     q_ej_tillganglig,
-    "andrad_gammal":      q_andrad_gammal,
-    "agare_mismatch":     q_agare_mismatch,
-}
+quality = {"generated": stats["generated"], **q}
 (OUT_DIR / "quality.json").write_text(
     json.dumps(quality, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 print(f"Skrev quality.json ({(OUT_DIR/'quality.json').stat().st_size//1024} KB)")
