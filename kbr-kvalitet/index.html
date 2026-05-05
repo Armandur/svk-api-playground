@@ -262,7 +262,7 @@
       <div class="q-section">
         <h2>Koordinatprecision – BV-koordinater</h2>
         <p class="q-note">Antal decimaler i BV:s koordinatvärden. Få decimaler kan indikera att koordinaten är felplacerad eller grovt avrundad – men det behöver inte vara så.</p>
-        <table class="data-table"><thead><tr><th>Decimaler</th><th>Ca precision</th><th>Antal BV-poster</th><th>Lista</th></tr></thead>
+        <table class="data-table" style="table-layout:fixed"><thead><tr><th>Decimaler</th><th>Ca precision</th><th>Antal BV-poster</th><th>Lista</th></tr></thead>
         <tbody id="tbody-bv-precision"></tbody></table>
       </div>
     </div>
@@ -602,13 +602,13 @@ function renderBvTab() {
     if (g) { g.count++; g.items.push(r); }
   });
   document.getElementById('tbody-bv-precision').innerHTML = groupedPrec.filter(g => g.count > 0).map((g, idx) => {
-    const list = '<table style="width:100%;border-collapse:collapse;font-size:10px">'
+    const list = '<table class="inner-table" style="width:100%;border-collapse:collapse;font-size:10px">'
       + '<thead><tr style="background:#f5ece6"><th style="padding:3px 6px;text-align:left">Namn</th><th style="padding:3px 6px;text-align:left">Stift</th><th style="padding:3px 6px;text-align:left">Enhet</th><th style="padding:3px 6px;text-align:right">Lat</th><th style="padding:3px 6px;text-align:right">Lng</th><th style="width:28px"></th></tr></thead><tbody>'
       + g.items.map(i => { const safe = (i.namn||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); return `<tr style="border-top:1px solid #f0e8e0"><td style="padding:2px 6px">${i.namn}</td><td style="padding:2px 6px">${i.stift||'-'}</td><td style="padding:2px 6px">${i.enhet||'-'}</td><td style="padding:2px 6px;text-align:right;font-family:monospace">${i.lat}</td><td style="padding:2px 6px;text-align:right;font-family:monospace">${i.lng}</td><td style="padding:2px 4px">${i.lat != null ? `<button class="map-btn" onclick="jumpToKBR(${i.lat},${i.lng},'${safe}')" title="Visa på karta">&#x2316;</button>` : ''}</td></tr>`; }).join('')
       + '</tbody></table>';
     return `<tr><td>${g.label}</td><td>${g.desc}</td><td>${g.count}</td>
-      <td><button class="map-btn" onclick="const e=document.getElementById('bv-prec-l-${idx}');e.style.display=e.style.display==='none'?'block':'none'">Visa</button></td></tr>
-      <tr id="bv-prec-l-${idx}" style="display:none"><td colspan="4" style="padding:0;background:#fffaf7;border-bottom:1px solid #f0e8e0">${list}</td></tr>`;
+      <td><button class="map-btn" onclick="const e=document.getElementById('bv-prec-l-${idx}');e.style.display=e.style.display==='table-row'?'none':'table-row'">Visa</button></td></tr>
+      <tr id="bv-prec-l-${idx}" class="row-detail" style="display:none"><td colspan="4" style="padding:0;background:#fffaf7;border-bottom:1px solid #f0e8e0"><div style="overflow-x:auto">${list}</div></td></tr>`;
   }).join('');
 
   // Visa/dölj sektioner baserat på valt filter
@@ -619,6 +619,7 @@ function renderBvTab() {
   document.getElementById('bv-section-begravning').style.display = showBegravning ? '' : 'none';
   document.getElementById('bv-section-begravning-saknar').style.display = showBegravning ? '' : 'none';
   document.querySelectorAll('#bv-content .data-table').forEach(makeSortable);
+  buildQualityNav(document.getElementById('bv-content'));
 }
 
 document.getElementById('bv-typ-filter').addEventListener('change', () => {
@@ -749,6 +750,7 @@ fetch('data/quality.json').then(r=>r.json()).then(q => {
   setCount('cnt-agare', q.agare_mismatch.length);
   document.getElementById('tbody-agare').innerHTML = rows(q.agare_mismatch,['namn','stift','agandeEnhet','geografiskEnhet']);
   document.querySelectorAll('.quality-pane .data-table').forEach(makeSortable);
+  document.querySelectorAll('.quality-pane').forEach(buildQualityNav);
 }).catch(() => {});
 
 fetch('data/stats.json').then(r=>r.json()).then(s => {

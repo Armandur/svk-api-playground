@@ -71,9 +71,33 @@ body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:va
 @media (max-width:700px) {
   #sidebar { position:absolute; right:0; top:0; bottom:0; z-index:900; box-shadow:-2px 0 8px rgba(0,0,0,.15); width:100%; max-width:360px; }
   #coord-main.sidebar-hidden #sidebar { width:0; opacity:0; }
+  .leaflet-control-zoom { z-index:800 !important; }
 }
 
-.quality-pane { padding:14px 18px; overflow-y:auto; }
+.quality-pane { padding:14px 18px; overflow-y:auto; display:flex; flex-direction:column; }
+.quality-pane:has(> .quality-with-nav) { padding:0; overflow:hidden; }
+.quality-pane > .quality-with-nav { flex:1; min-height:0; }
+.quality-with-nav { display:flex !important; flex-direction:row !important; padding:0 !important; overflow:hidden !important; min-height:0; }
+.quality-nav { width:190px; flex-shrink:0; overflow-y:auto; border-right:1px solid #f0e8e0; background:#fffaf7; padding:8px 0; }
+.quality-content { flex:1; overflow-y:auto; padding:14px 18px; min-height:0; }
+.qnav-link { display:flex; justify-content:space-between; align-items:baseline; gap:6px;
+  padding:5px 10px 5px 12px; font-size:11px; color:#555; text-decoration:none;
+  border-left:3px solid transparent; line-height:1.3; }
+.qnav-link:hover { background:#ffe8de; color:var(--wine); }
+.qnav-link.active { border-left-color:var(--wine); color:var(--wine); background:#fff0f5; font-weight:600; }
+.qnav-count { font-size:10px; color:#bbb; flex-shrink:0; }
+.qnav-link.active .qnav-count { color:var(--wine); }
+.qnav-toggle { display:none; align-items:center; gap:6px; padding:5px 12px;
+  font-size:11px; background:#fffaf7; border-bottom:1px solid #f0e8e0;
+  border:none; cursor:pointer; color:var(--wine); font-weight:600; width:100%; text-align:left; }
+@media (max-width:700px) {
+  .quality-nav { display:none; width:100%; border-right:none; border-bottom:1px solid #f0e8e0; flex-direction:row; flex-wrap:wrap; padding:4px; }
+  .quality-nav.open { display:flex; }
+  .quality-with-nav { flex-direction:column !important; }
+  .qnav-toggle { display:flex; position:sticky; top:0; z-index:2; }
+  .quality-pane { padding:6px 4px; overflow-x:hidden; }
+  .quality-content { padding:6px 4px; overflow-x:auto; }
+}
 .q-section { margin-bottom:22px; }
 .q-section h2 { font-size:13px; font-weight:600; color:var(--wine); margin-bottom:4px;
   display:flex; align-items:center; gap:6px; }
@@ -90,7 +114,10 @@ body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:va
   font-weight:500; cursor:pointer; position:sticky; top:0; z-index:1; }
 .data-table th:hover { background:#a0004a; }
 .data-table td { padding:4px 6px; border-bottom:1px solid #f0e8e0; vertical-align:top; }
+.data-table tbody tr:nth-child(even of :not(.row-detail)) td { background:#fffaf7; }
 .data-table tr:hover td { background:#fff3ee; }
+.row-detail table tbody tr:nth-child(even) td,
+.inner-table tbody tr:nth-child(even) td { background:#fffaf7; }
 
 .dist-badge { display:inline-block; padding:1px 5px; border-radius:8px;
   font-weight:600; font-size:10px; color:#fff; }
@@ -112,7 +139,7 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
   background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:4px;
   padding:6px 10px; font-size:11px; line-height:1.9; }
 @media (max-width:700px) {
-  #map-legend { bottom:auto; top:52px; left:8px; }
+  #map-legend { bottom:auto; top:90px; left:8px; z-index:800; }
 }
 .leg { display:flex; align-items:center; gap:5px; }
 
@@ -126,6 +153,8 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
   #sidebar-list { overflow:visible !important; height:auto !important; }
   .row-detail { display:none !important; }
   .quality-pane { height:auto !important; overflow:visible !important; padding:0; }
+  .quality-nav { display:none !important; }
+  .quality-content { overflow:visible !important; height:auto !important; padding:0 !important; }
   .q-section { page-break-inside:avoid; margin-bottom:14px; }
   body { background:#fff; font-size:9pt; }
   .data-table { font-size:8pt; }

@@ -34,6 +34,80 @@ function rows(data, fields) {
   ).join('');
 }
 
+function buildQualityNav(pane) {
+  // After first build, sections live inside .quality-content
+  const container = pane.querySelector('.quality-content') || pane;
+  const sections = [...container.querySelectorAll(':scope > .q-section')];
+  if (sections.length < 2) return;
+
+  sections.forEach(sec => {
+    const badge = sec.querySelector('h2 .q-badge');
+    if (badge?.id) sec.id = 'sec-' + badge.id.replace('cnt-', '');
+    else if (!sec.id) sec.id = 'sec-' + Math.random().toString(36).slice(2, 7);
+  });
+
+  if (pane.classList.contains('quality-with-nav')) {
+    // Refresh only: update counts and show/hide links to match section visibility
+    const nav = pane.querySelector('.quality-nav');
+    if (!nav) return;
+    sections.forEach(sec => {
+      const link = nav.querySelector(`[data-target="${sec.id}"]`);
+      if (!link) return;
+      const badge = sec.querySelector('h2 .q-badge');
+      link.querySelector('.qnav-count').textContent = badge?.textContent ?? '';
+      link.style.display = sec.style.display === 'none' ? 'none' : '';
+    });
+    return;
+  }
+
+  const nav = document.createElement('nav');
+  nav.className = 'quality-nav';
+  nav.innerHTML = sections.map(sec => {
+    const h2 = sec.querySelector('h2');
+    const badge = h2?.querySelector('.q-badge');
+    const title = h2
+      ? [...h2.childNodes].filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join('').trim()
+      : '';
+    const hidden = sec.style.display === 'none' ? ' style="display:none"' : '';
+    return `<a class="qnav-link" data-target="${sec.id}"${hidden}>${title}<span class="qnav-count">${badge?.textContent ?? ''}</span></a>`;
+  }).join('');
+
+  const content = document.createElement('div');
+  content.className = 'quality-content';
+  [...pane.children].forEach(child => content.appendChild(child));
+  const toggle = document.createElement('button');
+  toggle.className = 'qnav-toggle';
+  toggle.textContent = 'Gå till avsnitt ▾';
+  toggle.addEventListener('click', () => {
+    nav.classList.toggle('open');
+    toggle.textContent = nav.classList.contains('open') ? 'Gå till avsnitt ▴' : 'Gå till avsnitt ▾';
+  });
+
+  pane.appendChild(toggle);
+  pane.appendChild(nav);
+  pane.appendChild(content);
+  pane.classList.add('quality-with-nav');
+
+  nav.querySelectorAll('.qnav-link').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      content.querySelector('#' + a.dataset.target)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      nav.classList.remove('open');
+      toggle.textContent = 'Gå till avsnitt ▾';
+    });
+  });
+
+  content.addEventListener('scroll', () => {
+    const top = content.getBoundingClientRect().top;
+    let active = null;
+    sections.filter(s => s.style.display !== 'none')
+      .forEach(sec => { if (sec.getBoundingClientRect().top <= top + 60) active = sec; });
+    nav.querySelectorAll('.qnav-link').forEach(a =>
+      a.classList.toggle('active', !!active && a.dataset.target === active.id));
+  }, { passive: true });
+}
+
 function makeSortable(table) {
   const ths = [...table.querySelectorAll('thead th')];
   let col = -1, asc = true;
