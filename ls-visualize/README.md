@@ -11,10 +11,8 @@ Källdata kommer från `Löneservice.csv` på `/mnt/vmworkspace/`.
 # Rebuild av JSON från CSV (gör en gång efter att CSV:n uppdaterats)
 uv run build_data.py
 
-# Egen fristående server på 0.0.0.0:8989
-uv run serve.py              # http://ubuntu-ai:8989/
-
-# Eller via repo-servern (port 8088)
+# Servern startas via repo-roten - ls-visualize plockas upp
+# automatiskt som pilot-projekt på portalen.
 ./../start.sh                # http://ubuntu-ai:8088/ls-visualize/
 ```
 
@@ -27,20 +25,22 @@ Modulen är fristående - alla data ligger i `data/`:
 
 ## Layout
 
-- Ekonomiska enheter färglagda mörkgrön (Ja) eller gold (Nej).
+- Ekonomiska enheter färglagda mörkgrön (Ja) eller vinröd (Nej).
 - Stiftsgränser ovanpå som streckade linjer.
 - Enheter utan eget geografiskt område ritas som "off-shore-badges"
-  i havet/insjö nära ankarstaden, med streckad pil till stiftsstadens
-  centrum:
+  med streckad pil till sin förankringsstad. Pixel-baserad rendering
+  med iterativ kollisionsupplösning gör att badges aldrig överlappar
+  varandra oavsett zoom-nivå:
   - 13 stiftskanslier (rad där Stift==Enhet i CSV:n)
-  - Trossamfundet Svenska kyrkan (nationell nivå, ankrar mot Uppsala)
+  - Kyrkokansliet (nationell nivå, ankrar mot Uppsala)
   - 5 övriga enheter (Hovförsamlingen, Finska, Tyska S:ta Gertruds,
     Karlskrona Amiralitetsförsamling, Göteborgs begravningssamfällighet)
 
 ## Filtrering
 
 Sidopanelen toppright låter dig:
-- Toggla Ja / Nej / Saknas-färgning
+- Toggla Ja / Nej-färgning (gäller både polygoner och off-shore-badges)
 - Toggla lager (enheter, stiftsgränser, off-shore-boxar)
 
-Sidopanelen toppleft visar anslutningsgrad per stift.
+Sidopanelen toppleft visar anslutningsgrad per stift, sorterad enligt
+Unit-API:s skpkod.
