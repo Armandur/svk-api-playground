@@ -38,6 +38,7 @@ header .stats b { color: var(--wine); font-weight: 600; }
 
 .layout {
   flex: 1; display: flex; min-height: 0; position: relative;
+  overflow: hidden;
 }
 #map { flex: 1; min-height: 50vh; background: var(--beige); }
 aside {
@@ -51,14 +52,15 @@ aside {
   box-shadow: -2px 0 12px rgba(0,0,0,0.08);
 }
 aside.open { transform: translateX(0); }
+/* Backdrop är osynlig men klick-bar - används bara för att stänga
+   sidebaren när man klickar utanför, utan att mörka kartan. */
 .aside-backdrop {
   position: absolute; inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: transparent;
   z-index: 580;
-  opacity: 0; visibility: hidden;
-  transition: opacity 0.2s, visibility 0.2s;
+  visibility: hidden;
 }
-.aside-backdrop.open { opacity: 1; visibility: visible; }
+.aside-backdrop.open { visibility: visible; }
 aside h2 {
   font-size: 13px; color: var(--wine); font-weight: 600;
   margin: 14px 0 6px;
@@ -162,21 +164,27 @@ footer.controls {
 /* Slider med tickmarks - 19 år ger 18 intervall */
 .slider-wrap {
   flex: 1; min-width: 160px; position: relative;
-  display: flex; flex-direction: column; gap: 4px;
+  height: 22px;
 }
+/* Ticks och input ligger absolut-positionerade i samma vertikalmitt
+   så slider-thumben (22px diameter) centreras på tickerna. */
 .slider-ticks {
-  position: relative; height: 8px;
+  position: absolute; left: 11px; right: 11px;
+  top: 7px; height: 8px;
   background:
     linear-gradient(to right, var(--wine) 0, var(--wine) 1px, transparent 1px) left center / calc(100% / 18) 8px,
     linear-gradient(to right, transparent calc(100% - 1px), var(--wine) calc(100% - 1px)) left center / 100% 8px;
   background-repeat: repeat-x, no-repeat;
-  margin: 0 11px;
+  pointer-events: none;
+  z-index: 1;
 }
 input[type="range"] {
+  position: absolute; left: 0; right: 0; top: 9px;
   width: 100%;
   -webkit-appearance: none; appearance: none;
   height: 4px; background: var(--line); border-radius: 2px;
   outline: none; margin: 0;
+  z-index: 2;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
@@ -262,27 +270,6 @@ input[type="range"]::-moz-range-thumb {
   .layer-toggle { width: 100%; order: 99; }
 }
 
-.info-btn {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--wine); color: var(--beige);
-  border: none; cursor: pointer;
-  font-weight: 600;
-  display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  position: relative;
-}
-.info-btn:hover { background: var(--black); }
-.info-btn .info-icon {
-  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
-  font-size: 16px;
-}
-.info-btn .close-icon {
-  font-size: 22px; line-height: 1; display: none;
-}
-.info-btn.is-open .info-icon { display: none; }
-.info-btn.is-open .close-icon { display: inline; }
-
 .play-btn {
   width: 32px; height: 32px; border-radius: 50%;
   background: var(--beige); color: var(--wine);
@@ -297,9 +284,30 @@ input[type="range"]::-moz-range-thumb {
 .play-btn.is-playing { background: var(--wine); color: var(--beige); }
 .play-btn.is-playing .play-icon { display: none; }
 .play-btn.is-playing .pause-icon { display: inline; }
-.info-btn.has-changes::after {
-  content: ""; position: absolute;
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--gold); border: 2px solid var(--beige);
-  margin-left: 22px; margin-top: -22px;
+/* Flytande info-knapp ovanpå kartan i övre högra hörnet. */
+.info-fab {
+  position: absolute; top: 12px; right: 12px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--wine); color: var(--beige);
+  border: 2px solid var(--beige); cursor: pointer;
+  font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  z-index: 650;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  flex-shrink: 0;
 }
+.info-fab:hover { background: var(--black); }
+.info-fab .info-icon {
+  font-family: "Spectral", "Times New Roman", serif; font-style: italic;
+  font-size: 22px; line-height: 1;
+}
+.info-fab .close-icon { font-size: 28px; line-height: 1; display: none; }
+.info-fab.is-open .info-icon { display: none; }
+.info-fab.is-open .close-icon { display: inline; }
+.info-fab.has-changes::after {
+  content: ""; position: absolute;
+  top: 4px; right: 4px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--gold); border: 2px solid var(--beige);
+}
+

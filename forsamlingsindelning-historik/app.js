@@ -606,17 +606,17 @@ async function init() {
     if (!li) return;
     zoomToFeature(li.dataset.typ, li.dataset.kod);
   });
-  // Drawer-toggle
+  // Drawer-toggle via FAB:en i kartans övre högra hörn.
   const aside = document.getElementById("aside-panel");
   const backdrop = document.getElementById("aside-backdrop");
-  const infoBtn = document.getElementById("info-toggle");
+  const infoFab = document.getElementById("info-fab");
   const setDrawer = (open) => {
     aside.classList.toggle("open", open);
     backdrop.classList.toggle("open", open);
-    infoBtn.classList.toggle("is-open", open);
-    infoBtn.setAttribute("aria-label", open ? "Stäng" : "Visa förändringar");
+    infoFab.classList.toggle("is-open", open);
+    infoFab.setAttribute("aria-label", open ? "Stäng" : "Visa förändringar");
   };
-  infoBtn.addEventListener("click", () =>
+  infoFab.addEventListener("click", () =>
     setDrawer(!aside.classList.contains("open")));
   backdrop.addEventListener("click", () => setDrawer(false));
 
