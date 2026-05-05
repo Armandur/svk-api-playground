@@ -305,9 +305,9 @@ function buildTable(rs) {
   </tr></thead><tbody>`;
   rs.forEach((r, i) => {
     const hp = r.avstand_platser_m != null, ho = r.avstand_osm_m != null, hb = r.bv_lat != null;
-    const b = (hp ? `<span class="dist-badge" style="background:${distColor(r.avstand_platser_m)}">${fmtDist(r.avstand_platser_m)}</span><span class="src-label">Platser</span>` : '')
-            + (ho ? ` <span class="dist-badge" style="background:${distColor(r.avstand_osm_m)}">${fmtDist(r.avstand_osm_m)}</span><span class="src-label">OSM</span>` : '')
-            + (hb ? ` <span class="dist-badge" style="background:${distColor(r.avstand_bv_m)}">${fmtDist(r.avstand_bv_m)}</span><span class="src-label">BV</span>` : '');
+    const b = (hp ? `<span class="dist-badge" style="background:${distColor(r.avstand_platser_m)}">${fmtDist(r.avstand_platser_m)}</span><span class="src-label"><span class="src-dot" style="background:#1565c0"></span>Platser</span>` : '')
+            + (ho ? ` <span class="dist-badge" style="background:${distColor(r.avstand_osm_m)}">${fmtDist(r.avstand_osm_m)}</span><span class="src-label"><span class="src-dot" style="background:#2e7d32"></span>OSM</span>` : '')
+            + (hb ? ` <span class="dist-badge" style="background:${distColor(r.avstand_bv_m)}">${fmtDist(r.avstand_bv_m)}</span><span class="src-label"><span class="src-dot" style="background:#7B1FA2"></span>BV</span>` : '');
     html += `<tr class="data-row" data-idx="${i}"><td style="white-space:nowrap">${b}</td><td>${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
     <tr class="row-detail"><td colspan="3">
       <strong>KBR (Kyrkobyggnadsregistret)</strong> ${r.kbr_lat}, ${r.kbr_lng}<br>
