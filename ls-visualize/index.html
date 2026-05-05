@@ -195,6 +195,8 @@ header .stats b { color: var(--wine); font-weight: 600; }
   padding: 3px 0; border-bottom: 1px dotted var(--line);
 }
 .top-list li:last-child { border-bottom: none; }
+.top-list li.klickbar { cursor: pointer; }
+.top-list li.klickbar:hover { background: rgba(125, 0, 55, 0.04); }
 .top-list li::before {
   counter-increment: rank; content: counter(rank);
   color: var(--muted); font-variant-numeric: tabular-nums;
@@ -290,6 +292,9 @@ let dataset = null;       // { enheter, stiftsenheter, ovrigt, trossamfund, stif
 let accountsLayer = null;
 let choroplethLayer = null;
 let minKonton = 0;        // storleksfilter: dölj enheter med < N konton
+let focusStift = "";      // stift-fokus: "" = visa alla, annars stiftnamn
+const stiftBounds = {};   // stiftnamn -> L.LatLngBounds (cachat från geojson)
+const enhetLayers = {};   // enhetsnamn -> L.Layer (cachat för klick-zoom)
 let enheterLayer = null;  // L.geoJson över ekonomiska enheter
 let stiftLayer = null;    // L.geoJson stift-gränser
 let offshoreLayer = null; // L.layerGroup med stiftskanslier, ovrigt, trossamfund
@@ -396,7 +401,8 @@ function statusForFeature(props) {
 
 function styleEnhet(feature) {
   const st = statusForFeature(feature.properties);
-  const hidden = !visible[st.key] || st.konton < minKonton;
+  const wrongStift = focusStift && st.stift !== focusStift;
+  const hidden = !visible[st.key] || st.konton < minKonton || wrongStift;
   return {
     color: COLORS.kartGrans,
     weight: 1.2,
@@ -442,10 +448,20 @@ function buildEnheterLayer(geojson) {
   enheterLayer = L.geoJson(geojson, {
     style: styleEnhet,
     onEachFeature: (feature, layer) => {
-      layer.bindTooltip((feature.properties.namn || "").trim(), { sticky: true });
+      const namn = (feature.properties.namn || "").trim();
+      layer.bindTooltip(namn, { sticky: true });
       layer.bindPopup(popupForEnhet(feature.properties));
+      if (namn) enhetLayers[namn] = layer;
     },
   }).addTo(map);
+}
+
+function zoomToEnhet(namn) {
+  const layer = enhetLayers[namn];
+  if (!layer) return;
+  const bounds = layer.getBounds();
+  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 });
+  layer.openPopup(bounds.getCenter());
 }
 
 function buildStiftLayer(geojson) {
@@ -455,6 +471,10 @@ function buildStiftLayer(geojson) {
       fillOpacity: 0, dashArray: "6 4",
     },
     interactive: false,
+    onEachFeature: (feature, layer) => {
+      const namn = (feature.properties.namn || "").trim();
+      if (namn) stiftBounds[namn] = layer.getBounds();
+    },
   }).addTo(map);
 }
 
@@ -534,7 +554,7 @@ function buildAccountsLayer(geojson) {
     });
     m.bindTooltip(`${namn} - ${fmtInt(e.konton)} konton`, { sticky: true });
     accountsLayer.addLayer(m);
-    accountsMarkers.push({ marker: m, ja: e.ja, konton: e.konton });
+    accountsMarkers.push({ marker: m, ja: e.ja, konton: e.konton, stift: e.stift });
   }
 }
 
@@ -542,7 +562,8 @@ function applyAccountsVisibility() {
   if (!accountsLayer) return;
   for (const a of accountsMarkers) {
     const key = a.ja ? "ja" : "nej";
-    const should = visible[key] && a.konton >= minKonton;
+    const matchStift = !focusStift || a.stift === focusStift;
+    const should = visible[key] && a.konton >= minKonton && matchStift;
     if (should) accountsLayer.addLayer(a.marker);
     else accountsLayer.removeLayer(a.marker);
   }
@@ -611,10 +632,10 @@ function offshoreEntity({ namn, kortNamn, kategori, ja, konton, anchorStad,
   };
 }
 
-function pushEntry(entry, status) {
+function pushEntry(entry, status, stift) {
   offshoreEntries.push({ ...entry, status });
-  offshoreItems.push({ marker: entry.arrowMarker, status });
-  offshoreItems.push({ marker: entry.badgeMarker, status });
+  offshoreItems.push({ marker: entry.arrowMarker, status, stift });
+  offshoreItems.push({ marker: entry.badgeMarker, status, stift });
 }
 
 function buildOffshoreLayer() {
@@ -629,7 +650,7 @@ function buildOffshoreLayer() {
       kategori: "Stiftskansli",
       ja: info.ja, konton: info.konton, anchorStad, dx, dy,
     });
-    pushEntry(e, info.ja ? "ja" : "nej");
+    pushEntry(e, info.ja ? "ja" : "nej", namn);
     items.push(e.arrowMarker, e.badgeMarker);
   }
 
@@ -651,7 +672,7 @@ function buildOffshoreLayer() {
       ja: o.ja, konton: o.konton, anchorStad, dx, dy,
       popupExtra: ICKE_TERR.has(o.namn) ? "Icke-territoriell församling" : null,
     });
-    pushEntry(e, o.ja ? "ja" : "nej");
+    pushEntry(e, o.ja ? "ja" : "nej", o.stift);
     items.push(e.arrowMarker, e.badgeMarker);
   }
 
@@ -663,7 +684,7 @@ function buildOffshoreLayer() {
       kategori: "Nationell nivå - Kyrkokansliet",
       ja: t.ja, konton: t.konton, anchorStad, dx, dy,
     });
-    pushEntry(e, t.ja ? "ja" : "nej");
+    pushEntry(e, t.ja ? "ja" : "nej", null);
     items.push(e.arrowMarker, e.badgeMarker);
   }
 
@@ -761,8 +782,9 @@ function layoutOffshore() {
 
 function applyOffshoreVisibility() {
   if (!offshoreLayer) return;
-  for (const { marker, status } of offshoreItems) {
-    const should = visible[status];
+  for (const { marker, status, stift } of offshoreItems) {
+    const matchStift = !focusStift || stift === focusStift;
+    const should = visible[status] && matchStift;
     const has = offshoreLayer.hasLayer(marker);
     if (should && !has) offshoreLayer.addLayer(marker);
     else if (!should && has) offshoreLayer.removeLayer(marker);
@@ -800,6 +822,13 @@ const FilterControl = L.Control.extend({
       <div class="toggle-row">
         <label><input type="checkbox" data-key="ja" checked> Ja</label>
         <label><input type="checkbox" data-key="nej" checked> Nej</label>
+      </div>
+      <div class="lp-title" style="margin-top:6px">Stift</div>
+      <div class="toggle-row">
+        <select id="focus-stift" style="width:100%;padding:3px 6px;
+          font:inherit;border:1px solid var(--line);background:#fff;">
+          <option value="">Alla stift</option>
+        </select>
       </div>
       <div class="lp-title" style="margin-top:6px">Min storlek</div>
       <div class="toggle-row">
@@ -842,6 +871,15 @@ const FilterControl = L.Control.extend({
       minKonton = parseInt(e.target.value, 10) || 0;
       if (enheterLayer) enheterLayer.setStyle(styleEnhet);
       applyAccountsVisibility();
+    });
+    div.querySelector("#focus-stift").addEventListener("change", e => {
+      focusStift = e.target.value;
+      if (enheterLayer) enheterLayer.setStyle(styleEnhet);
+      applyAccountsVisibility();
+      applyOffshoreVisibility();
+      const b = focusStift && stiftBounds[focusStift];
+      if (b) map.fitBounds(b, { padding: [20, 20] });
+      else map.setView([62.5, 16.0], 5);
     });
     div.querySelectorAll("input[data-layer]").forEach(inp => {
       inp.addEventListener("change", e => {
@@ -966,6 +1004,9 @@ function renderSummary() {
       el.querySelectorAll(".tab-panel").forEach(p =>
         p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
     });
+  });
+  el.querySelectorAll(".top-list li.klickbar").forEach(li => {
+    li.addEventListener("click", () => zoomToEnhet(li.dataset.namn));
   });
 }
 
@@ -1092,14 +1133,17 @@ function renderTopEjAnslutna() {
     .sort((a, b) => b.konton - a.konton)
     .slice(0, 10);
   if (!top.length) return '<div class="empty">Inga ej-anslutna enheter.</div>';
-  const items = top.map(e => `
-    <li>
+  const items = top.map(e => {
+    const klickbar = enhetLayers[e.namn] ? "klickbar" : "";
+    return `
+    <li class="${klickbar}" data-namn="${escapeHtml(e.namn)}">
       <div>
         <span class="top-namn">${escapeHtml(e.namn)}</span>
         <span class="top-stift">${escapeHtml(e.stift || "")}</span>
       </div>
       <span class="top-konton">${fmtInt(e.konton)}</span>
-    </li>`).join("");
+    </li>`;
+  }).join("");
   return `<div class="top-list"><ol>${items}</ol></div>`;
 }
 
@@ -1126,8 +1170,23 @@ async function init() {
   buildAccountsLayer(enheter);
   buildChoroplethLayer(stift);
   buildOffshoreLayer();
+  populateStiftDropdown();
   renderHeader();
   renderSummary();
+}
+
+function populateStiftDropdown() {
+  const sel = document.getElementById("focus-stift");
+  if (!sel) return;
+  const stiftNamn = Object.keys(dataset.stift_summary || {})
+    .filter(n => n !== TROSS_NAMN)
+    .sort((a, b) => (STIFT_KOD[a] || "99").localeCompare(STIFT_KOD[b] || "99"));
+  for (const namn of stiftNamn) {
+    const opt = document.createElement("option");
+    opt.value = namn;
+    opt.textContent = namn;
+    sel.appendChild(opt);
+  }
 }
 
 init().catch(err => {

@@ -47,8 +47,15 @@ först. `[KLAR]`-markerade är implementerade.
   Dropdown "Min storlek" i Filter-panelen med stegen 0/25/50/100/200
   konton. Filtrerar både polygoner och storlekscirklar.
 
-- **10. Stift-fokus**
-  Klicka på ett stift för att zooma + visa bara det stiftets enheter.
+- `[KLAR]` **10. Stift-fokus**
+  Dropdown "Stift" i Filter-panelen. Vid val zoomar kartan till
+  stiftets bounds och döljer alla enheter (polygoner, storlekscirklar,
+  off-shore-badges) utanför.
+
+- `[KLAR]` **Bonus: klick-zoom från top-listan**
+  Klick på en enhet i "Största ej-anslutna" zoomar kartan till enhetens
+  polygon och öppnar dess popup. Off-shore-enheter (utan polygon)
+  hoppas över.
 
 ## Datalager
 
