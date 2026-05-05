@@ -27,6 +27,7 @@
 
 <!-- Flik 1: Koordinatavvikelser -->
 <div id="tab-koordinater" class="tab-pane active" style="height:calc(100vh - 88px)">
+  <h2 class="print-only" style="font-size:14pt;color:#7D0037;margin:0 0 6px">Koordinatavvikelser</h2>
   <div id="coord-controls">
     <label>Tröskel:</label>
     <input type="range" id="threshold" min="0" max="50000" step="100" value="500">
@@ -34,16 +35,16 @@
     <button id="filter-btn" class="filter-btn">Filter</button>
     <label><input type="checkbox" id="show-unmatched" style="margin-right:3px">Omatchade</label>
     <div class="ctrl-stats">
-      <span class="ctrl-stat"><span class="dot" style="background:#c62828"></span><span id="cnt-5k">-</span> &ge;5 km</span>
-      <span class="ctrl-stat"><span class="dot" style="background:#f57c00"></span><span id="cnt-1k">-</span> &ge;1 km</span>
-      <span class="ctrl-stat"><span class="dot" style="background:#fbc02d"></span><span id="cnt-200">-</span> &ge;200 m</span>
+      <button class="ctrl-stat-btn" title="Sätt tröskel till 5 km" onclick="setThreshold(5000)"><span class="dot" style="background:#c62828"></span><span id="cnt-5k">-</span> &ge;5 km</button>
+      <button class="ctrl-stat-btn" title="Sätt tröskel till 1 km" onclick="setThreshold(1000)"><span class="dot" style="background:#f57c00"></span><span id="cnt-1k">-</span> &ge;1 km</button>
+      <button class="ctrl-stat-btn" title="Sätt tröskel till 200 m" onclick="setThreshold(200)"><span class="dot" style="background:#fbc02d"></span><span id="cnt-200">-</span> &ge;200 m</button>
       <span id="match-info">-</span>
     </div>
   </div>
   <div id="filter-panel" style="display:none">
-    <div class="fp-title">Stift</div>
+    <div class="fp-title">Stift <a href="#" class="fp-link" id="stift-all">Välj alla</a> / <a href="#" class="fp-link" id="stift-inv">Invertera</a></div>
     <div id="filter-stifts"></div>
-    <div class="fp-title">Typ</div>
+    <div class="fp-title">Typ <a href="#" class="fp-link" id="typ-all">Välj alla</a> / <a href="#" class="fp-link" id="typ-inv">Invertera</a></div>
     <div id="filter-typer"></div>
     <div class="fp-title">Källa</div>
     <div id="filter-sources">
@@ -51,6 +52,7 @@
       <label><input type="checkbox" value="osm" checked> OSM</label>
       <label><input type="checkbox" value="bv" checked> BV</label>
     </div>
+    <button id="clear-filters" class="fp-clear">Rensa alla filter</button>
   </div>
   <div id="coord-main">
     <div id="map">
@@ -63,7 +65,12 @@
         <div class="leg" id="leg-unmatched" style="display:none"><span style="width:9px;height:9px;border-radius:50%;background:#bbb;display:inline-block"></span> Ej matchad</div>
       </div>
     </div>
-    <div id="sidebar"><div id="no-data">Laddar data...</div></div>
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <input type="search" id="search-name" placeholder="Sök kyrka..." autocomplete="off">
+      </div>
+      <div id="sidebar-list"><div id="no-data">Laddar data...</div></div>
+    </div>
   </div>
 </div>
 
@@ -270,8 +277,9 @@ let allRows = [];
 let sortCol = 'avstand_m', sortAsc = false;
 
 let filterStift = new Set();
-let filterTyp = new Set();
-let filterSrc = new Set(['platser', 'osm', 'bv']);
+let filterTyp   = new Set();
+let filterSrc   = new Set(['platser', 'osm', 'bv']);
+let filterName  = '';
 
 function updateFilterBtn() {
   const btn = document.getElementById('filter-btn');
@@ -280,11 +288,20 @@ function updateFilterBtn() {
 }
 
 // Koordinatfliken
+function setThreshold(val) {
+  document.getElementById('threshold').value = val;
+  document.getElementById('threshold-num').value = val;
+  applyFilter();
+}
+
 function buildTable(rs) {
-  const sb = document.getElementById('sidebar');
+  const sb = document.getElementById('sidebar-list');
   if (!rs.length) { sb.innerHTML = '<div id="no-data">Inga avvikelser</div>'; return; }
+  const si = col => sortCol === col ? (sortAsc ? ' ▲' : ' ▼') : '';
   let html = `<table class="data-table"><thead><tr>
-    <th data-col="avstand_m">Avvikelse</th><th data-col="namn">Kyrka</th><th data-col="stift">Stift</th>
+    <th data-col="avstand_m">Avvikelse${si('avstand_m')}</th>
+    <th data-col="namn">Kyrka${si('namn')}</th>
+    <th data-col="stift">Stift${si('stift')}</th>
   </tr></thead><tbody>`;
   rs.forEach((r, i) => {
     const hp = r.avstand_platser_m != null, ho = r.avstand_osm_m != null, hb = r.bv_lat != null;
@@ -303,7 +320,8 @@ function buildTable(rs) {
   sb.innerHTML = html + '</tbody></table>';
   sb.querySelectorAll('th[data-col]').forEach(th => th.addEventListener('click', () => {
     sortAsc = sortCol === th.dataset.col ? !sortAsc : th.dataset.col !== 'avstand_m';
-    sortCol = th.dataset.col; applyFilter();
+    sortCol = th.dataset.col;
+    applyFilter();
   }));
   sb.querySelectorAll('.data-row').forEach(tr => tr.addEventListener('click', () => {
     tr.classList.toggle('expanded');
@@ -332,6 +350,8 @@ function applyFilter() {
       });
     }
   }
+
+  if (filterName) rs = rs.filter(r => (r.namn || '').toLowerCase().includes(filterName));
 
   rs.sort((a,b) => {
     let va = a[sortCol], vb = b[sortCol];
@@ -375,6 +395,46 @@ document.querySelectorAll('#filter-sources input').forEach(cb => {
     else filterSrc.delete(cb.value);
     updateFilterBtn(); applyFilter();
   });
+});
+
+document.getElementById('clear-filters').addEventListener('click', () => {
+  filterStift.clear(); filterTyp.clear();
+  filterSrc = new Set(['platser', 'osm', 'bv']);
+  document.querySelectorAll('#filter-stifts input, #filter-typer input').forEach(cb => cb.checked = false);
+  document.querySelectorAll('#filter-sources input').forEach(cb => cb.checked = true);
+  updateFilterBtn(); applyFilter();
+});
+
+document.getElementById('stift-all').addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelectorAll('#filter-stifts input').forEach(cb => { cb.checked = true; filterStift.add(cb.value); });
+  updateFilterBtn(); applyFilter();
+});
+document.getElementById('stift-inv').addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelectorAll('#filter-stifts input').forEach(cb => {
+    cb.checked = !cb.checked;
+    if (cb.checked) filterStift.add(cb.value); else filterStift.delete(cb.value);
+  });
+  updateFilterBtn(); applyFilter();
+});
+document.getElementById('typ-all').addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelectorAll('#filter-typer input').forEach(cb => { cb.checked = true; filterTyp.add(cb.value); });
+  updateFilterBtn(); applyFilter();
+});
+document.getElementById('typ-inv').addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelectorAll('#filter-typer input').forEach(cb => {
+    cb.checked = !cb.checked;
+    if (cb.checked) filterTyp.add(cb.value); else filterTyp.delete(cb.value);
+  });
+  updateFilterBtn(); applyFilter();
+});
+
+document.getElementById('search-name').addEventListener('input', function() {
+  filterName = this.value.toLowerCase().trim();
+  applyFilter();
 });
 
 document.getElementById('show-unmatched').addEventListener('change', function() {
@@ -627,7 +687,7 @@ fetch('data/report.json').then(r=>r.json()).then(data => {
     applyFilter();
   });
 }).catch(() => {
-  document.getElementById('sidebar').innerHTML = '<div id="no-data">Kör build_report.py först</div>';
+  document.getElementById('sidebar-list').innerHTML = '<div id="no-data">Kör build_report.py först</div>';
 });
 
 fetch('data/quality.json').then(r=>r.json()).then(q => {

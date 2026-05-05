@@ -11,8 +11,10 @@ var highlightMarker = null;
 function renderUnmatched() {
   unmatchedLayer.clearLayers();
   unmatchedRows.forEach(r => {
+    const tip = "<strong>Ej matchad i Platser/OSM</strong><br>"+r.namn+"<br>"+(r.stift||'')+"<br><span style='color:#999;font-size:10px'>KBR</span>";
     L.circleMarker([r.kbr_lat, r.kbr_lng], {radius:3, color:"#999", fillColor:"#bbb", fillOpacity:0.7, weight:1})
-      .bindTooltip("<strong>Ej matchad i Platser/OSM</strong><br>"+r.namn+"<br>"+(r.stift||'')+"<br><span style='color:#999;font-size:10px'>Källa: KBR (Kyrkobyggnadsregistret)</span>", {sticky:true})
+      .bindTooltip(tip, {sticky:true})
+      .bindPopup(tip)
       .addTo(unmatchedLayer);
   });
 }
@@ -36,24 +38,28 @@ function buildMarkers(rs) {
   rs.forEach(r => {
     const c = distColor(r.avstand_m);
     if (r.platser_lat != null) {
+      const platserTip = `<strong>Platser-API</strong><br>${r.namn}<br>${r.platser_lat}, ${r.platser_lng}${r.platser_slug ? `<br><a href="https://www.svenskakyrkan.se/platser/${r.platser_slug}" target="_blank" style="color:#1565c0">Öppna på svenskakyrkan.se</a>` : ''}`;
       L.polyline([[r.kbr_lat,r.kbr_lng],[r.platser_lat,r.platser_lng]],
         {color:'#1565c0',weight:1.5,opacity:0.5,dashArray:'4 4'}).addTo(markerLayer);
       L.circleMarker([r.platser_lat,r.platser_lng],{radius:4,color:'#1565c0',fillColor:'#42a5f5',fillOpacity:0.8,weight:1.5})
-        .bindTooltip(`<strong>Platser-API</strong><br>${r.namn}<br>${r.platser_lat}, ${r.platser_lng}${r.platser_slug ? `<br><a href="https://www.svenskakyrkan.se/platser/${r.platser_slug}" target="_blank" style="color:#1565c0">Öppna på svenskakyrkan.se</a>` : ''}`,{sticky:true}).addTo(markerLayer);
+        .bindTooltip(platserTip, {sticky:true}).bindPopup(platserTip).addTo(markerLayer);
     }
     if (r.osm_lat != null) {
+      const osmTip = `<strong>OSM</strong><br>${r.namn}<br>${r.osm_lat}, ${r.osm_lng}`;
       L.polyline([[r.kbr_lat,r.kbr_lng],[r.osm_lat,r.osm_lng]],
         {color:'#2e7d32',weight:1.5,opacity:0.5,dashArray:'2 4'}).addTo(markerLayer);
       L.circleMarker([r.osm_lat,r.osm_lng],{radius:4,color:'#2e7d32',fillColor:'#66bb6a',fillOpacity:0.8,weight:1.5})
-        .bindTooltip(`<strong>OSM</strong><br>${r.namn}<br>${r.osm_lat}, ${r.osm_lng}`,{sticky:true}).addTo(markerLayer);
+        .bindTooltip(osmTip, {sticky:true}).bindPopup(osmTip).addTo(markerLayer);
     }
     if (r.bv_lat != null) {
+      const bvTip = `<strong>BV</strong><br>${r.namn}<br>${r.bv_lat}, ${r.bv_lng}`;
       L.polyline([[r.kbr_lat,r.kbr_lng],[r.bv_lat,r.bv_lng]],
         {color:'#7B1FA2',weight:1.5,opacity:0.5,dashArray:'3 5'}).addTo(markerLayer);
       L.circleMarker([r.bv_lat,r.bv_lng],{radius:4,color:'#7B1FA2',fillColor:'#CE93D8',fillOpacity:0.8,weight:1.5})
-        .bindTooltip(`<strong>BV</strong><br>${r.namn}<br>${r.bv_lat}, ${r.bv_lng}`,{sticky:true}).addTo(markerLayer);
+        .bindTooltip(bvTip, {sticky:true}).bindPopup(bvTip).addTo(markerLayer);
     }
+    const kbrTip = `<strong>KBR</strong><br>${r.namn}<br>${r.kbr_lat}, ${r.kbr_lng}<br>Platser: ${fmtDist(r.avstand_platser_m)} | OSM: ${fmtDist(r.avstand_osm_m)} | BV: ${fmtDist(r.avstand_bv_m)}`;
     L.circleMarker([r.kbr_lat,r.kbr_lng],{radius:5,color:c,fillColor:c,fillOpacity:0.9,weight:1.5})
-      .bindTooltip(`<strong>KBR (Kyrkobyggnadsregistret)</strong><br>${r.namn}<br>${r.kbr_lat}, ${r.kbr_lng}<br>Platser: ${fmtDist(r.avstand_platser_m)} | OSM: ${fmtDist(r.avstand_osm_m)} | BV: ${fmtDist(r.avstand_bv_m)}`,{sticky:true}).addTo(markerLayer);
+      .bindTooltip(kbrTip, {sticky:true}).bindPopup(kbrTip).addTo(markerLayer);
   });
 }

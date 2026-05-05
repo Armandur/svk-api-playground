@@ -33,23 +33,35 @@ body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:va
   border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,.15);
   padding:12px 14px; min-width:220px; max-height:70vh; overflow-y:auto; font-size:12px; }
 #filter-panel .fp-title { font-weight:600; color:var(--wine); font-size:11px; margin:10px 0 4px;
-  border-top:1px solid #f0e8e0; padding-top:8px; }
+  border-top:1px solid #f0e8e0; padding-top:8px; display:flex; align-items:center; gap:6px; }
 #filter-panel .fp-title:first-child { border-top:none; padding-top:0; margin-top:0; }
 #filter-panel label { display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; }
 #filter-panel label:hover { color:var(--wine); }
+.fp-link { font-size:10px; color:var(--wine); text-decoration:none; font-weight:400; margin-left:auto; }
+.fp-link + .fp-link { margin-left:0; }
+.fp-link:hover { text-decoration:underline; }
+.fp-clear { margin-top:10px; width:100%; padding:5px; background:none; border:1px solid #ccc;
+  border-radius:3px; cursor:pointer; font-size:11px; color:#666; }
+.fp-clear:hover { background:#ffe8de; border-color:var(--wine); color:var(--wine); }
 
 @media (max-width:700px) {
   #filter-panel { bottom:0; left:0; right:0; border-radius:12px 12px 0 0; border-bottom:none; min-width:0; }
 }
 
-.ctrl-stats { display:flex; gap:10px; margin-left:auto; align-items:center; }
-.ctrl-stat { display:flex; align-items:center; gap:4px; color:#444; }
+.ctrl-stats { display:flex; gap:6px; margin-left:auto; align-items:center; }
+.ctrl-stat-btn { display:flex; align-items:center; gap:4px; color:#444; background:none;
+  border:none; cursor:pointer; padding:2px 6px; border-radius:3px; font-size:12px; }
+.ctrl-stat-btn:hover { background:#ffe8de; color:var(--wine); }
 .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 #match-info { font-size:10px; color:#999; border-left:1px solid #ddd; padding-left:8px; }
 
 #coord-main { display:flex; flex:1; overflow:hidden; position:relative; }
 #map { flex:1; min-width:0; }
-#sidebar { width:360px; overflow-y:auto; border-left:2px solid var(--black); background:#fff; transition:width .2s,opacity .2s; }
+#sidebar { width:360px; display:flex; flex-direction:column; border-left:2px solid var(--black); background:#fff; transition:width .2s,opacity .2s; overflow:hidden; }
+#sidebar-header { padding:6px 8px; border-bottom:1px solid #f0e8e0; background:#fffaf7; flex-shrink:0; }
+#search-name { width:100%; padding:4px 8px; font-size:11px; border:1px solid #ccc; border-radius:3px; outline:none; }
+#search-name:focus { border-color:var(--wine); }
+#sidebar-list { overflow-y:auto; flex:1; }
 #coord-main.sidebar-hidden #sidebar { width:0; opacity:0; border-left:none; overflow:hidden; }
 #sidebar-toggle { position:absolute; top:8px; right:8px; z-index:1001;
   background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:3px; cursor:pointer;
@@ -99,9 +111,14 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
 .leg { display:flex; align-items:center; gap:5px; }
 
 @media print {
-  #header button.export, .tabs-nav, #coord-controls, #coord-main,
-  #tab-koordinater, #map-legend, .no-print { display:none !important; }
+  #header button.export, .tabs-nav, #coord-controls, #map, #map-legend,
+  #sidebar-toggle, #sidebar-header, .no-print { display:none !important; }
   .tab-pane { display:block !important; height:auto !important; }
+  #coord-main { display:block !important; overflow:visible !important; height:auto !important; }
+  #sidebar { width:100% !important; border:none !important; overflow:visible !important;
+    height:auto !important; display:block !important; }
+  #sidebar-list { overflow:visible !important; height:auto !important; }
+  .row-detail { display:none !important; }
   .quality-pane { height:auto !important; overflow:visible !important; padding:0; }
   .q-section { page-break-inside:avoid; margin-bottom:14px; }
   body { background:#fff; font-size:9pt; }
@@ -109,7 +126,9 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
   .data-table th { background:#7D0037 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   #print-header { display:block !important; margin-bottom:10px; padding-bottom:8px;
     border-bottom:2px solid #000; }
+  .print-only { display:block !important; }
 }
+.print-only { display:none; }
 #print-header { display:none; }
 #print-header h1 { font-size:16pt; color:var(--wine); }
 #print-header p { font-size:9pt; color:#555; }
