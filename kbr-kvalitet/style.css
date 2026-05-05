@@ -98,6 +98,9 @@ body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:va
   .quality-pane { padding:6px 4px; overflow-x:hidden; }
   .quality-content { padding:6px 4px; overflow-x:auto; }
 }
+.quality-search { width:100%; padding:5px 8px; font-size:12px; border:1px solid #ccc;
+  border-radius:3px; outline:none; margin-bottom:12px; box-sizing:border-box; }
+.quality-search:focus { border-color:var(--wine); }
 .q-section { margin-bottom:22px; }
 .q-section h2 { font-size:13px; font-weight:600; color:var(--wine); margin-bottom:4px;
   display:flex; align-items:center; gap:6px; }

@@ -75,6 +75,28 @@ function buildQualityNav(pane) {
   const content = document.createElement('div');
   content.className = 'quality-content';
   [...pane.children].forEach(child => content.appendChild(child));
+
+  const searchInput = document.createElement('input');
+  searchInput.type = 'search';
+  searchInput.placeholder = 'Sök i tabellerna...';
+  searchInput.className = 'quality-search';
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+    content.querySelectorAll('.q-section').forEach(sec => {
+      let visible = 0;
+      sec.querySelectorAll('tbody tr:not(.row-detail)').forEach(row => {
+        const show = !q || row.textContent.toLowerCase().includes(q);
+        row.style.display = show ? '' : 'none';
+        const next = row.nextElementSibling;
+        if (next?.classList.contains('row-detail') && !show) next.style.display = 'none';
+        if (show) visible++;
+      });
+      sec.style.display = !q || visible > 0 ? '' : 'none';
+    });
+    buildQualityNav(pane);
+  });
+  content.prepend(searchInput);
+
   const toggle = document.createElement('button');
   toggle.className = 'qnav-toggle';
   toggle.textContent = 'Gå till avsnitt ▾';
