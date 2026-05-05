@@ -471,11 +471,20 @@ for url in OVERPASS_URLS:
                     continue
                 tags = el.get("tags") or {}
                 is_cemetery = (tags.get("landuse") == "cemetery"
-                               or tags.get("amenity") in ("grave_yard", "crematorium"))
+                               or tags.get("amenity") == "grave_yard")
+                is_crematorium = tags.get("amenity") == "crematorium"
                 is_campanile = tags.get("man_made") == "campanile"
+                if is_cemetery:
+                    osm_typ = "begravningsplats"
+                elif is_crematorium:
+                    osm_typ = "krematorium"
+                elif is_campanile:
+                    osm_typ = "klockstapel"
+                else:
+                    osm_typ = "kyrka"
                 osm_list.append({"osm_id": el["id"], "namn": name,
                                   "osm_lat": round(ola, 6), "osm_lng": round(olo, 6),
-                                  "osm_typ": "begravningsplats" if is_cemetery else "klockstapel" if is_campanile else "kyrka"})
+                                  "osm_typ": osm_typ})
             osm_ok = True
             break
         except Exception as e:
@@ -590,11 +599,16 @@ for bv in bv_by_typ["Administrationsbyggnad"]:
                 "platser_lng": pm["platser_lng"], "platser_slug": pm.get("platser_slug",""), "avstand_platser_m": pd, "avstand_m": pd})
     matched.append(row)
 
-# Krematorium -> OSM (begravningsplats)
+# Krematorium -> OSM (krematorium)
+osm_crematorium_by_name: dict[str, list] = defaultdict(list)
+for o in osm_list:
+    if o.get("osm_typ") == "krematorium":
+        osm_crematorium_by_name[normalize(o["namn"])].append(o)
+
 for bv in bv_by_typ["Krematorium"]:
     key = normalize(bv["namn"])
     om, od = closest_match(bv["bv_lat"], bv["bv_lng"],
-                           osm_cemetery_by_name.get(key, []), "osm_lat", "osm_lng")
+                           osm_crematorium_by_name.get(key, []), "osm_lat", "osm_lng")
     if om is None:
         continue
     row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"], 
@@ -665,6 +679,7 @@ stats = {
     "agare_mismatch":     len(q_agare_mismatch),
     "kbr_begravningsplatser": len(kbr_begravningsplatser),
     "osm_begravningsplatser": sum(1 for o in osm_list if o.get("osm_typ") == "begravningsplats"),
+    "osm_krematorium":        sum(1 for o in osm_list if o.get("osm_typ") == "krematorium"),
     "platser_parishhome":     sum(1 for p in platser_extra_list if p["platser_typ"] == "parishhome"),
     "platser_cemetery":       sum(1 for p in platser_extra_list if p["platser_typ"] == "cemetery"),
     "platser_secretariat":    sum(1 for p in platser_extra_list if p["platser_typ"] == "secretariat"),
