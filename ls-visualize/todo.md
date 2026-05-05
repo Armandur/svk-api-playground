@@ -18,13 +18,14 @@ först. `[KLAR]`-markerade är implementerade.
   till nuvarande vy. Mest kostsam att implementera men ger renaste
   helhetsbild.
 
-- **7. Choropleth på "anslutningsgrad per stift"**
-  Toggle som färgar stiften själva (inte enheterna) baserat på % anslutna
-  konton. Bra för helhetsbild.
+- `[KLAR]` **7. Choropleth på "anslutningsgrad per stift"**
+  Toggle "Stift-choropleth" i Lager-panelen. Diskret 5-stegs skala
+  från vinröd (<20%) till mörk grön (>=80%) baserat på % anslutna
+  konton. Skala visas i panelen när lagret är aktivt.
 
-- **8. Hover-popup med mini-stapel**
-  När man svävar över en enhet: visa stiftets fördelning Ja/Nej + var
-  enheten ligger storleksmässigt jämfört med stiftets medel.
+- `[KLAR]` **8. Popup med stiftskontext**
+  Klick på en enhet visar nu också stiftets sammanfattning: %
+  anslutna konton som mini-stapel + antal enheter och konton.
 
 ## Diagram och paneler
 
@@ -42,8 +43,9 @@ först. `[KLAR]`-markerade är implementerade.
 
 ## Filter och fokus
 
-- **9. Storleksfilter**
-  Slider eller dropdown - visa bara enheter med >N konton.
+- `[KLAR]` **9. Storleksfilter**
+  Dropdown "Min storlek" i Filter-panelen med stegen 0/25/50/100/200
+  konton. Filtrerar både polygoner och storlekscirklar.
 
 - **10. Stift-fokus**
   Klicka på ett stift för att zooma + visa bara det stiftets enheter.

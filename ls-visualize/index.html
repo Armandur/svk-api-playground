@@ -62,6 +62,25 @@ header .stats b { color: var(--wine); font-weight: 600; }
 .popup-status.ja  { background: var(--ja); color: #fff; }
 .popup-status.nej { background: var(--nej); color: #fff; }
 .popup-status.saknas { background: var(--saknas); color: #fff; }
+.popup-context {
+  margin-top: 8px; padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.popup-context-row {
+  font-size: 11px; color: var(--muted); margin-bottom: 3px;
+}
+.popup-context-meta {
+  margin-top: 3px; font-family: "Spectral", serif; font-style: italic;
+}
+.popup-context .konto-bar {
+  position: relative; height: 6px; width: 100%;
+  background: rgba(125, 0, 55, 0.18); border-radius: 1px;
+  overflow: hidden;
+}
+.popup-context .konto-bar > span {
+  position: absolute; top: 0; left: 0; height: 100%;
+  background: var(--ja);
+}
 .popup-meta {
   margin-top: 8px; font-size: 13px; color: var(--muted);
   border-top: 1px solid var(--line); padding-top: 6px;
@@ -196,7 +215,16 @@ header .stats b { color: var(--wine); font-weight: 600; }
 .toggle-row label { display: flex; align-items: center; gap: 6px;
                     cursor: pointer; user-select: none; padding: 1px 2px; }
 .toggle-row input { accent-color: var(--wine); }
-.filter { max-width: 180px; }
+.filter { max-width: 200px; }
+.choro-scale {
+  display: none; margin-top: 6px;
+  font-size: 10px; color: var(--muted);
+}
+.choro-scale.show { display: block; }
+.choro-scale .row { display: flex; align-items: center; gap: 6px;
+                    margin-top: 2px; }
+.choro-scale .sw { width: 14px; height: 8px; border-radius: 1px;
+                   border: 1px solid rgba(0,0,0,0.1); }
 
 .offshore-badge-wrap, .offshore-arrow-wrap {
   position: absolute; width: 0; height: 0;
@@ -260,6 +288,8 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 let dataset = null;       // { enheter, stiftsenheter, ovrigt, trossamfund, stift_summary }
 let accountsLayer = null;
+let choroplethLayer = null;
+let minKonton = 0;        // storleksfilter: dölj enheter med < N konton
 let enheterLayer = null;  // L.geoJson över ekonomiska enheter
 let stiftLayer = null;    // L.geoJson stift-gränser
 let offshoreLayer = null; // L.layerGroup med stiftskanslier, ovrigt, trossamfund
@@ -366,7 +396,7 @@ function statusForFeature(props) {
 
 function styleEnhet(feature) {
   const st = statusForFeature(feature.properties);
-  const hidden = !visible[st.key];
+  const hidden = !visible[st.key] || st.konton < minKonton;
   return {
     color: COLORS.kartGrans,
     weight: 1.2,
@@ -388,6 +418,22 @@ function popupForEnhet(props) {
   html += badge;
   if (st.konton) {
     html += `<div class="popup-meta">${fmtInt(st.konton)} konton</div>`;
+  }
+  // Stiftskontext: visa fördelning ja/nej i stiftet med en mini-stapel
+  // så man ser hur enheten passar in.
+  if (st.stift && dataset?.stift_summary?.[st.stift]) {
+    const s = dataset.stift_summary[st.stift];
+    const pctK = pct(s.ja_konton, s.totalt_konton);
+    html += `<div class="popup-context">
+      <div class="popup-context-row">
+        <span>${escapeHtml(st.stift)}: ${pctK} av kontona anslutna</span>
+      </div>
+      ${bar(s.ja_konton, s.totalt_konton)}
+      <div class="popup-context-row popup-context-meta">
+        ${s.ja_enheter}/${s.totalt_enheter} enheter,
+        ${fmtInt(s.ja_konton)}/${fmtInt(s.totalt_konton)} konton
+      </div>
+    </div>`;
   }
   return html;
 }
@@ -412,9 +458,58 @@ function buildStiftLayer(geojson) {
   }).addTo(map);
 }
 
+// Choropleth: färglägger stift-polygoner baserat på % anslutna konton.
+// Diskret skala 0-100% i fem steg, från vinröd (låg) till mörk grön (hög).
+const CHOROPLETH_BINS = [
+  { max: 20,  fill: "#7D0037", label: "<20%" },
+  { max: 40,  fill: "#B26580", label: "20-39%" },
+  { max: 60,  fill: "#D8C0A8", label: "40-59%" },
+  { max: 80,  fill: "#7FA694", label: "60-79%" },
+  { max: 101, fill: "#00554B", label: ">=80%" },
+];
+
+function choroplethBin(percentage) {
+  return CHOROPLETH_BINS.find(b => percentage < b.max) || CHOROPLETH_BINS[CHOROPLETH_BINS.length - 1];
+}
+
+function buildChoroplethLayer(geojson) {
+  choroplethLayer = L.geoJson(geojson, {
+    style: feature => {
+      const stiftNamn = (feature.properties.namn || "").trim();
+      const s = dataset?.stift_summary?.[stiftNamn];
+      if (!s || !s.totalt_konton) {
+        return { fillOpacity: 0, opacity: 0 };
+      }
+      const pctKonton = (s.ja_konton / s.totalt_konton) * 100;
+      const bin = choroplethBin(pctKonton);
+      return {
+        color: COLORS.kartGrans,
+        weight: 1.5,
+        opacity: 0.6,
+        fillColor: bin.fill,
+        fillOpacity: 0.55,
+      };
+    },
+    onEachFeature: (feature, layer) => {
+      const stiftNamn = (feature.properties.namn || "").trim();
+      const s = dataset?.stift_summary?.[stiftNamn];
+      if (!s) return;
+      const pctEnh = pct(s.ja_enheter, s.totalt_enheter);
+      const pctK = pct(s.ja_konton, s.totalt_konton);
+      layer.bindTooltip(
+        `<b>${stiftNamn}</b><br>` +
+        `Enheter: ${pctEnh} (${s.ja_enheter}/${s.totalt_enheter})<br>` +
+        `Konton: ${pctK} (${fmtInt(s.ja_konton)}/${fmtInt(s.totalt_konton)})`,
+        { sticky: true }
+      );
+    },
+  });
+}
+
 // Cirkel-overlay där varje territoriell enhet får en cirkel proportionell
 // mot antal konton (radius = sqrt(konton) * skala). Kombinerar "var" och
 // "hur mycket" på samma vy. Default avstängd för att inte täcka polygonerna.
+const accountsMarkers = []; // { marker, ja, konton }
 function buildAccountsLayer(geojson) {
   accountsLayer = L.layerGroup();
   for (const f of geojson.features) {
@@ -439,6 +534,17 @@ function buildAccountsLayer(geojson) {
     });
     m.bindTooltip(`${namn} - ${fmtInt(e.konton)} konton`, { sticky: true });
     accountsLayer.addLayer(m);
+    accountsMarkers.push({ marker: m, ja: e.ja, konton: e.konton });
+  }
+}
+
+function applyAccountsVisibility() {
+  if (!accountsLayer) return;
+  for (const a of accountsMarkers) {
+    const key = a.ja ? "ja" : "nej";
+    const should = visible[key] && a.konton >= minKonton;
+    if (should) accountsLayer.addLayer(a.marker);
+    else accountsLayer.removeLayer(a.marker);
   }
 }
 
@@ -695,12 +801,32 @@ const FilterControl = L.Control.extend({
         <label><input type="checkbox" data-key="ja" checked> Ja</label>
         <label><input type="checkbox" data-key="nej" checked> Nej</label>
       </div>
+      <div class="lp-title" style="margin-top:6px">Min storlek</div>
+      <div class="toggle-row">
+        <select id="min-konton" style="width:100%;padding:3px 6px;
+          font:inherit;border:1px solid var(--line);background:#fff;">
+          <option value="0">Alla enheter</option>
+          <option value="25">25+ konton</option>
+          <option value="50">50+ konton</option>
+          <option value="100">100+ konton</option>
+          <option value="200">200+ konton</option>
+        </select>
+      </div>
       <div class="lp-title" style="margin-top:6px">Lager</div>
       <div class="toggle-row">
         <label><input type="checkbox" data-layer="enheter" checked> Ekon. enheter</label>
         <label><input type="checkbox" data-layer="stift" checked> Stiftsgränser</label>
         <label><input type="checkbox" data-layer="offshore" checked> Off-shore-boxar</label>
         <label><input type="checkbox" data-layer="accounts"> Storlekscirklar</label>
+        <label><input type="checkbox" data-layer="choropleth"> Stift-choropleth</label>
+      </div>
+      <div class="choro-scale" id="choro-scale">
+        <div style="font-weight:500">Andel anslutna konton</div>
+        ${CHOROPLETH_BINS.map(b => `
+          <div class="row">
+            <span class="sw" style="background:${b.fill}"></span>
+            <span>${b.label}</span>
+          </div>`).join("")}
       </div>`;
     L.DomEvent.disableClickPropagation(div);
     L.DomEvent.disableScrollPropagation(div);
@@ -709,16 +835,26 @@ const FilterControl = L.Control.extend({
         visible[e.target.dataset.key] = e.target.checked;
         if (enheterLayer) enheterLayer.setStyle(styleEnhet);
         applyOffshoreVisibility();
+        applyAccountsVisibility();
       });
+    });
+    div.querySelector("#min-konton").addEventListener("change", e => {
+      minKonton = parseInt(e.target.value, 10) || 0;
+      if (enheterLayer) enheterLayer.setStyle(styleEnhet);
+      applyAccountsVisibility();
     });
     div.querySelectorAll("input[data-layer]").forEach(inp => {
       inp.addEventListener("change", e => {
         const layer = { enheter: enheterLayer, stift: stiftLayer,
                         offshore: offshoreLayer,
-                        accounts: accountsLayer }[e.target.dataset.layer];
+                        accounts: accountsLayer,
+                        choropleth: choroplethLayer }[e.target.dataset.layer];
         if (!layer) return;
         if (e.target.checked) map.addLayer(layer);
         else map.removeLayer(layer);
+        if (e.target.dataset.layer === "choropleth") {
+          document.getElementById("choro-scale").classList.toggle("show", e.target.checked);
+        }
       });
     });
     return div;
@@ -988,6 +1124,7 @@ async function init() {
   buildEnheterLayer(enheter);
   buildStiftLayer(stift);
   buildAccountsLayer(enheter);
+  buildChoroplethLayer(stift);
   buildOffshoreLayer();
   renderHeader();
   renderSummary();
