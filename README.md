@@ -33,17 +33,33 @@ finns i `docs/modules/_todo.md`:
 
 - `kbr-tidslinje/` - animerad karta över ~3 500 kyrkobyggnader 1000-idag
 - `kbr-kvalitet/` - datakvalitetsrapport för KBR, jämför mot Platser och OSM
+- `osm-konsistenscheck/` - SVK Platser ↔ OSM-jämförelse, dygnsfärsk diff
+- `forsamlingsindelning-historik/` - församlings- och pastoratsgränser 2008-2026
+- `forsamlingskarta-enklaver/` - enklaver och exklaver i församlingar
+- `forsamlingskarta-leaflet/` - klickbar Leaflet-karta över alla församlingar
+- `ls-visualize/` - karta över Löneservice-anslutning per ekonomisk enhet
 - `signage-platser/` - signage-vy med dynamiska öppettider
 - `platser-edit-app/` - mini-app för platsadministration
 - `kyrkoaret-widget/` - kyrkoårs-widget för embed
-- Församlingssök-formulär, kyrkokarta, kalenderhändelse-aggregator (planerade)
+- `unit-api/` - sökbar lista och CSV-export av ekonomiska enheter
+- Församlingssök-formulär, kalenderhändelse-aggregator (planerade)
 
 ## Live-deploys
 
-- **osm-konsistenscheck** - <https://armandur.github.io/svk-api-playground/osm-konsistenscheck/>
-  byggs dagligen via GitHub Actions (`.github/workflows/osm-deploy.yml`).
-- **kbr-tidslinje** - <https://armandur.github.io/svk-api-playground/kbr-tidslinje/>
-  animerad karta över ~3 500 kyrkobyggnader 1000-idag, byggs av samma workflow.
+Byggs dagligen 04:00 UTC av `.github/workflows/pages-deploy.yml` och
+publiceras under <https://armandur.github.io/svk-api-playground/>:
+
+- **osm-konsistenscheck** - SVK ↔ OSM-jämförelse, dygnsfärsk diff
+- **kbr-tidslinje** - animerad karta över ~3 500 kyrkobyggnader 1000-idag
+- **forsamlingsindelning-historik** - församlingsgränser 2008-2026
+- **forsamlingskarta-enklaver** - enklaver och exklaver bland församlingar
+- **ls-visualize** - Löneservice-anslutning per ekonomisk enhet
+- **unit-api** - sökbar lista över ekonomiska enheter
+- **signage-platser** - signage-demo med Härnösands domkyrka
+- **kyrkoaret-widget** - kyrkoårs-widget med dagens högtid
+
+Cache används flitigt: data som ändras sällan (t.ex. shapefiles per
+år) återanvänds mellan körningar och byggs bara om vid script-ändring.
 
 ## Autentisering
 
