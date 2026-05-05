@@ -14,24 +14,33 @@ Skriver:
   data/stats.json    - sammanfattande statistik
   data/report.csv    - koordinatavvikelser >= MIN_AVSTAND_M
 
+  data/raw/          - cachad rådata per källa (TTL-styrd)
+  data/snapshots/YYYY-MM-DD/  - daglig gzip-snapshot av report + quality
+
 Kör:
   APIKEY_PROD=<nyckel> uv run kbr-kvalitet/build_report.py
+  APIKEY_PROD=<nyckel> uv run kbr-kvalitet/build_report.py --no-fetch
+  APIKEY_PROD=<nyckel> uv run kbr-kvalitet/build_report.py --refresh=kbr,osm
+
+Flaggor:
+  --no-fetch          Använd cachen, hämta inte ny data (fel om cache saknas)
+  --refresh=SRC[,SRC] Tvinga omladdning för angivna källor:
+                      kbr, kbr_begravning, platser, platser_extra, osm
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
+import gzip
 import json
-import math
 import os
-import re
 import sys
 import time
-import unicodedata
 import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -46,6 +55,13 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 API_KEY = os.environ.get("APIKEY_PROD") or os.environ.get("APIKEY")
 if not API_KEY:
     sys.exit("Sätt APIKEY_PROD eller APIKEY i miljön.")
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--no-fetch", action="store_true")
+ap.add_argument("--refresh", default="")
+args    = ap.parse_args()
+NO_FETCH = args.no_fetch
+REFRESH  = {s.strip() for s in args.refresh.split(",") if s.strip()}
 
 KBR_BASE      = "https://api.svenskakyrkan.se/kbr/api"
 PLATSER_BASE  = "https://api.svenskakyrkan.se/platser/v4"
@@ -74,15 +90,14 @@ area["ISO3166-1"="SE"][admin_level=2]->.se;
 out tags center;
 """
 
-OUT_DIR          = Path(__file__).parent / "data"
-MIN_AVSTAND_M    = 200
-LANG_BYGG        = 300    # år
+OUT_DIR       = Path(__file__).parent / "data"
+RAW_DIR       = OUT_DIR / "raw"
+MIN_AVSTAND_M = 200
+LANG_BYGG     = 300    # år
 
-# -------------------------------------------------------------------------
-# Hämta KBR
-# -------------------------------------------------------------------------
+OUT_DIR.mkdir(exist_ok=True)
+RAW_DIR.mkdir(parents=True, exist_ok=True)
 
-print("Hämtar KBR...", flush=True)
 FIELDS = (
     "id,namn,facilityPartId,xKoordinat,yKoordinat,stift,lan,"
     "nuvarandeFunktion,skyddEnligtKML,nybyggnadFran,invigning,"
@@ -94,162 +109,274 @@ FIELDS = (
     "andradDatum,skapadDatum"
 )
 
-kbr_churches:     list[dict] = []
-kbr_churches_raw: list[dict] = []
+# -------------------------------------------------------------------------
+# Cache-hjälpare
+# -------------------------------------------------------------------------
 
-offset = 0
-with httpx.Client(timeout=30) as client:
+def fetch_or_cache(name: str, ttl_hours: float, fetcher_fn) -> list[dict]:
+    cache_file = RAW_DIR / f"{name}.json"
+    meta_file  = RAW_DIR / "_metadata.json"
+
+    meta: dict[str, str] = {}
+    if meta_file.exists():
+        try:
+            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    def _load_cache() -> list[dict]:
+        if not cache_file.exists():
+            sys.exit(f"Cache saknas för '{name}': kör utan --no-fetch först.")
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+
+    def _save(data: list[dict]) -> list[dict]:
+        cache_file.write_text(
+            json.dumps(data, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8")
+        meta[name] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        meta_file.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        return data
+
+    if NO_FETCH and name not in REFRESH:
+        print(f"  [{name}] laddar från cache", flush=True)
+        return _load_cache()
+
+    if name not in REFRESH and cache_file.exists() and name in meta:
+        ts = datetime.fromisoformat(meta[name])
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        age_h = (datetime.now(timezone.utc) - ts).total_seconds() / 3600
+        if age_h < ttl_hours:
+            print(f"  [{name}] cache {age_h:.1f}h gammal, hoppar fetch", flush=True)
+            return _load_cache()
+
+    try:
+        data = fetcher_fn()
+    except Exception as e:
+        if cache_file.exists():
+            print(f"  [{name}] fetch misslyckades ({e}), använder gammal cache", flush=True)
+            return _load_cache()
+        raise
+    return _save(data)
+
+
+# -------------------------------------------------------------------------
+# Hämtningsfunktioner
+# -------------------------------------------------------------------------
+
+def _fetch_kbr_raw() -> list[dict]:
+    result: list[dict] = []
+    offset = 0
+    with httpx.Client(timeout=30) as client:
+        while True:
+            resp = client.get(
+                f"{KBR_BASE}/byggnader",
+                params={"kyrka": "true", "limit": 100, "offset": offset,
+                        "fields": FIELDS, "apikey": API_KEY},
+            )
+            resp.raise_for_status()
+            batch = resp.json()
+            if not batch:
+                break
+            for b in batch:
+                if b.get("xKoordinat") is not None and b.get("yKoordinat") is not None:
+                    result.append(b)
+            print(f"    KBR: {len(result)} hämtade", end="\r", flush=True)
+            if len(batch) < 100:
+                break
+            offset += 100
+    print(f"\n    KBR klar: {len(result)} kyrkor", flush=True)
+    return result
+
+
+def _fetch_kbr_begravningsplatser() -> list[dict]:
+    result: list[dict] = []
+    offset = 0
+    with httpx.Client(timeout=30) as client:
+        while True:
+            resp = client.get(
+                f"{KBR_BASE}/begravningsplatser",
+                params={"limit": 100, "offset": offset,
+                        "fields": "id,namn,stift,xKoordinat,yKoordinat", "apikey": API_KEY},
+            )
+            resp.raise_for_status()
+            batch = resp.json()
+            if not batch:
+                break
+            for b in batch:
+                x, y = b.get("xKoordinat"), b.get("yKoordinat")
+                if x is None or y is None:
+                    continue
+                lat, lng = sweref_to_wgs84(x, y)
+                result.append({
+                    "kbr_id": b["id"], "namn": b["namn"],
+                    "stift": b.get("stift", ""),
+                    "kbr_lat": lat, "kbr_lng": lng,
+                })
+            print(f"    KBR Begravningsplatser: {len(result)}", end="\r", flush=True)
+            if len(batch) < 100:
+                break
+            offset += 100
+    print(f"\n    KBR Begravningsplatser klar: {len(result)}", flush=True)
+    return result
+
+
+def _fetch_platser() -> list[dict]:
+    result: list[dict] = []
+    offset, total_hits = 0, None
     while True:
-        resp = client.get(
-            f"{KBR_BASE}/byggnader",
-            params={"kyrka": "true", "limit": 100, "offset": offset,
-                    "fields": FIELDS, "apikey": API_KEY},
-        )
-        resp.raise_for_status()
-        batch = resp.json()
-        if not batch:
-            break
-
-        for b in batch:
-            x, y = b.get("xKoordinat"), b.get("yKoordinat")
-            if x is None or y is None:
-                continue
-            lat, lng = sweref_to_wgs84(x, y)
-            bygg, invigd = b.get("nybyggnadFran"), b.get("invigning")
-            namn, stift  = b["namn"], b.get("stift", "")
-            base = {"kbr_id": b["id"], "namn": namn, "stift": stift,
-                    "funktion": b.get("nuvarandeFunktion", ""),
-                    "kbr_lat": lat, "kbr_lng": lng}
-
-            kbr_churches_raw.append(b)
-            kbr_churches.append({
-                "kbr_id": b["id"], "facilityPartId": b.get("facilityPartId"),
-                "namn": namn, "stift": stift, "funktion": b.get("nuvarandeFunktion", ""),
-                "skydd": b.get("skyddEnligtKML", False),
-                "kbr_lat": lat, "kbr_lng": lng,
-            })
-
-        print(f"  KBR: {len(kbr_churches)} hämtade", end="\r", flush=True)
-        if len(batch) < 100:
-            break
-        offset += 100
-
-print(f"\n  KBR klar: {len(kbr_churches)} kyrkor", flush=True)
-
-# -------------------------------------------------------------------------
-# Hämta KBR Begravningsplatser
-# -------------------------------------------------------------------------
-
-print("Hämtar KBR Begravningsplatser...", flush=True)
-kbr_begravningsplatser: list[dict] = []
-offset = 0
-with httpx.Client(timeout=30) as client:
-    while True:
-        resp = client.get(
-            f"{KBR_BASE}/begravningsplatser",
-            params={"limit": 100, "offset": offset,
-                    "fields": "id,namn,stift,xKoordinat,yKoordinat", "apikey": API_KEY},
-        )
-        resp.raise_for_status()
-        batch = resp.json()
-        if not batch:
-            break
-        for b in batch:
-            x, y = b.get("xKoordinat"), b.get("yKoordinat")
-            if x is None or y is None:
-                continue
-            lat, lng = sweref_to_wgs84(x, y)
-            kbr_begravningsplatser.append({
-                "kbr_id": b["id"], "namn": b["namn"],
-                "stift": b.get("stift", ""),
-                "kbr_lat": lat, "kbr_lng": lng,
-            })
-        print(f"  KBR Begravningsplatser: {len(kbr_begravningsplatser)} hämtade",
-              end="\r", flush=True)
-        if len(batch) < 100:
-            break
-        offset += 100
-print(f"\n  KBR Begravningsplatser klar: {len(kbr_begravningsplatser)}", flush=True)
-
-q = run_all_checks(kbr_churches_raw)
-
-# -------------------------------------------------------------------------
-# Hämta SVK Platser
-# -------------------------------------------------------------------------
-
-print("Hämtar SVK Platser...", flush=True)
-platser_list: list[dict] = []
-offset, total_hits = 0, None
-
-while True:
-    qs  = urllib.parse.urlencode({"is": "churchandchapel", "limit": 500,
-                                   "offset": offset, "apikey": API_KEY})
-    req = urllib.request.Request(
-        f"{PLATSER_BASE}/place?{qs}",
-        headers={"User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)"},
-    )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        data = json.loads(r.read())
-    if total_hits is None:
-        total_hits = data.get("totalHits", 0)
-    results = data.get("results", [])
-    if not results:
-        break
-    for p in results:
-        coords = (((p.get("geolocation") or {}).get("geometry") or {}).get("coordinates"))
-        if not coords or len(coords) != 2:
-            continue
-        platser_list.append({"platser_id": p.get("id"), "namn": p.get("name", ""),
-                              "platser_slug": p.get("slug", ""),
-                              "platser_lat": round(coords[1], 6),
-                              "platser_lng": round(coords[0], 6)})
-    offset += len(results)
-    print(f"  Platser: {len(platser_list)}/{total_hits}", end="\r", flush=True)
-    if offset >= total_hits:
-        break
-    time.sleep(0.05)
-
-print(f"\n  Platser klar: {len(platser_list)} kyrkor", flush=True)
-
-# -------------------------------------------------------------------------
-# Hämta SVK Platser - övriga typer (parishhome, cemetery, secretariat)
-# -------------------------------------------------------------------------
-
-print("Hämtar SVK Platser (övriga typer)...", flush=True)
-platser_extra_list: list[dict] = []
-for _platstyp in ("parishhome", "cemetery", "secretariat"):
-    _offset_p, _total_p = 0, None
-    while True:
-        qs = urllib.parse.urlencode({"is": _platstyp, "limit": 500,
-                                     "offset": _offset_p, "apikey": API_KEY})
+        qs  = urllib.parse.urlencode({"is": "churchandchapel", "limit": 500,
+                                       "offset": offset, "apikey": API_KEY})
         req = urllib.request.Request(
             f"{PLATSER_BASE}/place?{qs}",
             headers={"User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)"},
         )
         with urllib.request.urlopen(req, timeout=60) as r:
-            _data = json.loads(r.read())
-        if _total_p is None:
-            _total_p = _data.get("totalHits", 0)
-        _results = _data.get("results", [])
-        if not _results:
+            data = json.loads(r.read())
+        if total_hits is None:
+            total_hits = data.get("totalHits", 0)
+        results = data.get("results", [])
+        if not results:
             break
-        for p in _results:
+        for p in results:
             coords = (((p.get("geolocation") or {}).get("geometry") or {}).get("coordinates"))
             if not coords or len(coords) != 2:
                 continue
-            platser_extra_list.append({
-                "platser_id": p.get("id"), "namn": p.get("name", ""),
-                "platser_slug": p.get("slug", ""),
-                "platser_lat": round(coords[1], 6), "platser_lng": round(coords[0], 6),
-                "platser_typ": _platstyp,
-            })
-        _offset_p += len(_results)
-        print(f"  Platser {_platstyp}: {sum(1 for x in platser_extra_list if x['platser_typ']==_platstyp)}/{_total_p}",
-              end="\r", flush=True)
-        if _offset_p >= _total_p:
+            result.append({"platser_id": p.get("id"), "namn": p.get("name", ""),
+                            "platser_slug": p.get("slug", ""),
+                            "platser_lat": round(coords[1], 6),
+                            "platser_lng": round(coords[0], 6)})
+        offset += len(results)
+        print(f"    Platser: {len(result)}/{total_hits}", end="\r", flush=True)
+        if offset >= total_hits:
             break
         time.sleep(0.05)
-print(f"\n  Platser övriga klar: {len(platser_extra_list)} totalt", flush=True)
+    print(f"\n    Platser klar: {len(result)} kyrkor", flush=True)
+    return result
+
+
+def _fetch_platser_extra() -> list[dict]:
+    result: list[dict] = []
+    for _platstyp in ("parishhome", "cemetery", "secretariat"):
+        _offset_p, _total_p = 0, None
+        while True:
+            qs = urllib.parse.urlencode({"is": _platstyp, "limit": 500,
+                                         "offset": _offset_p, "apikey": API_KEY})
+            req = urllib.request.Request(
+                f"{PLATSER_BASE}/place?{qs}",
+                headers={"User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)"},
+            )
+            with urllib.request.urlopen(req, timeout=60) as r:
+                _data = json.loads(r.read())
+            if _total_p is None:
+                _total_p = _data.get("totalHits", 0)
+            _results = _data.get("results", [])
+            if not _results:
+                break
+            for p in _results:
+                coords = (((p.get("geolocation") or {}).get("geometry") or {}).get("coordinates"))
+                if not coords or len(coords) != 2:
+                    continue
+                result.append({
+                    "platser_id": p.get("id"), "namn": p.get("name", ""),
+                    "platser_slug": p.get("slug", ""),
+                    "platser_lat": round(coords[1], 6), "platser_lng": round(coords[0], 6),
+                    "platser_typ": _platstyp,
+                })
+            _offset_p += len(_results)
+            n = sum(1 for x in result if x["platser_typ"] == _platstyp)
+            print(f"    Platser {_platstyp}: {n}/{_total_p}", end="\r", flush=True)
+            if _offset_p >= _total_p:
+                break
+            time.sleep(0.05)
+    print(f"\n    Platser övriga klar: {len(result)} totalt", flush=True)
+    return result
+
+
+def _fetch_osm() -> list[dict]:
+    result: list[dict] = []
+    body = urllib.parse.urlencode({"data": OVERPASS_QUERY}).encode("utf-8")
+    hdrs = {"Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)"}
+    ok = False
+    for url in OVERPASS_URLS:
+        for attempt in range(2):
+            try:
+                req = urllib.request.Request(url, data=body, headers=hdrs)
+                with urllib.request.urlopen(req, timeout=200) as r:
+                    osm_data = json.loads(r.read())
+                for el in osm_data.get("elements", []):
+                    name = (el.get("tags") or {}).get("name")
+                    if not name:
+                        continue
+                    if el["type"] == "node":
+                        ola, olo = el["lat"], el["lon"]
+                    elif "center" in el:
+                        ola, olo = el["center"]["lat"], el["center"]["lon"]
+                    else:
+                        continue
+                    tags = el.get("tags") or {}
+                    is_cemetery    = (tags.get("landuse") == "cemetery"
+                                      or tags.get("amenity") == "grave_yard")
+                    is_crematorium = tags.get("amenity") == "crematorium"
+                    is_campanile   = tags.get("man_made") == "campanile"
+                    if is_cemetery:
+                        osm_typ = "begravningsplats"
+                    elif is_crematorium:
+                        osm_typ = "krematorium"
+                    elif is_campanile:
+                        osm_typ = "klockstapel"
+                    else:
+                        osm_typ = "kyrka"
+                    result.append({"osm_id": el["id"], "namn": name,
+                                    "osm_lat": round(ola, 6), "osm_lng": round(olo, 6),
+                                    "osm_typ": osm_typ})
+                ok = True
+                break
+            except Exception as e:
+                print(f"    Overpass {url} fel: {e}", flush=True)
+                time.sleep(15 if attempt == 0 else 0)
+        if ok:
+            break
+    if not ok:
+        raise RuntimeError("Alla Overpass-servrar misslyckades")
+    print(f"    OSM klar: {len(result)} platser", flush=True)
+    return result
+
+
+# -------------------------------------------------------------------------
+# Hämta / ladda data
+# -------------------------------------------------------------------------
+
+print("=== Hämtar data ===", flush=True)
+
+kbr_churches_raw       = fetch_or_cache("kbr_raw",        24, _fetch_kbr_raw)
+kbr_begravningsplatser = fetch_or_cache("kbr_begravning", 24, _fetch_kbr_begravningsplatser)
+platser_list           = fetch_or_cache("platser",        24, _fetch_platser)
+platser_extra_list     = fetch_or_cache("platser_extra",  24, _fetch_platser_extra)
+osm_list               = fetch_or_cache("osm",             6, _fetch_osm)
+
+# Bygg stripped kbr_churches från rådata (konverterar SWEREF -> WGS84)
+kbr_churches: list[dict] = []
+for b in kbr_churches_raw:
+    x, y = b.get("xKoordinat"), b.get("yKoordinat")
+    if x is None or y is None:
+        continue
+    lat, lng = sweref_to_wgs84(x, y)
+    kbr_churches.append({
+        "kbr_id": b["id"], "facilityPartId": b.get("facilityPartId"),
+        "namn": b["namn"], "stift": b.get("stift", ""),
+        "funktion": b.get("nuvarandeFunktion", ""),
+        "skydd": b.get("skyddEnligtKML", False),
+        "kbr_lat": lat, "kbr_lng": lng,
+    })
+
+print(f"  KBR: {len(kbr_churches)} kyrkor, {len(kbr_begravningsplatser)} begravningsplatser",
+      flush=True)
+print(f"  Platser: {len(platser_list)} kyrkor, {len(platser_extra_list)} övriga", flush=True)
+print(f"  OSM: {len(osm_list)} platser", flush=True)
+
+q = run_all_checks(kbr_churches_raw)
 
 # -------------------------------------------------------------------------
 # Hämta BV (Byggnadsverk) CSV
@@ -267,7 +394,6 @@ if bv_csv_path.exists():
                 typ = row.get("Typ av objekt")
                 if typ not in ("Församlingshem", "Administrationsbyggnad", "Krematorium", "Klockstapel"):
                     continue
-                
                 try:
                     lat_str = row.get("Latitud", "").replace(",", ".")
                     lng_str = row.get("Longitud", "").replace(",", ".")
@@ -277,7 +403,6 @@ if bv_csv_path.exists():
                     lng = float(lng_str)
                 except ValueError:
                     continue
-                
                 bv_by_typ[typ].append({
                     "namn": row.get("Byggnadsverksnamn"),
                     "stift": row.get("Stiftnamn"),
@@ -291,59 +416,6 @@ if bv_csv_path.exists():
         print(f"  Varning: Kunde inte läsa BV CSV: {e}")
 else:
     print(f"  Varning: {bv_csv_path} saknas, hoppar över BV-data.")
-
-# -------------------------------------------------------------------------
-# Hämta OSM via Overpass
-# -------------------------------------------------------------------------
-
-print("Hämtar OSM via Overpass...", flush=True)
-osm_list: list[dict] = []
-body = urllib.parse.urlencode({"data": OVERPASS_QUERY}).encode("utf-8")
-hdrs = {"Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "svk-api-playground/0.1 (rasmus.pettersson.vik@gmail.com)"}
-osm_ok = False
-
-for url in OVERPASS_URLS:
-    for attempt in range(2):
-        try:
-            req = urllib.request.Request(url, data=body, headers=hdrs)
-            with urllib.request.urlopen(req, timeout=200) as r:
-                osm_data = json.loads(r.read())
-            for el in osm_data.get("elements", []):
-                name = (el.get("tags") or {}).get("name")
-                if not name:
-                    continue
-                if el["type"] == "node":
-                    ola, olo = el["lat"], el["lon"]
-                elif "center" in el:
-                    ola, olo = el["center"]["lat"], el["center"]["lon"]
-                else:
-                    continue
-                tags = el.get("tags") or {}
-                is_cemetery = (tags.get("landuse") == "cemetery"
-                               or tags.get("amenity") == "grave_yard")
-                is_crematorium = tags.get("amenity") == "crematorium"
-                is_campanile = tags.get("man_made") == "campanile"
-                if is_cemetery:
-                    osm_typ = "begravningsplats"
-                elif is_crematorium:
-                    osm_typ = "krematorium"
-                elif is_campanile:
-                    osm_typ = "klockstapel"
-                else:
-                    osm_typ = "kyrka"
-                osm_list.append({"osm_id": el["id"], "namn": name,
-                                  "osm_lat": round(ola, 6), "osm_lng": round(olo, 6),
-                                  "osm_typ": osm_typ})
-            osm_ok = True
-            break
-        except Exception as e:
-            print(f"  Overpass {url} fel: {e}", flush=True)
-            time.sleep(15 if attempt == 0 else 0)
-    if osm_ok:
-        break
-
-print(f"  OSM {'klar: ' + str(len(osm_list)) + ' platser' if osm_ok else 'misslyckades'}", flush=True)
 
 # -------------------------------------------------------------------------
 # Matcha: namn + geografiskt närmaste
@@ -380,7 +452,7 @@ for c in kbr_churches:
     row["avstand_m"] = max(pd or 0, od or 0)
     matched.append(row)
 
-# ÄNDRING B – Matcha KBR-begravningsplatser mot Platser+OSM
+# Matcha KBR-begravningsplatser mot Platser+OSM
 platser_cemetery_by_name: dict[str, list] = defaultdict(list)
 for p in platser_extra_list:
     if p.get("platser_typ") == "cemetery":
@@ -410,7 +482,7 @@ for c in kbr_begravningsplatser:
     row["avstand_m"] = max(pd or 0, od or 0)
     matched.append(row)
 
-# ÄNDRING C – Matcha övriga BV-typer
+# Matcha övriga BV-typer
 # Församlingshem -> Platser (parishhome)
 parishhome_by_name: dict[str, list] = defaultdict(list)
 for p in platser_extra_list:
@@ -424,7 +496,7 @@ for bv in bv_by_typ["Församlingshem"]:
                            max_dist=2000)
     if pm is None:
         continue
-    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"], 
+    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"],
            "kbr_id": None, "typ": "Församlingshem"}
     row.update({"platser_id": pm["platser_id"], "platser_lat": pm["platser_lat"],
                 "platser_lng": pm["platser_lng"], "platser_slug": pm.get("platser_slug",""), "avstand_platser_m": pd, "avstand_m": pd})
@@ -443,7 +515,7 @@ for bv in bv_by_typ["Administrationsbyggnad"]:
                            max_dist=2000)
     if pm is None:
         continue
-    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"], 
+    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"],
            "kbr_id": None, "typ": "Administrationsbyggnad"}
     row.update({"platser_id": pm["platser_id"], "platser_lat": pm["platser_lat"],
                 "platser_lng": pm["platser_lng"], "platser_slug": pm.get("platser_slug",""), "avstand_platser_m": pd, "avstand_m": pd})
@@ -461,7 +533,7 @@ for bv in bv_by_typ["Krematorium"]:
                            osm_crematorium_by_name.get(key, []), "osm_lat", "osm_lng")
     if om is None:
         continue
-    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"], 
+    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"],
            "kbr_id": None, "typ": "Krematorium"}
     row.update({"osm_id": om["osm_id"], "osm_lat": om["osm_lat"],
                 "osm_lng": om["osm_lng"], "avstand_osm_m": od, "avstand_m": od})
@@ -479,7 +551,7 @@ for bv in bv_by_typ["Klockstapel"]:
                            osm_campanile_by_name.get(key, []), "osm_lat", "osm_lng")
     if om is None:
         continue
-    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"], 
+    row = {"namn": bv["namn"], "stift": bv["stift"], "kbr_lat": bv["bv_lat"], "kbr_lng": bv["bv_lng"],
            "kbr_id": None, "typ": "Klockstapel"}
     row.update({"osm_id": om["osm_id"], "osm_lat": om["osm_lat"],
                 "osm_lng": om["osm_lng"], "avstand_osm_m": od, "avstand_m": od})
@@ -543,8 +615,6 @@ for k, v in stats.items():
 # Skriv output
 # -------------------------------------------------------------------------
 
-OUT_DIR.mkdir(exist_ok=True)
-
 (OUT_DIR / "report.json").write_text(
     json.dumps(matched, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 print(f"\nSkrev report.json ({(OUT_DIR/'report.json').stat().st_size//1024} KB)")
@@ -586,3 +656,18 @@ with (OUT_DIR / "report.csv").open("w", newline="", encoding="utf-8-sig") as f:
     w.writeheader()
     w.writerows(avvikelser)
 print(f"Skrev report.csv ({len(avvikelser)} rader med avvikelse >={MIN_AVSTAND_M} m)")
+
+# -------------------------------------------------------------------------
+# Daglig snapshot
+# -------------------------------------------------------------------------
+
+snap_dir = OUT_DIR / "snapshots" / datetime.now().strftime("%Y-%m-%d")
+snap_dir.mkdir(parents=True, exist_ok=True)
+for _fname, _obj in [("report", matched), ("quality", quality)]:
+    snap_path = snap_dir / f"{_fname}.json.gz"
+    if not snap_path.exists():
+        with gzip.open(snap_path, "wt", encoding="utf-8") as f:
+            json.dump(_obj, f, ensure_ascii=False, separators=(",", ":"))
+        print(f"Snapshot: {snap_path.relative_to(Path(__file__).parent)}")
+    else:
+        print(f"Snapshot redan finns: {snap_path.relative_to(Path(__file__).parent)}")
