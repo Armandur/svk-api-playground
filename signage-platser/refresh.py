@@ -7,8 +7,8 @@
 place.json bredvid index.html.
 
 Env-vars:
-  APIKEY_PROD - SVK-API-nyckel
-  PLACE_ID    - UUID för platsen
+  APIKEY_PROD - SVK-API-nyckel (krävs)
+  PLACE_ID    - UUID för platsen (default: Härnösands domkyrka)
 
 Körs med cron / systemd-timer typ var 10:e minut.
 """
@@ -27,12 +27,15 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "place.json"
 BASE = "https://api.svenskakyrkan.se/platser/v4"
 
+# Härnösands domkyrka - default när PLACE_ID inte är satt.
+DEFAULT_PLACE_ID = "5dab016f-18f3-4973-92d8-69779653a1ef"
+
 
 def main() -> int:
     apikey = os.environ.get("APIKEY_PROD")
-    place_id = os.environ.get("PLACE_ID")
-    if not apikey or not place_id:
-        print("FEL: sätt APIKEY_PROD och PLACE_ID som env-vars", file=sys.stderr)
+    place_id = os.environ.get("PLACE_ID") or DEFAULT_PLACE_ID
+    if not apikey:
+        print("FEL: sätt APIKEY_PROD som env-var", file=sys.stderr)
         return 2
 
     url = f"{BASE}/place/{place_id}"
