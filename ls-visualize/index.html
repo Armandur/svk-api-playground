@@ -137,6 +137,37 @@ header .stats b { color: var(--wine); font-weight: 600; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
+.donut-row {
+  display: flex; gap: 16px; justify-content: center;
+  margin: 10px 0 12px; align-items: center;
+}
+.donut-card { text-align: center; }
+.donut-card svg { display: block; margin: 0 auto 4px; }
+.donut-card .donut-label {
+  font-size: 11px; color: var(--muted); letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.donut-card .donut-pct {
+  font-size: 20px; font-weight: 600; color: var(--ja);
+  letter-spacing: -0.01em;
+}
+.donut-card .donut-meta {
+  font-size: 11px; color: var(--muted); margin-top: 2px;
+}
+
+.histo-wrap { padding: 6px 4px 4px; }
+.histo-wrap .histo-meta {
+  font-size: 11px; color: var(--muted); margin-bottom: 6px;
+  font-family: "Spectral", serif; font-style: italic;
+}
+.histo-svg { display: block; width: 100%; height: 130px; }
+.histo-bar-ja { fill: var(--ja); }
+.histo-bar-nej { fill: var(--nej); }
+.histo-axis-label {
+  font-size: 10px; fill: var(--muted);
+  font-family: "DM Sans", Arial, sans-serif;
+}
+
 .top-list ol { list-style: none; counter-reset: rank;
                padding: 0; margin: 0; font-size: 12px; }
 .top-list li {
@@ -196,7 +227,6 @@ header .stats b { color: var(--wine); font-weight: 600; }
     <h1>Löneservice - anslutna enheter</h1>
     <div class="subtitle" id="subtitle">Laddar data...</div>
   </div>
-  <div class="stats" id="stats"></div>
 </header>
 
 <div id="map"></div>
@@ -763,10 +793,15 @@ function renderSummary() {
   }
   el.innerHTML = `
     <div class="tabs" role="tablist">
-      <button data-tab="stift" class="active">Per stift</button>
+      <button data-tab="overview" class="active">Översikt</button>
+      <button data-tab="stift">Per stift</button>
       <button data-tab="top">Största ej-anslutna</button>
+      <button data-tab="histo">Storleksfördelning</button>
     </div>
-    <div class="tab-panel active" data-panel="stift">
+    <div class="tab-panel active" data-panel="overview">
+      ${renderOverview(totEnhJa, totEnh, totKJa, totK)}
+    </div>
+    <div class="tab-panel" data-panel="stift">
       <table>
         <thead><tr>
           <th>Stift</th><th>Enheter</th><th></th><th>Konton</th><th></th><th></th>
@@ -785,6 +820,9 @@ function renderSummary() {
     </div>
     <div class="tab-panel" data-panel="top">
       ${renderTopEjAnslutna()}
+    </div>
+    <div class="tab-panel" data-panel="histo">
+      ${renderHistogram()}
     </div>`;
   el.querySelectorAll(".tabs button").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -793,6 +831,109 @@ function renderSummary() {
         p.classList.toggle("active", p.dataset.panel === btn.dataset.tab));
     });
   });
+}
+
+function donutSvg(numerator, denominator, size = 90) {
+  const cx = size / 2, cy = size / 2, r = size * 0.4, sw = size * 0.16;
+  const c = 2 * Math.PI * r;
+  const ratio = denominator ? numerator / denominator : 0;
+  const dash = c * ratio;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+            stroke="${COLORS.nej}" stroke-width="${sw}" opacity="0.18"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+            stroke="${COLORS.ja}" stroke-width="${sw}"
+            stroke-dasharray="${dash} ${c}"
+            transform="rotate(-90 ${cx} ${cy})"
+            stroke-linecap="butt"/>
+  </svg>`;
+}
+
+function renderOverview(enhJa, enhTot, kJa, kTot) {
+  return `<div class="donut-row">
+    <div class="donut-card">
+      ${donutSvg(enhJa, enhTot)}
+      <div class="donut-pct">${pct(enhJa, enhTot)}</div>
+      <div class="donut-label">Enheter</div>
+      <div class="donut-meta">${enhJa} av ${enhTot}</div>
+    </div>
+    <div class="donut-card">
+      ${donutSvg(kJa, kTot)}
+      <div class="donut-pct">${pct(kJa, kTot)}</div>
+      <div class="donut-label">Konton</div>
+      <div class="donut-meta">${fmtInt(kJa)} av ${fmtInt(kTot)}</div>
+    </div>
+  </div>`;
+}
+
+function renderHistogram() {
+  // Bins av enhets-storlek (antal konton), staplat Ja/Nej.
+  const enheter = dataset?.enheter || {};
+  const ovrigt = dataset?.ovrigt || [];
+  const stiftsenheter = dataset?.stiftsenheter || {};
+  const all = [];
+  for (const e of Object.values(enheter)) all.push(e);
+  for (const o of ovrigt) all.push({ ja: o.ja, konton: o.konton });
+  for (const s of Object.values(stiftsenheter)) all.push({ ja: s.ja, konton: s.konton });
+
+  // Bin-gränser i konton. Logaritmiska steg eftersom storleksspridningen
+  // är stor (5 - 250+).
+  const bins = [
+    { lo: 0,   hi: 25,  label: "<25" },
+    { lo: 25,  hi: 50,  label: "25-49" },
+    { lo: 50,  hi: 100, label: "50-99" },
+    { lo: 100, hi: 200, label: "100-199" },
+    { lo: 200, hi: Infinity, label: "200+" },
+  ];
+  for (const b of bins) { b.ja = 0; b.nej = 0; }
+  for (const e of all) {
+    if (!e.konton) continue;
+    const b = bins.find(b => e.konton >= b.lo && e.konton < b.hi);
+    if (!b) continue;
+    if (e.ja) b.ja++; else b.nej++;
+  }
+  const maxCount = Math.max(...bins.map(b => b.ja + b.nej));
+
+  // SVG: 280x130 viewBox med padding för axlar.
+  const W = 280, H = 130, padL = 22, padB = 24, padT = 6, padR = 4;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const bw = innerW / bins.length;
+
+  const ticks = [];
+  for (let i = 0; i <= 4; i++) {
+    const v = Math.round((maxCount * i) / 4);
+    const y = padT + innerH - (innerH * i) / 4;
+    ticks.push(`<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}"
+      stroke="rgba(125,0,55,0.1)" stroke-width="0.5"/>
+      <text class="histo-axis-label" x="${padL - 4}" y="${y + 3}"
+        text-anchor="end">${v}</text>`);
+  }
+
+  const bars = bins.map((b, i) => {
+    const x = padL + i * bw + 3;
+    const w = bw - 6;
+    const total = b.ja + b.nej;
+    const totH = maxCount ? (total / maxCount) * innerH : 0;
+    const jaH = total ? (b.ja / total) * totH : 0;
+    const nejH = totH - jaH;
+    const yJa = padT + innerH - totH;
+    const yNej = yJa + jaH;
+    const labelY = H - 8;
+    return `
+      <rect class="histo-bar-ja" x="${x}" y="${yJa}" width="${w}" height="${jaH}"/>
+      <rect class="histo-bar-nej" x="${x}" y="${yNej}" width="${w}" height="${nejH}"/>
+      <text class="histo-axis-label" x="${x + w / 2}" y="${labelY}"
+        text-anchor="middle">${b.label}</text>
+      <title>${b.label} konton: ${b.ja} ja, ${b.nej} nej</title>`;
+  }).join("");
+
+  return `<div class="histo-wrap">
+    <div class="histo-meta">Antal enheter per storlek (konton), staplat Ja/Nej</div>
+    <svg class="histo-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      ${ticks.join("")}
+      ${bars}
+    </svg>
+  </div>`;
 }
 
 function renderTopEjAnslutna() {
@@ -835,9 +976,6 @@ function renderHeader() {
   }
   document.getElementById("subtitle").textContent =
     `${totEnhJa} av ${totEnh} enheter anslutna - ${fmtInt(totKJa)} av ${fmtInt(totK)} konton (2026-05-05)`;
-  document.getElementById("stats").innerHTML =
-    `<b>${pct(totEnhJa, totEnh)}</b> av enheterna · ` +
-    `<b>${pct(totKJa, totK)}</b> av kontona`;
 }
 
 async function init() {

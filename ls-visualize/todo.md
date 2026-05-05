@@ -1,13 +1,16 @@
 # ls-visualize TODO
 
 Idéer på fler diagram och kartlager. Sorterad i prioordning - högst prio
-först. De tre översta (markerade `[NU]`) implementeras i denna runda.
+först. `[KLAR]`-markerade är implementerade.
 
 ## Karteffekter
 
-- `[NU]` **5. Cirklar proportionella mot antal konton** ovanpå
-  polygonerna. En `circleMarker` per enhets centroid, radius som
-  `sqrt(konton)`. Kombinerar "var" och "hur mycket" på samma vy.
+- `[KLAR]` **5. Cirklar proportionella mot antal konton** ovanpå
+  polygonerna. En `L.circle` per enhets centroid, radius som
+  `sqrt(konton) * 1500m`. Kombinerar "var" och "hur mycket" på samma
+  vy. Toggle "Storlekscirklar" i Lager-panelen, default avstängd.
+  Skalan är absolut - en enhet med 200 konton har samma cirkel
+  oavsett stift.
 
 - **6. Stiftshov-aggregation vid utzoom**
   Vid utzoomad nivå byts enhetspolygoner mot en cirkel per stift -
@@ -25,21 +28,17 @@ först. De tre översta (markerade `[NU]`) implementeras i denna runda.
 
 ## Diagram och paneler
 
-- `[NU]` **1. Stapeldiagram över *konton* per stift, staplat Ja/Nej**
-  Istället för (eller utöver) "antal enheter" i statspanelen visa
-  "antal konton". Då syns att stora pastorat kan ge ett "Nej"
-  oproportionerlig tyngd.
+- `[KLAR]` **1. Stapeldiagram över *konton* per stift, staplat Ja/Nej**
+  Inline-bar i Per stift-tabellen som visar % anslutna konton.
 
-- `[NU]` **2. Top-10 största kontolösa enheter**
-  Listpanel med de största enheter som *inte* anslutit. Operativt nyttig
-  för "vem prata med härnäst".
+- `[KLAR]` **2. Top-10 största ej-anslutna enheter**
+  Egen flik i statspanelen.
 
-- **3. Donut: andel anslutna enheter vs andel anslutna konton**
-  Två värden sida vid sida. Ofta väldigt olika - det är insikt nr 1.
+- `[KLAR]` **3. Donut: andel anslutna enheter vs andel anslutna konton**
+  Två donuts sida vid sida i Översikt-fliken.
 
-- **4. Histogram: enhetsstorlek (konton)**
-  Färgat per status. Visar om det är systematiskt små eller stora
-  enheter som står utanför.
+- `[KLAR]` **4. Histogram: enhetsstorlek (konton)**
+  Egen flik i statspanelen, staplat Ja/Nej per storleksintervall.
 
 ## Filter och fokus
 
