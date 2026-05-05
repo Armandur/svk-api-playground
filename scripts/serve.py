@@ -13,6 +13,7 @@ Kör: `uv run scripts/serve.py` -> http://localhost:8088/
 
 from __future__ import annotations
 
+import csv
 import html as html_lib
 import json
 import os
@@ -46,6 +47,8 @@ REBUILD_STATE = {
     "last_error": None,
     "exit_code": None,
 }
+
+_BV_CACHE: list[dict] | None = None
 
 
 def run_rebuild() -> None:
@@ -627,6 +630,9 @@ class Handler(SimpleHTTPRequestHandler):
         if self._svk_proxy_match():
             self._proxy_svk("GET")
             return
+        if self.path == "/kbr-kvalitet/api/bv":
+            self._serve_bv_data()
+            return
         super().do_GET()
 
     def do_PATCH(self) -> None:  # noqa: N802
@@ -674,6 +680,58 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _serve_bv_data(self) -> None:
+        global _BV_CACHE
+        if _BV_CACHE is None:
+            bv_path = ROOT / "kbr-kvalitet" / "data" / "bv_grundinstallning.csv"
+            if not bv_path.exists():
+                body = json.dumps({"error": "BV-datafil saknas. Kopiera CSV-filen till kbr-kvalitet/data/bv_grundinstallning.csv"}, ensure_ascii=False).encode("utf-8")
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            records = []
+            with bv_path.open(encoding="utf-8-sig", newline="") as f:
+                reader = csv.DictReader(f, delimiter=";")
+                for row in reader:
+                    kbr_id_str = row.get("KBR-id", "").strip()
+                    lat_str = row.get("Latitud", "").replace(",", ".").strip()
+                    lng_str = row.get("Longitud", "").replace(",", ".").strip()
+                    bruksarea_str = row.get("Bruksarea(m²)", "").strip()
+                    fo_str = row.get("FO-id", "").strip()
+                    try:
+                        lat = float(lat_str) if lat_str else None
+                    except ValueError:
+                        lat = None
+                    try:
+                        lng = float(lng_str) if lng_str else None
+                    except ValueError:
+                        lng = None
+                    records.append({
+                        "bv_id": row.get("BV-id", "").strip(),
+                        "kbr_id": int(kbr_id_str) if kbr_id_str else None,
+                        "namn": row.get("Byggnadsverksnamn", "").strip(),
+                        "typ": row.get("Typ av objekt", "").strip(),
+                        "lat": lat,
+                        "lng": lng,
+                        "bruksarea": int(float(bruksarea_str.replace(",", "."))) if bruksarea_str else None,
+                        "stift": row.get("Stiftnamn", "").strip(),
+                        "enhet": row.get("Enhetsnamn", "").strip(),
+                        "inaktiverad": row.get("Inaktiverad", "").strip() == "Ja",
+                        "fo_id": int(fo_str) if fo_str else None,
+                    })
+            _BV_CACHE = records
+        body = json.dumps(_BV_CACHE, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)

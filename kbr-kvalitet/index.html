@@ -31,15 +31,43 @@ body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:va
   overflow-x:auto; white-space:nowrap; flex-shrink:0; }
 #coord-controls label { font-weight:500; }
 #threshold { width:110px; }
-#stift-filter, #src-filter { font-size:12px; max-width:130px; }
+#threshold-num { width:60px; font-size:12px; }
+.filter-btn { background:none; border:1px solid #ccc; border-radius:3px; cursor:pointer;
+  padding:4px 10px; color:#666; font-size:12px; line-height:1; }
+.filter-btn:hover { background:#ffe8de; border-color:var(--wine); color:var(--wine); }
+.filter-btn.active { border-color:var(--wine); background:#fff0f5; color:var(--wine); font-weight:600; }
+
+#filter-panel { position:fixed; bottom:48px; left:12px; z-index:2000; background:#fff;
+  border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,.15);
+  padding:12px 14px; min-width:220px; max-height:70vh; overflow-y:auto; font-size:12px; }
+#filter-panel .fp-title { font-weight:600; color:var(--wine); font-size:11px; margin:10px 0 4px;
+  border-top:1px solid #f0e8e0; padding-top:8px; }
+#filter-panel .fp-title:first-child { border-top:none; padding-top:0; margin-top:0; }
+#filter-panel label { display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; }
+#filter-panel label:hover { color:var(--wine); }
+
+@media (max-width:700px) {
+  #filter-panel { bottom:0; left:0; right:0; border-radius:12px 12px 0 0; border-bottom:none; min-width:0; }
+}
+
 .ctrl-stats { display:flex; gap:10px; margin-left:auto; align-items:center; }
 .ctrl-stat { display:flex; align-items:center; gap:4px; color:#444; }
 .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 #match-info { font-size:10px; color:#999; border-left:1px solid #ddd; padding-left:8px; }
 
-#coord-main { display:flex; flex:1; overflow:hidden; }
-#map { flex:1; }
-#sidebar { width:360px; overflow-y:auto; border-left:2px solid var(--black); background:#fff; }
+#coord-main { display:flex; flex:1; overflow:hidden; position:relative; }
+#map { flex:1; min-width:0; }
+#sidebar { width:360px; overflow-y:auto; border-left:2px solid var(--black); background:#fff; transition:width .2s,opacity .2s; }
+#coord-main.sidebar-hidden #sidebar { width:0; opacity:0; border-left:none; overflow:hidden; }
+#sidebar-toggle { position:absolute; top:8px; right:8px; z-index:1001;
+  background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:3px; cursor:pointer;
+  padding:4px 9px; color:#666; font-size:14px; line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+#sidebar-toggle:hover { background:#ffe8de; border-color:var(--wine); color:var(--wine); }
+#coord-main.sidebar-hidden #sidebar-toggle { right:8px; }
+@media (max-width:700px) {
+  #sidebar { position:absolute; right:0; top:0; bottom:0; z-index:900; box-shadow:-2px 0 8px rgba(0,0,0,.15); width:100%; max-width:360px; }
+  #coord-main.sidebar-hidden #sidebar { width:0; opacity:0; }
+}
 
 .quality-pane { padding:14px 18px; overflow-y:auto; }
 .q-section { margin-bottom:22px; }
@@ -73,6 +101,9 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
 #map-legend { position:absolute; bottom:24px; left:8px; z-index:1000;
   background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:4px;
   padding:6px 10px; font-size:11px; line-height:1.9; }
+@media (max-width:700px) {
+  #map-legend { bottom:auto; top:52px; left:8px; }
+}
 .leg { display:flex; align-items:center; gap:5px; }
 
 @media print {
@@ -107,6 +138,7 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
   <button class="tab-btn" data-tab="namn">Namnkvalitet</button>
   <button class="tab-btn" data-tab="status">Status &amp; avyttring</button>
   <button class="tab-btn" data-tab="komplettering">Komplettering &amp; förvaltning</button>
+  <button class="tab-btn" data-tab="bv">BV-jämförelse</button>
 </div>
 
 <!-- Flik 1: Koordinatavvikelser -->
@@ -114,14 +146,9 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
   <div id="coord-controls">
     <label>Tröskel:</label>
     <input type="range" id="threshold" min="0" max="50000" step="100" value="500">
-    <span id="threshold-val" style="min-width:44px;font-weight:600">500 m</span>
-    <label>Stift:</label><select id="stift-filter"><option value="">Alla</option></select>
-    <label>Källa:</label>
-    <select id="src-filter">
-      <option value="">Platser + OSM</option>
-      <option value="platser">Bara Platser</option>
-      <option value="osm">Bara OSM</option>
-    </select>
+    <input type="number" id="threshold-num" value="500">
+    <button id="filter-btn" class="filter-btn">Filter</button>
+    <label><input type="checkbox" id="show-unmatched" style="margin-right:3px">Omatchade</label>
     <div class="ctrl-stats">
       <span class="ctrl-stat"><span class="dot" style="background:#c62828"></span><span id="cnt-5k">-</span> &ge;5 km</span>
       <span class="ctrl-stat"><span class="dot" style="background:#f57c00"></span><span id="cnt-1k">-</span> &ge;1 km</span>
@@ -129,12 +156,27 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
       <span id="match-info">-</span>
     </div>
   </div>
+  <div id="filter-panel" style="display:none">
+    <div class="fp-title">Stift</div>
+    <div id="filter-stifts"></div>
+    <div class="fp-title">Typ</div>
+    <div id="filter-typer"></div>
+    <div class="fp-title">Källa</div>
+    <div id="filter-sources">
+      <label><input type="checkbox" value="platser" checked> Platser</label>
+      <label><input type="checkbox" value="osm" checked> OSM</label>
+      <label><input type="checkbox" value="bv" checked> BV</label>
+    </div>
+  </div>
   <div id="coord-main">
     <div id="map">
+      <button id="sidebar-toggle" title="Visa/dölj lista">&#9776;</button>
       <div id="map-legend">
         <div class="leg"><span style="width:9px;height:9px;border-radius:50%;background:#e53935;display:inline-block"></span> KBR</div>
         <div class="leg"><span style="width:9px;height:9px;border-radius:50%;background:#1565c0;display:inline-block"></span> Platser</div>
         <div class="leg"><span style="width:9px;height:9px;border-radius:50%;background:#2e7d32;display:inline-block"></span> OSM</div>
+        <div class="leg"><span style="width:9px;height:9px;border-radius:50%;background:#7B1FA2;display:inline-block"></span> BV</div>
+        <div class="leg" id="leg-unmatched" style="display:none"><span style="width:9px;height:9px;border-radius:50%;background:#bbb;display:inline-block"></span> Ej matchad</div>
       </div>
     </div>
     <div id="sidebar"><div id="no-data">Laddar data...</div></div>
@@ -277,6 +319,65 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
   </div>
 </div>
 
+<!-- Flik 7: BV-jämförelse -->
+<div id="tab-bv" class="tab-pane" style="height:calc(100vh - 88px)">
+  <div class="quality-pane" style="height:100%">
+    <div id="bv-status" style="display:none;padding:20px;color:#999;font-size:12px;font-style:italic"></div>
+    <div id="bv-content" style="display:none">
+      <div id='bv-controls' style='padding:8px 0 12px;display:flex;gap:10px;align-items:center;font-size:12px;flex-shrink:0'>
+        <label style='font-weight:500'>Visa typ:</label>
+        <select id='bv-typ-filter' style='font-size:12px'>
+          <option value=''>Alla byggtyper</option>
+          <option value='Kyrka/kapell'>Kyrka/kapell</option>
+          <option value='Begravningsplats'>Begravningsplats</option>
+          <option value='Församlingshem'>Församlingshem</option>
+          <option value='Klockstapel'>Klockstapel</option>
+          <option value='Krematorium'>Krematorium</option>
+        </select>
+        <label style='font-weight:500'>Min avvikelse (m):</label>
+        <input type="number" id="bv-koord-thr" value="0" min="0" step="50" style="width:70px;font-size:12px">
+        <span id='bv-filter-info' style='color:#888'></span>
+      </div>
+      <div class="q-section">
+        <h2>Koordinatavvikelse BV vs KBR (kyrkor) <span class="q-badge" id="cnt-bv-koord">-</span></h2>
+        <p class="q-note">Kräver kbr_all.json. Lämna 0 för att visa alla.</p>
+        <table class="data-table"><thead><tr><th>Avvikelse</th><th>BV-namn</th><th>Stift</th><th>Enhet</th><th class="no-print" style="width:28px"></th></tr></thead>
+        <tbody id="tbody-bv-koord"></tbody></table>
+      </div>
+      <div class="q-section">
+        <h2>KBR-kyrkor utan BV-koppling <span class="q-badge" id="cnt-bv-kbr-saknar">-</span></h2>
+        <p class="q-note">KBR-kyrkor vars id inte återfinns som KBR-id i BV-systemet.</p>
+        <table class="data-table"><thead><tr><th>Kyrka</th><th>Stift</th><th>KBR-id</th><th class="no-print" style="width:28px"></th></tr></thead>
+        <tbody id="tbody-bv-kbr-saknar"></tbody></table>
+      </div>
+      <div id='bv-section-begravning' class='q-section' style='display:none'>
+        <h2>Koordinatavvikelse BV vs KBR (begravningsplatser) <span class='q-badge' id='cnt-bv-begr-koord'>-</span></h2>
+        <p class='q-note'>Kräver kbr_begravningsplatser.json. Lämna 0 för att visa alla.</p>
+        <table class='data-table'><thead><tr><th>Avvikelse</th><th>BV-namn</th><th>Stift</th><th>Enhet</th><th class='no-print' style='width:28px'></th></tr></thead>
+        <tbody id='tbody-bv-begr-koord'></tbody></table>
+      </div>
+      <div id='bv-section-begravning-saknar' class='q-section' style='display:none'>
+        <h2>KBR-begravningsplatser utan BV-koppling <span class='q-badge' id='cnt-bv-begr-saknar'>-</span></h2>
+        <p class='q-note'>KBR-begravningsplatser vars id inte återfinns som KBR-id i BV.</p>
+        <table class='data-table'><thead><tr><th>Begravningsplats</th><th>Stift</th><th>KBR-id</th><th class='no-print' style='width:28px'></th></tr></thead>
+        <tbody id='tbody-bv-begr-saknar'></tbody></table>
+      </div>
+      <div class="q-section">
+        <h2>Typöversikt – BV-poster per objekttyp</h2>
+        <p class="q-note">Antal poster i BV per typ, med andel som har KBR-id-koppling och mappning mot KBR- och Platser-resurser.</p>
+        <table class="data-table"><thead><tr><th>Typ av objekt</th><th>Totalt</th><th>Med KBR-id</th><th>Utan KBR-id</th><th>KBR/Platser-resurs</th></tr></thead>
+        <tbody id="tbody-bv-typer"></tbody></table>
+      </div>
+      <div class="q-section">
+        <h2>Koordinatprecision – BV-koordinater</h2>
+        <p class="q-note">Antal decimaler i BV:s koordinatvärden. Få decimaler kan indikera att koordinaten är felplacerad eller grovt avrundad – men det behöver inte vara så.</p>
+        <table class="data-table"><thead><tr><th>Decimaler</th><th>Ca precision</th><th>Antal BV-poster</th><th>Lista</th></tr></thead>
+        <tbody id="tbody-bv-precision"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map = L.map('map').setView([62.5, 16], 5);
@@ -285,8 +386,20 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let allRows = [], markerLayer = L.layerGroup().addTo(map);
+let unmatchedLayer = L.layerGroup();
+let unmatchedRows = [];
 let sortCol = 'avstand_m', sortAsc = false;
 let highlightMarker = null;
+
+let filterStift = new Set();
+let filterTyp = new Set();
+let filterSrc = new Set(['platser', 'osm', 'bv']);
+
+function updateFilterBtn() {
+  const btn = document.getElementById('filter-btn');
+  const count = filterStift.size + filterTyp.size + (filterSrc.size < 3 ? 1 : 0);
+  btn.textContent = count > 0 ? `Filter (${count})` : 'Filter';
+}
 
 function distColor(m) {
   return m >= 5000 ? '#c62828' : m >= 1000 ? '#e53935' : m >= 500 ? '#f57c00' : '#fbc02d';
@@ -294,6 +407,15 @@ function distColor(m) {
 function fmtDist(m) {
   if (m == null) return '-';
   return m >= 1000 ? (m/1000).toFixed(1)+' km' : m+' m';
+}
+
+function renderUnmatched() {
+  unmatchedLayer.clearLayers();
+  unmatchedRows.forEach(r => {
+    L.circleMarker([r.kbr_lat, r.kbr_lng], {radius:3, color:"#999", fillColor:"#bbb", fillOpacity:0.7, weight:1})
+      .bindTooltip("<strong>Ej matchad i Platser/OSM</strong><br>"+r.namn+"<br>"+(r.stift||'')+"<br><span style='color:#999;font-size:10px'>Källa: KBR (Kyrkobyggnadsregistret)</span>", {sticky:true})
+      .addTo(unmatchedLayer);
+  });
 }
 
 function jumpToKBR(lat, lng, name) {
@@ -336,14 +458,16 @@ function buildTable(rs) {
     <th data-col="avstand_m">Avvikelse</th><th data-col="namn">Kyrka</th><th data-col="stift">Stift</th>
   </tr></thead><tbody>`;
   rs.forEach((r, i) => {
-    const hp = r.avstand_platser_m != null, ho = r.avstand_osm_m != null;
+    const hp = r.avstand_platser_m != null, ho = r.avstand_osm_m != null, hb = r.bv_lat != null;
     const b = (hp ? `<span class="dist-badge" style="background:${distColor(r.avstand_platser_m)}">${fmtDist(r.avstand_platser_m)}</span><span class="src-label">Platser</span>` : '')
-            + (ho ? ` <span class="dist-badge" style="background:${distColor(r.avstand_osm_m)}">${fmtDist(r.avstand_osm_m)}</span><span class="src-label">OSM</span>` : '');
+            + (ho ? ` <span class="dist-badge" style="background:${distColor(r.avstand_osm_m)}">${fmtDist(r.avstand_osm_m)}</span><span class="src-label">OSM</span>` : '')
+            + (hb ? ` <span class="dist-badge" style="background:${distColor(r.avstand_bv_m)}">${fmtDist(r.avstand_bv_m)}</span><span class="src-label">BV</span>` : '');
     html += `<tr class="data-row" data-idx="${i}"><td style="white-space:nowrap">${b}</td><td>${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
     <tr class="row-detail"><td colspan="3">
       <strong>KBR (Kyrkobyggnadsregistret)</strong> ${r.kbr_lat}, ${r.kbr_lng}<br>
       ${hp ? `<strong>Platser-API</strong> ${r.platser_lat}, ${r.platser_lng}<br>` : ''}
       ${ho ? `<strong>OSM</strong> ${r.osm_lat}, ${r.osm_lng}<br>` : ''}
+      ${hb ? `<strong>BV</strong> ${r.bv_lat}, ${r.bv_lng}<br>` : ''}
       KBR-id: ${r.kbr_id}${r.skydd ? ' | <strong>KML-skyddad</strong>' : ''}
     </td></tr>`;
   });
@@ -355,8 +479,8 @@ function buildTable(rs) {
   sb.querySelectorAll('.data-row').forEach(tr => tr.addEventListener('click', () => {
     tr.classList.toggle('expanded');
     const r = rs[+tr.dataset.idx];
-    const lats = [r.kbr_lat, r.platser_lat, r.osm_lat].filter(Boolean);
-    const lngs = [r.kbr_lng, r.platser_lng, r.osm_lng].filter(Boolean);
+    const lats = [r.kbr_lat, r.platser_lat, r.osm_lat, r.bv_lat].filter(Boolean);
+    const lngs = [r.kbr_lng, r.platser_lng, r.osm_lng, r.bv_lng].filter(Boolean);
     map.setView([(Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2], Math.max(map.getZoom(),13));
   }));
 }
@@ -369,7 +493,7 @@ function buildMarkers(rs) {
       L.polyline([[r.kbr_lat,r.kbr_lng],[r.platser_lat,r.platser_lng]],
         {color:'#1565c0',weight:1.5,opacity:0.5,dashArray:'4 4'}).addTo(markerLayer);
       L.circleMarker([r.platser_lat,r.platser_lng],{radius:4,color:'#1565c0',fillColor:'#42a5f5',fillOpacity:0.8,weight:1.5})
-        .bindTooltip(`<strong>Platser-API</strong><br>${r.namn}<br>${r.platser_lat}, ${r.platser_lng}`,{sticky:true}).addTo(markerLayer);
+        .bindTooltip(`<strong>Platser-API</strong><br>${r.namn}<br>${r.platser_lat}, ${r.platser_lng}${r.platser_slug ? `<br><a href="https://www.svenskakyrkan.se/platser/${r.platser_slug}" target="_blank" style="color:#1565c0">Öppna på svenskakyrkan.se</a>` : ''}`,{sticky:true}).addTo(markerLayer);
     }
     if (r.osm_lat != null) {
       L.polyline([[r.kbr_lat,r.kbr_lng],[r.osm_lat,r.osm_lng]],
@@ -377,32 +501,270 @@ function buildMarkers(rs) {
       L.circleMarker([r.osm_lat,r.osm_lng],{radius:4,color:'#2e7d32',fillColor:'#66bb6a',fillOpacity:0.8,weight:1.5})
         .bindTooltip(`<strong>OSM</strong><br>${r.namn}<br>${r.osm_lat}, ${r.osm_lng}`,{sticky:true}).addTo(markerLayer);
     }
+    if (r.bv_lat != null) {
+      L.polyline([[r.kbr_lat,r.kbr_lng],[r.bv_lat,r.bv_lng]],
+        {color:'#7B1FA2',weight:1.5,opacity:0.5,dashArray:'3 5'}).addTo(markerLayer);
+      L.circleMarker([r.bv_lat,r.bv_lng],{radius:4,color:'#7B1FA2',fillColor:'#CE93D8',fillOpacity:0.8,weight:1.5})
+        .bindTooltip(`<strong>BV</strong><br>${r.namn}<br>${r.bv_lat}, ${r.bv_lng}`,{sticky:true}).addTo(markerLayer);
+    }
     L.circleMarker([r.kbr_lat,r.kbr_lng],{radius:5,color:c,fillColor:c,fillOpacity:0.9,weight:1.5})
-      .bindTooltip(`<strong>KBR (Kyrkobyggnadsregistret)</strong><br>${r.namn}<br>${r.kbr_lat}, ${r.kbr_lng}<br>Platser: ${fmtDist(r.avstand_platser_m)} | OSM: ${fmtDist(r.avstand_osm_m)}`,{sticky:true}).addTo(markerLayer);
+      .bindTooltip(`<strong>KBR (Kyrkobyggnadsregistret)</strong><br>${r.namn}<br>${r.kbr_lat}, ${r.kbr_lng}<br>Platser: ${fmtDist(r.avstand_platser_m)} | OSM: ${fmtDist(r.avstand_osm_m)} | BV: ${fmtDist(r.avstand_bv_m)}`,{sticky:true}).addTo(markerLayer);
   });
 }
 
 function applyFilter() {
   const thr = +document.getElementById('threshold').value;
-  const stift = document.getElementById('stift-filter').value;
-  const src   = document.getElementById('src-filter').value;
-  let rs = allRows.filter(r => r.avstand_m >= thr);
-  if (stift) rs = rs.filter(r => r.stift === stift);
-  if (src === 'platser') rs = rs.filter(r => r.avstand_platser_m != null && r.avstand_platser_m >= thr);
-  if (src === 'osm')     rs = rs.filter(r => r.avstand_osm_m != null && r.avstand_osm_m >= thr);
+  let rs = allRows.filter(r => r.avstand_m >= thr || (r.avstand_bv_m != null && r.avstand_bv_m >= thr));
+  if (filterStift.size > 0) rs = rs.filter(r => filterStift.has(r.stift));
+  if (filterTyp.size > 0) rs = rs.filter(r => filterTyp.has(r.typ));
+  
+  if (filterSrc.size < 3) {
+    if (filterSrc.size === 0) {
+      rs = [];
+    } else {
+      rs = rs.filter(r => {
+        const hasPlatser = filterSrc.has('platser') && r.avstand_platser_m != null && r.avstand_platser_m >= thr;
+        const hasOsm     = filterSrc.has('osm')     && r.avstand_osm_m != null     && r.avstand_osm_m >= thr;
+        const hasBv      = filterSrc.has('bv')      && r.avstand_bv_m != null      && r.avstand_bv_m >= thr;
+        return hasPlatser || hasOsm || hasBv;
+      });
+    }
+  }
+
   rs.sort((a,b) => {
     let va = a[sortCol], vb = b[sortCol];
-    if (typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}
+    if (sortCol === 'avstand_m') {
+      va = Math.max(a.avstand_m || 0, a.avstand_bv_m || 0);
+      vb = Math.max(b.avstand_m || 0, b.avstand_bv_m || 0);
+    } else if (typeof va==='string'){
+      va=va.toLowerCase();vb=vb.toLowerCase();
+    }
     return (va<vb?-1:va>vb?1:0)*(sortAsc?1:-1);
   });
   buildTable(rs); buildMarkers(rs);
 }
 
 document.getElementById('threshold').addEventListener('input', function() {
-  document.getElementById('threshold-val').textContent = fmtDist(+this.value); applyFilter();
+  document.getElementById('threshold-num').value = this.value; applyFilter();
 });
-document.getElementById('stift-filter').addEventListener('change', applyFilter);
-document.getElementById('src-filter').addEventListener('change', applyFilter);
+document.getElementById('threshold-num').addEventListener('input', function() {
+  document.getElementById('threshold').value = this.value; applyFilter();
+});
+
+document.getElementById("filter-btn").addEventListener("click", e => {
+  e.stopPropagation();
+  const p = document.getElementById("filter-panel");
+  const isHidden = p.style.display === "none";
+  p.style.display = isHidden ? "" : "none";
+  document.getElementById("filter-btn").classList.toggle("active", isHidden);
+});
+
+document.addEventListener("click", e => {
+  const panel = document.getElementById("filter-panel");
+  if (panel && !panel.contains(e.target) && !e.target.closest("#filter-btn")) {
+    panel.style.display = "none";
+    document.getElementById("filter-btn").classList.remove("active");
+  }
+});
+
+document.querySelectorAll('#filter-sources input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    if (cb.checked) filterSrc.add(cb.value);
+    else filterSrc.delete(cb.value);
+    updateFilterBtn(); applyFilter();
+  });
+});
+
+document.getElementById('show-unmatched').addEventListener('change', function() {
+  const leg = document.getElementById("leg-unmatched");
+  if (this.checked) {
+    renderUnmatched();
+    unmatchedLayer.addTo(map);
+    if (leg) leg.style.display = 'flex';
+  } else {
+    map.removeLayer(unmatchedLayer);
+    if (leg) leg.style.display = 'none';
+  }
+});
+document.getElementById('sidebar-toggle').addEventListener('click', () => {
+  document.getElementById('coord-main').classList.toggle('sidebar-hidden');
+  setTimeout(() => map.invalidateSize(), 220);
+});
+
+// BV-jämförelse
+const BV_TYP_RESURS = {
+  'Kyrka/kapell':        'KBR kyrka (kyrka=true) + Platser churchAndChapel + OSM place_of_worship',
+  'Begravningsplats':    'KBR /begravningsplatser + Platser cemetery + OSM landuse=cemetery',
+  'Församlingshem':      'Platser parishHome',
+  'Administrationsbyggnad': 'Platser secretariat',
+  'Gravkor/Mausoleum':   'KBR /begravningsplatser',
+  'Krematorium':         'KBR /begravningsplatser + OSM amenity=crematorium',
+  'Klockstapel':         'OSM man_made=campanile',
+};
+
+const TOMTMARK_TYPER = new Set([
+  'Parkeringsplats','Parkmark','Skogsmark','Jordbruksmark',
+  'Kyrktomt','Trädgård','Kyrkogårdsmur','Vatten',
+  'Lekplats','Cykelparkering','Skärmtak','Skolgård',
+]);
+
+function hvs(lat1, lng1, lat2, lng2) {
+  const R = 6371000, toRad = x => x * Math.PI / 180;
+  const dp = toRad(lat2-lat1), dl = toRad(lng2-lng1);
+  const a = Math.sin(dp/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dl/2)**2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(a)));
+}
+
+let bvDataGlobal = null, kbrAllGlobal = null, kbrBegravningGlobal = null;
+let bvLoaded = false;
+
+function loadBvTab() {
+  if (bvDataGlobal) {
+    renderBvTab();
+    return;
+  }
+  const statusEl = document.getElementById('bv-status');
+  const contentEl = document.getElementById('bv-content');
+  statusEl.textContent = 'Laddar BV-data...';
+  statusEl.style.display = '';
+
+  Promise.all([
+    fetch('/kbr-kvalitet/api/bv').then(r => r.ok ? r.json() : Promise.reject(r.status)),
+    fetch('data/kbr_all.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('data/kbr_begravningsplatser.json').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]).then(([bvData, kbrAll, kbrBegravning]) => {
+    bvDataGlobal = bvData;
+    kbrAllGlobal = kbrAll;
+    kbrBegravningGlobal = kbrBegravning;
+    statusEl.style.display = 'none';
+    contentEl.style.display = '';
+    renderBvTab();
+  }).catch(err => {
+    statusEl.textContent = err === 404
+      ? 'BV-datafil saknas. Kopiera CSV-filen till kbr-kvalitet/data/bv_grundinstallning.csv'
+      : 'Kunde inte ladda BV-data. Är servern startad med ./start.sh?';
+    statusEl.style.display = '';
+  });
+}
+
+function renderBvTab() {
+  const bvData = bvDataGlobal;
+  const kbrAll = kbrAllGlobal;
+  const kbrBegravning = kbrBegravningGlobal;
+  const filtreradTyp = document.getElementById('bv-typ-filter').value;
+  const thr = +document.getElementById('bv-koord-thr').value || 0;
+
+  const kbrMap = {};
+  if (kbrAll) kbrAll.forEach(c => { kbrMap[c.kbr_id] = c; });
+
+  // Koordinatavvikelse KBR vs BV (Kyrka/kapell med kbr_id)
+  const coordAvvikelse = [];
+  bvData.filter(r => r.typ === 'Kyrka/kapell' && r.kbr_id && r.lat != null && r.lng != null)
+    .forEach(bv => {
+      const kbr = kbrMap[bv.kbr_id];
+      if (!kbr) return;
+      const dist = hvs(bv.lat, bv.lng, kbr.kbr_lat, kbr.kbr_lng);
+      if (dist >= thr) coordAvvikelse.push({...bv, kbr_lat: kbr.kbr_lat, kbr_lng: kbr.kbr_lng, avstand_m: dist});
+    });
+  coordAvvikelse.sort((a, b) => b.avstand_m - a.avstand_m);
+  setCount('cnt-bv-koord', coordAvvikelse.length, true);
+  document.getElementById('tbody-bv-koord').innerHTML = coordAvvikelse.map(r =>
+    `<tr><td><span class="dist-badge" style="background:${distColor(r.avstand_m)}">${fmtDist(r.avstand_m)}</span></td>
+    <td>${r.namn}</td><td>${r.stift||''}</td><td style="font-size:10px">${r.enhet||''}</td>
+    ${mapBtn(r.kbr_lat, r.kbr_lng, r.namn)}</tr>`
+  ).join('') || '<tr><td colspan="5" style="color:#2e7d32;font-style:italic">Inga avvikelser</td></tr>';
+
+  // KBR-kyrkor utan BV-koppling
+  const bvKbrIds = new Set(bvData.filter(r => r.kbr_id).map(r => r.kbr_id));
+  const kbrUtanBv = kbrAll ? kbrAll.filter(c => !bvKbrIds.has(c.kbr_id)) : [];
+  setCount('cnt-bv-kbr-saknar', kbrAll ? kbrUtanBv.length : '?', !!kbrAll);
+  document.getElementById('tbody-bv-kbr-saknar').innerHTML = kbrAll
+    ? kbrUtanBv.map(c => `<tr><td>${c.namn}</td><td>${c.stift||''}</td><td>${c.kbr_id}</td>${mapBtn(c.kbr_lat, c.kbr_lng, c.namn)}</tr>`).join('')
+      || '<tr><td colspan="4" style="color:#2e7d32;font-style:italic">Alla KBR-kyrkor har BV-koppling</td></tr>'
+    : '<tr><td colspan="4" style="color:#999;font-style:italic">Kör build_report.py för att generera kbr_all.json</td></tr>';
+
+  // Begravningsplats vs KBR
+  const kbrBegrMap = {};
+  if (kbrBegravning) kbrBegravning.forEach(c => { kbrBegrMap[c.kbr_id] = c; });
+  const bvBegrMedKbrId = bvData.filter(r => r.typ === 'Begravningsplats' && r.kbr_id && r.lat != null && r.lng != null);
+  const begrAvvikelse = [];
+  bvBegrMedKbrId.forEach(bv => {
+    const kbr = kbrBegrMap[bv.kbr_id];
+    if (!kbr) return;
+    const dist = hvs(bv.lat, bv.lng, kbr.kbr_lat, kbr.kbr_lng);
+    if (dist >= thr) begrAvvikelse.push({...bv, kbr_lat: kbr.kbr_lat, kbr_lng: kbr.kbr_lng, avstand_m: dist});
+  });
+  begrAvvikelse.sort((a, b) => b.avstand_m - a.avstand_m);
+  setCount('cnt-bv-begr-koord', begrAvvikelse.length, true);
+  document.getElementById('tbody-bv-begr-koord').innerHTML = begrAvvikelse.map(r =>
+    '<tr><td><span class="dist-badge" style="background:' + distColor(r.avstand_m) + '">' + fmtDist(r.avstand_m) + '</span></td>' +
+    '<td>' + r.namn + '</td><td>' + (r.stift||'') + '</td><td style="font-size:10px">' + (r.enhet||'') + '</td>' +
+    mapBtn(r.kbr_lat, r.kbr_lng, r.namn) + '</tr>'
+  ).join('') || '<tr><td colspan="5" style="color:#2e7d32;font-style:italic">Inga avvikelser</td></tr>';
+  const bvBegrKbrIds = new Set(bvData.filter(r => r.typ === 'Begravningsplats' && r.kbr_id).map(r => r.kbr_id));
+  const kbrBegrUtanBv = kbrBegravning ? kbrBegravning.filter(c => !bvBegrKbrIds.has(c.kbr_id)) : [];
+  setCount('cnt-bv-begr-saknar', kbrBegravning ? kbrBegrUtanBv.length : '?', !!kbrBegravning);
+  document.getElementById('tbody-bv-begr-saknar').innerHTML = kbrBegravning
+    ? kbrBegrUtanBv.map(c => '<tr><td>' + c.namn + '</td><td>' + (c.stift||'') + '</td><td>' + c.kbr_id + '</td>' + mapBtn(c.kbr_lat, c.kbr_lng, c.namn) + '</tr>').join('')
+      || '<tr><td colspan="4" style="color:#2e7d32;font-style:italic">Alla KBR-begravningsplatser har BV-koppling</td></tr>'
+    : '<tr><td colspan="4" style="color:#999;font-style:italic">Kör build_report.py för att generera kbr_begravningsplatser.json</td></tr>';
+
+  // Typöversikt
+  const typCount = {}, typWithKbr = {};
+  bvData.filter(r => !TOMTMARK_TYPER.has(r.typ)).forEach(r => {
+    typCount[r.typ] = (typCount[r.typ]||0) + 1;
+    if (r.kbr_id) typWithKbr[r.typ] = (typWithKbr[r.typ]||0) + 1;
+  });
+  const filterInfoEl = document.getElementById('bv-filter-info');
+  filterInfoEl.textContent = bvData.length + ' poster totalt (exkl. tomtmark)';
+  document.getElementById('tbody-bv-typer').innerHTML =
+    Object.entries(typCount).filter(([typ]) => !filtreradTyp || typ === filtreradTyp)
+    .sort((a,b) => b[1]-a[1]).map(([typ, tot]) => {
+      const med = typWithKbr[typ]||0;
+      return `<tr><td>${typ}</td><td>${tot}</td><td>${med||'-'}</td><td>${tot-med}</td>
+        <td style="font-size:10px;color:#888">${BV_TYP_RESURS[typ]||''}</td></tr>`;
+    }).join('');
+
+  // Koordinatprecision – BV
+  const precisionGroups = [
+    { label: '8+', desc: '~1 mm', test: d => d >= 8 },
+    { label: '6-7', desc: '~0.1 m', test: d => d === 6 || d === 7 },
+    { label: '5', desc: '~1 m', test: d => d === 5 },
+    { label: '4', desc: '~11 m', test: d => d === 4 },
+    { label: '3', desc: '~111 m', test: d => d === 3 },
+    { label: '≤2', desc: '>1 km', test: d => d <= 2 }
+  ];
+  const groupedPrec = precisionGroups.map(g => ({ ...g, count: 0, items: [] }));
+  bvData.filter(r => r.lat != null).forEach(r => {
+    const s = String(r.lat), d = s.includes('.') ? s.split('.')[1].length : 0;
+    const g = groupedPrec.find(x => x.test(d));
+    if (g) { g.count++; g.items.push(r); }
+  });
+  document.getElementById('tbody-bv-precision').innerHTML = groupedPrec.filter(g => g.count > 0).map((g, idx) => {
+    const list = '<table style="width:100%;border-collapse:collapse;font-size:10px">'
+      + '<thead><tr style="background:#f5ece6"><th style="padding:3px 6px;text-align:left">Namn</th><th style="padding:3px 6px;text-align:left">Stift</th><th style="padding:3px 6px;text-align:left">Enhet</th><th style="padding:3px 6px;text-align:right">Lat</th><th style="padding:3px 6px;text-align:right">Lng</th><th style="width:28px"></th></tr></thead><tbody>'
+      + g.items.map(i => { const safe = (i.namn||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); return `<tr style="border-top:1px solid #f0e8e0"><td style="padding:2px 6px">${i.namn}</td><td style="padding:2px 6px">${i.stift||'-'}</td><td style="padding:2px 6px">${i.enhet||'-'}</td><td style="padding:2px 6px;text-align:right;font-family:monospace">${i.lat}</td><td style="padding:2px 6px;text-align:right;font-family:monospace">${i.lng}</td><td style="padding:2px 4px">${i.lat != null ? `<button class="map-btn" onclick="jumpToKBR(${i.lat},${i.lng},'${safe}')" title="Visa på karta">&#x2316;</button>` : ''}</td></tr>`; }).join('')
+      + '</tbody></table>';
+    return `<tr><td>${g.label}</td><td>${g.desc}</td><td>${g.count}</td>
+      <td><button class="map-btn" onclick="const e=document.getElementById('bv-prec-l-${idx}');e.style.display=e.style.display==='none'?'block':'none'">Visa</button></td></tr>
+      <tr id="bv-prec-l-${idx}" style="display:none"><td colspan="4" style="padding:0;background:#fffaf7;border-bottom:1px solid #f0e8e0">${list}</td></tr>`;
+  }).join('');
+
+  // Visa/dölj sektioner baserat på valt filter
+  const showKyrka = !filtreradTyp || filtreradTyp === 'Kyrka/kapell';
+  const showBegravning = !filtreradTyp || filtreradTyp === 'Begravningsplats';
+  document.querySelector('.q-section:has(#cnt-bv-koord)').style.display = showKyrka ? '' : 'none';
+  document.querySelector('.q-section:has(#cnt-bv-kbr-saknar)').style.display = showKyrka ? '' : 'none';
+  document.getElementById('bv-section-begravning').style.display = showBegravning ? '' : 'none';
+  document.getElementById('bv-section-begravning-saknar').style.display = showBegravning ? '' : 'none';
+}
+
+document.getElementById('bv-typ-filter').addEventListener('change', () => {
+  if (bvLoaded) renderBvTab();
+});
+document.getElementById('bv-koord-thr').addEventListener('input', () => {
+  if (bvLoaded) renderBvTab();
+});
 
 document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -410,6 +772,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   btn.classList.add('active');
   document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   if (btn.dataset.tab === 'koordinater') map.invalidateSize();
+  if (btn.dataset.tab === 'bv' && !bvLoaded) { bvLoaded = true; loadBvTab(); }
 }));
 
 // Ladda data
@@ -418,10 +781,56 @@ fetch('data/report.json').then(r=>r.json()).then(data => {
   document.getElementById('cnt-5k').textContent  = data.filter(r=>r.avstand_m>=5000).length;
   document.getElementById('cnt-1k').textContent  = data.filter(r=>r.avstand_m>=1000).length;
   document.getElementById('cnt-200').textContent = data.filter(r=>r.avstand_m>=200).length;
+
   const stifts = [...new Set(data.map(r=>r.stift).filter(Boolean))].sort();
-  const sel = document.getElementById('stift-filter');
-  stifts.forEach(s => { const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
+  const sDiv = document.getElementById('filter-stifts');
+  stifts.forEach(s => {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" value="${s}"> ${s}`;
+    lbl.querySelector('input').addEventListener('change', e => {
+      if (e.target.checked) filterStift.add(s); else filterStift.delete(s);
+      updateFilterBtn(); applyFilter();
+    });
+    sDiv.appendChild(lbl);
+  });
+
+  const typer = [...new Set(data.map(r=>r.typ).filter(Boolean))].sort();
+  const tDiv = document.getElementById('filter-typer');
+  typer.forEach(t => {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" value="${t}"> ${t}`;
+    lbl.querySelector('input').addEventListener('change', e => {
+      if (e.target.checked) filterTyp.add(t); else filterTyp.delete(t);
+      updateFilterBtn(); applyFilter();
+    });
+    tDiv.appendChild(lbl);
+  });
+
   applyFilter();
+
+  fetch("data/kbr_all.json").then(r=>r.ok?r.json():null).catch(()=>null).then(kbrAll => {
+    if (!kbrAll) return;
+    const matchedIds = new Set(allRows.map(r=>r.kbr_id));
+    unmatchedRows = kbrAll.filter(r => !matchedIds.has(r.kbr_id));
+    if (document.getElementById("show-unmatched").checked) renderUnmatched();
+  });
+
+  // Ladda BV-koordinater asynkront och lägg till som fjärde källa
+  fetch('/kbr-kvalitet/api/bv').then(r=>r.ok?r.json():null).catch(()=>null).then(bvData => {
+    if (!bvData) return;
+    const bvMap = {};
+    bvData.forEach(b => { if (b.kbr_id && b.lat != null && b.lng != null) bvMap[b.kbr_id] = b; });
+    allRows.forEach(r => {
+      const bv = bvMap[r.kbr_id];
+      if (!bv) return;
+      r.bv_lat = bv.lat; r.bv_lng = bv.lng;
+      r.avstand_bv_m = hvs(r.kbr_lat, r.kbr_lng, bv.lat, bv.lng);
+    });
+    document.getElementById('cnt-5k').textContent  = allRows.filter(r=>Math.max(r.avstand_m||0, r.avstand_bv_m||0)>=5000).length;
+    document.getElementById('cnt-1k').textContent  = allRows.filter(r=>Math.max(r.avstand_m||0, r.avstand_bv_m||0)>=1000).length;
+    document.getElementById('cnt-200').textContent = allRows.filter(r=>Math.max(r.avstand_m||0, r.avstand_bv_m||0)>=200).length;
+    applyFilter();
+  });
 }).catch(() => {
   document.getElementById('sidebar').innerHTML = '<div id="no-data">Kör build_report.py först</div>';
 });

@@ -30,6 +30,9 @@ Thumbs.db
 .env.local
 tmp/gemini/
 
+# kbr-kvalitet genererade datafiler och exporterade CSV:er (byggs lokalt)
+kbr-kvalitet/data/
+
 # Lokalt synkskript och logg (ej för repo)
 sync_vmworkspace.sh
 sync.log
