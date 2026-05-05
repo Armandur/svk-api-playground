@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ekonomiska enheter (UnitAPI)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Spectral:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --beige: #FFEBE1;
+  --black: #000;
+  --wine:  #7D0037;
+  --pink:  #FFC3AA;
+  --green: #00554B;
+  --muted: #6b5f5a;
+  --line:  rgba(125, 0, 55, 0.2);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font: 15px/1.45 "DM Sans", Arial, sans-serif;
+  background: var(--beige); color: var(--black);
+  padding: clamp(16px, 3vw, 32px);
+  max-width: 920px; margin: 0 auto;
+}
+header {
+  border-bottom: 2px solid var(--wine);
+  padding-bottom: 12px; margin-bottom: 20px;
+}
+h1 {
+  font-size: 24px; font-weight: 500; color: var(--wine);
+  letter-spacing: -0.01em;
+}
+.subtitle {
+  font-family: "Spectral", serif; font-style: italic;
+  color: var(--muted); font-size: 13px; margin-top: 2px;
+}
+.controls {
+  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.controls input[type="search"] {
+  flex: 1; min-width: 200px;
+  font: 400 16px "DM Sans", Arial, sans-serif;
+  padding: 10px 14px; border: 2px solid var(--black); background: #fff;
+}
+.controls input[type="search"]:focus { outline: none; border-color: var(--wine); }
+.controls select {
+  font: 400 15px "DM Sans", Arial, sans-serif;
+  padding: 10px 14px; border: 2px solid var(--black); background: #fff;
+}
+.stats {
+  color: var(--muted); font-size: 13px; margin-bottom: 16px;
+}
+.stats b { color: var(--wine); font-weight: 600; }
+.stift-group {
+  margin-bottom: 18px; border: 1px solid var(--line); background: #fff;
+}
+.stift-header {
+  padding: 6px 14px; background: rgba(125, 0, 55, 0.06);
+  border-bottom: 1px solid var(--line);
+  font-weight: 500; color: var(--wine);
+  display: flex; justify-content: space-between; align-items: center;
+  min-height: 32px;
+}
+.stift-header .count {
+  color: var(--muted); font-weight: 400; font-size: 13px;
+  font-family: "Spectral", serif; font-style: italic;
+}
+ul { list-style: none; }
+li {
+  padding: 6px 14px; border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  min-height: 32px;
+}
+li:last-child { border-bottom: none; }
+li:nth-child(even) { background: rgba(125, 0, 55, 0.02); }
+.type-badge {
+  font-size: 11px; padding: 2px 6px; border-radius: 3px;
+  font-weight: 500; white-space: nowrap;
+}
+.type-badge.stift { background: var(--wine); color: #fff; }
+.type-badge.samf  { background: var(--pink); color: var(--wine); }
+.type-badge.fors  { background: rgba(0, 85, 75, 0.12); color: var(--green); }
+.type-badge.tross { background: var(--gold, #BC8E4C); color: #fff; }
+.badges { display: inline-flex; gap: 4px; }
+.itf-badge {
+  font-size: 11px; padding: 2px 6px; border-radius: 3px;
+  font-weight: 500; white-space: nowrap;
+  background: #4a3d8a; color: #fff;
+}
+.ovrig-badge {
+  font-size: 11px; padding: 2px 6px; border-radius: 3px;
+  font-weight: 500; white-space: nowrap;
+  background: var(--muted); color: #fff;
+}
+.empty, .loading {
+  text-align: center; color: var(--muted); padding: 30px;
+  font-family: "Spectral", serif; font-style: italic;
+}
+.error {
+  background: #fff4f4; border: 1px solid #d33;
+  color: #800; padding: 12px 16px; margin-bottom: 16px;
+}
+mark { background: var(--pink); color: var(--wine); padding: 0 1px; }
+footer {
+  margin-top: 30px; padding-top: 12px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 12px;
+}
+footer a, footer code { color: var(--wine); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ekonomiska enheter</h1>
+  <div class="subtitle">Aktuella enheter med egen ekonomi - live från UnitAPI</div>
+</header>
+
+<div class="controls">
+  <input type="search" id="q" placeholder="Sök efter enhet eller stift..." autofocus>
+  <select id="type-filter">
+    <option value="">Alla typer</option>
+    <option value="Trossamfund">Trossamfund</option>
+    <option value="Stift">Stift</option>
+    <option value="Sammfällighet">Pastorat</option>
+    <option value="FörsamlingE">Församling</option>
+  </select>
+</div>
+
+<div class="stats" id="stats">Laddar ...</div>
+<div id="results"><div class="loading">Hämtar 2 220 enheter från UnitAPI ...</div></div>
+
+<script>
+const PAGE_SIZE = 1000;
+const SELECT = "unitId,name,unitType,validUntil,stiftCode";
+const EK_TYPES = new Set(["Stift", "Sammfällighet", "FörsamlingE"]);
+const TYPE_ORDER = { "Trossamfund": -1, "Stift": 0, "Sammfällighet": 1, "FörsamlingE": 2 };
+const TYPE_LABEL = { "Trossamfund": "Trossamfund", "Stift": "Stift", "Sammfällighet": "Pastorat", "FörsamlingE": "Församling" };
+const TYPE_CLASS = { "Trossamfund": "tross", "Stift": "stift", "Sammfällighet": "samf", "FörsamlingE": "fors" };
+
+const TROSSAMFUNDET_UNIT_ID = 1;
+const TROSSAMFUNDET_NAMN = "Trossamfundet Svenska kyrkan";
+const RIKSNIVA_LABEL = "Nationell nivå";
+
+// Icke-territoriella församlingar - se fetch_ekonomiska_enheter.py
+const ITF_UNIT_IDS = new Set([97, 98, 99, 774, 2436]);
+// Övriga specialfall (begravningssamfälligheter m.fl.)
+const OVRIG_UNIT_IDS = new Set([20216, 3169]);
+
+let ekonomiska = [];
+
+async function fetchAllUnits() {
+  const all = [];
+  let skip = 0;
+  while (true) {
+    const url = `/api/units/?$top=${PAGE_SIZE}&$skip=${skip}&$select=${SELECT}`;
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status} på ${url}`);
+    const json = await r.json();
+    all.push(...json.value);
+    if (json.value.length < PAGE_SIZE) break;
+    skip += PAGE_SIZE;
+  }
+  return all;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function highlight(text, q) {
+  if (!q) return escapeHtml(text);
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig");
+  return escapeHtml(text).replace(re, "<mark>$1</mark>");
+}
+
+function render() {
+  const q = document.getElementById("q").value.trim();
+  const ql = q.toLowerCase();
+  const typeFilter = document.getElementById("type-filter").value;
+
+  let rows = ekonomiska;
+  if (typeFilter) rows = rows.filter(r => r.unitType === typeFilter);
+  if (ql) rows = rows.filter(r =>
+    r.name.toLowerCase().includes(ql) ||
+    (r.stift || "").toLowerCase().includes(ql)
+  );
+
+  const groups = new Map();
+  for (const r of rows) {
+    const key = r.stift || "(okänt stift)";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
+
+  const stiftCount = [...groups.keys()].filter(k => k !== RIKSNIVA_LABEL).length;
+  const stats = document.getElementById("stats");
+  stats.innerHTML = `<b>${rows.length}</b> enheter` +
+    (rows.length !== ekonomiska.length ? ` (av ${ekonomiska.length})` : "") +
+    ` i <b>${stiftCount}</b> stift`;
+
+  const out = document.getElementById("results");
+  if (!rows.length) {
+    out.innerHTML = '<div class="empty">Inga träffar.</div>';
+    return;
+  }
+
+  // Nationell nivå (Trossamfundet) först, sedan stiften alfabetiskt
+  const sortedStift = [...groups.keys()].sort((a, b) => {
+    if (a === RIKSNIVA_LABEL) return -1;
+    if (b === RIKSNIVA_LABEL) return 1;
+    return a.localeCompare(b, "sv");
+  });
+  let html = "";
+  for (const stift of sortedStift) {
+    const enheter = groups.get(stift).sort((a, b) => {
+      const t = (TYPE_ORDER[a.unitType] ?? 9) - (TYPE_ORDER[b.unitType] ?? 9);
+      if (t) return t;
+      return a.name.localeCompare(b.name, "sv");
+    });
+    html += `<section class="stift-group"><div class="stift-header"><span>${highlight(stift, q)}</span><span class="count">${enheter.length} st</span></div><ul>${enheter.map(e => {
+        let badge;
+        if (OVRIG_UNIT_IDS.has(e.unitId)) {
+          badge = '<span class="ovrig-badge" title="Övrig samfällighet (ej pastorat)">Övrig</span>';
+        } else if (ITF_UNIT_IDS.has(e.unitId)) {
+          badge = '<span class="itf-badge" title="Icke-territoriell församling">ITF</span>';
+        } else {
+          badge = `<span class="type-badge ${TYPE_CLASS[e.unitType] || ""}">${TYPE_LABEL[e.unitType] || e.unitType}</span>`;
+        }
+        return `<li><span>${highlight(e.name, q)}</span>${badge}</li>`;
+      }).join("")}</ul>
+    </section>`;
+  }
+  out.innerHTML = html;
+}
+
+async function init() {
+  try {
+    const all = await fetchAllUnits();
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Bygg stiftCode -> stiftnamn från Stift-enheter
+    const stiftByCode = {};
+    for (const u of all) {
+      if (u.unitType === "Stift" && u.stiftCode) {
+        stiftByCode[u.stiftCode] = u.name;
+      }
+    }
+
+    ekonomiska = all
+      .filter(u => EK_TYPES.has(u.unitType))
+      .filter(u => !u.validUntil || u.validUntil > today)
+      .map(u => ({
+        ...u,
+        stift: u.unitType === "Stift" ? u.name : (stiftByCode[u.stiftCode] || "")
+      }));
+
+    // Lägg till Trossamfundet (unitId=1, namnändrat från CMS-namnet)
+    const tross = all.find(u => u.unitId === TROSSAMFUNDET_UNIT_ID);
+    if (tross) {
+      ekonomiska.push({
+        ...tross,
+        name: TROSSAMFUNDET_NAMN,
+        unitType: "Trossamfund",
+        stift: RIKSNIVA_LABEL,
+      });
+    }
+
+    render();
+  } catch (e) {
+    document.getElementById("results").innerHTML =
+      `<div class="error">Kunde inte hämta från UnitAPI: ${escapeHtml(e.message)}.
+       Kontrollera att <code>./start.sh</code> körs och att <code>APIKEY_PROD</code> finns i <code>.env</code>.</div>`;
+    document.getElementById("stats").textContent = "";
+  }
+}
+
+document.getElementById("q").addEventListener("input", render);
+document.getElementById("type-filter").addEventListener("change", render);
+init();
+</script>
+</body>
+</html>

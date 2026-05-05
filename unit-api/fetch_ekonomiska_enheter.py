@@ -34,6 +34,24 @@ PAGE_SIZE = 1000  # OData-server tillåter max 1000
 
 EKONOMISKA_TYPER = {"Stift", "Sammfällighet", "FörsamlingE"}
 
+# unitId=1 är "Kyrkokansliet - Ägarweb" i UnitAPI (unitType=Ingen).
+# Det är CMS-rotnoden men motsvarar organisatoriskt Trossamfundet Svenska
+# kyrkan på riksnivå. Vi byter namn vid export till det som faktiskt avses.
+TROSSAMFUNDET_UNIT_ID = 1
+TROSSAMFUNDET_NAMN = "Trossamfundet Svenska kyrkan"
+
+# Icke-territoriella församlingar (ITF) går inte att identifiera från
+# API-fält - parentUnitId är null på alla FörsamlingE och inga andra
+# fält skiljer dem. Hårdkodad lista enligt Svenska kyrkans officiella
+# förteckning.
+ITF_UNIT_IDS = {
+    97,    # Hovförsamlingen (Stockholm)
+    98,    # Tyska S:ta Gertruds församling (Stockholm)
+    99,    # Finska församlingen (Stockholm)
+    774,   # Karlskrona Amiralitetsförsamling
+    2436,  # Tyska Christinae församling (Göteborg)
+}
+
 
 def load_env(path: Path) -> dict[str, str]:
     env: dict[str, str] = {}
@@ -95,13 +113,27 @@ def main() -> None:
         u for u in units
         if u["unitType"] in EKONOMISKA_TYPER and is_aktuell(u, today)
     ]
+
+    # Lägg till Trossamfundet Svenska kyrkan (unitId=1) - se kommentar ovan
+    trossamfundet = next(
+        (u for u in units if u["unitId"] == TROSSAMFUNDET_UNIT_ID),
+        None,
+    )
+    if trossamfundet:
+        synthetic = dict(trossamfundet)
+        synthetic["name"] = TROSSAMFUNDET_NAMN
+        synthetic["unitType"] = "Trossamfund"
+        ekonomiska.append(synthetic)
+
     ekonomiska.sort(key=lambda u: u["name"].lower())
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with OUT_PATH.open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
         for u in ekonomiska:
-            if u["unitType"] == "Stift":
+            if u["unitId"] == TROSSAMFUNDET_UNIT_ID:
+                stift = "Nationell nivå"
+            elif u["unitType"] == "Stift":
                 stift = u["name"]
             else:
                 stift = stift_by_code.get(u.get("stiftCode") or "", "")
@@ -110,9 +142,11 @@ def main() -> None:
     by_type: dict[str, int] = {}
     for u in ekonomiska:
         by_type[u["unitType"]] = by_type.get(u["unitType"], 0) + 1
+    itf_count = sum(1 for u in ekonomiska if u["unitId"] in ITF_UNIT_IDS)
     print(f"\nSkrev {len(ekonomiska)} aktuella ekonomiska enheter -> {OUT_PATH.relative_to(ROOT.parent)}")
     for t, n in sorted(by_type.items()):
         print(f"  {t}: {n}")
+    print(f"  varav icke-territoriella församlingar (ITF): {itf_count}")
 
 
 if __name__ == "__main__":
