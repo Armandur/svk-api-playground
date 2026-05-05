@@ -34,6 +34,7 @@
     <datalist id="threshold-ticks"><option value="0"><option value="1"><option value="2"><option value="3"><option value="4"><option value="5"><option value="6"><option value="7"><option value="8"><option value="9"></datalist>
     <input type="number" id="threshold-num" value="500">
     <button id="filter-btn" class="filter-btn">Filter</button>
+    <button class="filter-btn no-print" onclick="exportCSV()">Exportera CSV</button>
     <label><input type="checkbox" id="show-unmatched" style="margin-right:3px">Omatchade</label>
     <div class="ctrl-stats">
       <button class="ctrl-stat-btn" title="Sätt tröskel till 5 km" onclick="setThreshold(5000)"><span class="dot" style="background:#c62828"></span><span id="cnt-5k">-</span> &ge;5 km</button>
@@ -278,7 +279,7 @@
   function presetIdx(v) {
     return PRESETS.reduce((bi, p, i) => Math.abs(p - v) < Math.abs(PRESETS[bi] - v) ? i : bi, 0);
   }
-let allRows = [];
+let allRows = [], filteredRows = [];
 let sortCol = 'avstand_m', sortAsc = false;
 
 let filterStift = new Set();
@@ -297,6 +298,26 @@ function setThreshold(val) {
   document.getElementById('threshold').value = presetIdx(val);
   document.getElementById('threshold-num').value = val;
   applyFilter();
+}
+
+function exportCSV() {
+  if (!filteredRows.length) return;
+  const cols = [
+    ["kbr_id","KBR-id"],["namn","Namn"],["stift","Stift"],["typ","Typ"],
+    ["kbr_lat","KBR lat"],["kbr_lng","KBR lng"],
+    ["avstand_platser_m","Avvikelse Platser (m)"],
+    ["avstand_osm_m","Avvikelse OSM (m)"],
+    ["avstand_bv_m","Avvikelse BV (m)"]
+  ];
+  const header = cols.map(c => c[1]).join(",");
+  const rows = filteredRows.map(r =>
+    cols.map(([k]) => { const v = r[k] ?? ""; return String(v).includes(",") ? `"${v}"` : v; }).join(",")
+  );
+  const blob = new Blob(["\ufeff"+[header,...rows].join("\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "kbr-avvikelser-"+new Date().toISOString().slice(0,10)+".csv";
+  a.click(); URL.revokeObjectURL(a.href);
 }
 
 function buildTable(rs) {
@@ -374,7 +395,7 @@ function applyFilter() {
     }
     return (va<vb?-1:va>vb?1:0)*(sortAsc?1:-1);
   });
-  buildTable(rs); buildMarkers(rs);
+  filteredRows = rs; buildTable(rs); buildMarkers(rs);
 }
 
 document.getElementById('threshold').addEventListener('input', function() {
