@@ -5,123 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KBR koordinatkvalitet</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>
-:root { --beige:#FFEBE1; --black:#000; --wine:#7D0037; --gold:#BC8E4C; }
-* { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:var(--black); }
-
-#header { padding:8px 16px; border-bottom:2px solid var(--black);
-  display:flex; align-items:center; gap:10px; background:#fff; min-height:40px; }
-#header h1 { font-size:16px; font-weight:600; color:var(--wine); white-space:nowrap; }
-#header .sub { font-size:11px; color:#777; }
-#header button.export { margin-left:auto; padding:4px 12px; background:var(--wine);
-  color:#fff; border:none; border-radius:3px; font-size:12px; cursor:pointer; white-space:nowrap; }
-
-.tabs-nav { display:flex; border-bottom:2px solid var(--black); background:#fff8f4; overflow-x:auto; }
-.tabs-nav button { padding:7px 14px; font-size:12px; border:none; background:none;
-  cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap; flex-shrink:0; }
-.tabs-nav button.active { border-bottom-color:var(--wine); color:var(--wine); font-weight:600; }
-.tabs-nav button:hover:not(.active) { background:#ffe8de; }
-
-.tab-pane { display:none; }
-.tab-pane.active { display:flex; flex-direction:column; }
-
-#coord-controls { padding:5px 12px; display:flex; gap:8px; align-items:center;
-  background:#fff8f4; border-bottom:1px solid #ddd; font-size:12px;
-  overflow-x:auto; white-space:nowrap; flex-shrink:0; }
-#coord-controls label { font-weight:500; }
-#threshold { width:110px; }
-#threshold-num { width:60px; font-size:12px; }
-.filter-btn { background:none; border:1px solid #ccc; border-radius:3px; cursor:pointer;
-  padding:4px 10px; color:#666; font-size:12px; line-height:1; }
-.filter-btn:hover { background:#ffe8de; border-color:var(--wine); color:var(--wine); }
-.filter-btn.active { border-color:var(--wine); background:#fff0f5; color:var(--wine); font-weight:600; }
-
-#filter-panel { position:fixed; bottom:48px; left:12px; z-index:2000; background:#fff;
-  border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,.15);
-  padding:12px 14px; min-width:220px; max-height:70vh; overflow-y:auto; font-size:12px; }
-#filter-panel .fp-title { font-weight:600; color:var(--wine); font-size:11px; margin:10px 0 4px;
-  border-top:1px solid #f0e8e0; padding-top:8px; }
-#filter-panel .fp-title:first-child { border-top:none; padding-top:0; margin-top:0; }
-#filter-panel label { display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer; }
-#filter-panel label:hover { color:var(--wine); }
-
-@media (max-width:700px) {
-  #filter-panel { bottom:0; left:0; right:0; border-radius:12px 12px 0 0; border-bottom:none; min-width:0; }
-}
-
-.ctrl-stats { display:flex; gap:10px; margin-left:auto; align-items:center; }
-.ctrl-stat { display:flex; align-items:center; gap:4px; color:#444; }
-.dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-#match-info { font-size:10px; color:#999; border-left:1px solid #ddd; padding-left:8px; }
-
-#coord-main { display:flex; flex:1; overflow:hidden; position:relative; }
-#map { flex:1; min-width:0; }
-#sidebar { width:360px; overflow-y:auto; border-left:2px solid var(--black); background:#fff; transition:width .2s,opacity .2s; }
-#coord-main.sidebar-hidden #sidebar { width:0; opacity:0; border-left:none; overflow:hidden; }
-#sidebar-toggle { position:absolute; top:8px; right:8px; z-index:1001;
-  background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:3px; cursor:pointer;
-  padding:4px 9px; color:#666; font-size:14px; line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.2); }
-#sidebar-toggle:hover { background:#ffe8de; border-color:var(--wine); color:var(--wine); }
-#coord-main.sidebar-hidden #sidebar-toggle { right:8px; }
-@media (max-width:700px) {
-  #sidebar { position:absolute; right:0; top:0; bottom:0; z-index:900; box-shadow:-2px 0 8px rgba(0,0,0,.15); width:100%; max-width:360px; }
-  #coord-main.sidebar-hidden #sidebar { width:0; opacity:0; }
-}
-
-.quality-pane { padding:14px 18px; overflow-y:auto; }
-.q-section { margin-bottom:22px; }
-.q-section h2 { font-size:13px; font-weight:600; color:var(--wine); margin-bottom:4px;
-  display:flex; align-items:center; gap:6px; }
-.q-badge { background:var(--wine); color:#fff; font-size:10px; font-weight:600;
-  padding:1px 6px; border-radius:10px; }
-.q-badge.ok { background:#2e7d32; }
-.q-note { font-size:11px; color:#666; margin-bottom:5px; }
-
-.data-table { width:100%; border-collapse:collapse; font-size:11px; }
-.data-table th { background:var(--wine); color:#fff; padding:5px 6px; text-align:left;
-  font-weight:500; cursor:pointer; position:sticky; top:0; z-index:1; }
-.data-table th:hover { background:#a0004a; }
-.data-table td { padding:4px 6px; border-bottom:1px solid #f0e8e0; vertical-align:top; }
-.data-table tr:hover td { background:#fff3ee; }
-
-.dist-badge { display:inline-block; padding:1px 5px; border-radius:8px;
-  font-weight:600; font-size:10px; color:#fff; }
-.src-label { font-size:9px; color:#999; display:block; }
-.row-detail { display:none; }
-tr.expanded + tr.row-detail { display:table-row; }
-tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
-  padding:3px 6px 6px; }
-#no-data { padding:28px 14px; text-align:center; color:#999; font-size:12px; }
-
-.map-btn { background:none; border:1px solid #ccc; border-radius:3px; cursor:pointer;
-  padding:2px 5px; color:#666; font-size:12px; line-height:1; }
-.map-btn:hover { background:#ffe8de; border-color:var(--wine); color:var(--wine); }
-
-#map-legend { position:absolute; bottom:24px; left:8px; z-index:1000;
-  background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:4px;
-  padding:6px 10px; font-size:11px; line-height:1.9; }
-@media (max-width:700px) {
-  #map-legend { bottom:auto; top:52px; left:8px; }
-}
-.leg { display:flex; align-items:center; gap:5px; }
-
-@media print {
-  #header button.export, .tabs-nav, #coord-controls, #coord-main,
-  #tab-koordinater, #map-legend, .no-print { display:none !important; }
-  .tab-pane { display:block !important; height:auto !important; }
-  .quality-pane { height:auto !important; overflow:visible !important; padding:0; }
-  .q-section { page-break-inside:avoid; margin-bottom:14px; }
-  body { background:#fff; font-size:9pt; }
-  .data-table { font-size:8pt; }
-  .data-table th { background:#7D0037 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  #print-header { display:block !important; margin-bottom:10px; padding-bottom:8px;
-    border-bottom:2px solid #000; }
-}
-#print-header { display:none; }
-#print-header h1 { font-size:16pt; color:var(--wine); }
-#print-header p { font-size:9pt; color:#555; }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -379,17 +263,11 @@ tr.expanded + tr.row-detail td { background:#fffaf7; font-size:10px; color:#555;
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/map.js"></script>
 <script>
-const map = L.map('map').setView([62.5, 16], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution:'&copy; OpenStreetMap', maxZoom:19
-}).addTo(map);
-
-let allRows = [], markerLayer = L.layerGroup().addTo(map);
-let unmatchedLayer = L.layerGroup();
-let unmatchedRows = [];
+let allRows = [];
 let sortCol = 'avstand_m', sortAsc = false;
-let highlightMarker = null;
 
 let filterStift = new Set();
 let filterTyp = new Set();
@@ -399,55 +277,6 @@ function updateFilterBtn() {
   const btn = document.getElementById('filter-btn');
   const count = filterStift.size + filterTyp.size + (filterSrc.size < 3 ? 1 : 0);
   btn.textContent = count > 0 ? `Filter (${count})` : 'Filter';
-}
-
-function distColor(m) {
-  return m >= 5000 ? '#c62828' : m >= 1000 ? '#e53935' : m >= 500 ? '#f57c00' : '#fbc02d';
-}
-function fmtDist(m) {
-  if (m == null) return '-';
-  return m >= 1000 ? (m/1000).toFixed(1)+' km' : m+' m';
-}
-
-function renderUnmatched() {
-  unmatchedLayer.clearLayers();
-  unmatchedRows.forEach(r => {
-    L.circleMarker([r.kbr_lat, r.kbr_lng], {radius:3, color:"#999", fillColor:"#bbb", fillOpacity:0.7, weight:1})
-      .bindTooltip("<strong>Ej matchad i Platser/OSM</strong><br>"+r.namn+"<br>"+(r.stift||'')+"<br><span style='color:#999;font-size:10px'>Källa: KBR (Kyrkobyggnadsregistret)</span>", {sticky:true})
-      .addTo(unmatchedLayer);
-  });
-}
-
-function jumpToKBR(lat, lng, name) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  document.querySelector('[data-tab="koordinater"]').classList.add('active');
-  document.getElementById('tab-koordinater').classList.add('active');
-  map.invalidateSize();
-  if (highlightMarker) { map.removeLayer(highlightMarker); highlightMarker = null; }
-  highlightMarker = L.circleMarker([lat, lng], {
-    radius:14, color:'#7D0037', fillColor:'#7D0037', fillOpacity:0.25, weight:2.5,
-  }).bindTooltip(name, {permanent:true, direction:'top'}).addTo(map);
-  map.setView([lat, lng], 15);
-  setTimeout(() => { if (highlightMarker) { map.removeLayer(highlightMarker); highlightMarker = null; } }, 6000);
-}
-function mapBtn(lat, lng, name) {
-  if (lat == null) return '<td class="no-print"></td>';
-  const safe = (name||'').replace(/'/g, "\\'").replace(/"/g,'&quot;');
-  return `<td class="no-print"><button class="map-btn" onclick="jumpToKBR(${lat},${lng},'${safe}')" title="Visa på karta">&#x2316;</button></td>`;
-}
-
-function setCount(id, n, warn) {
-  const el = document.getElementById(id); if (!el) return;
-  el.textContent = n;
-  el.className = warn ? (n > 0 ? 'q-badge' : 'q-badge ok') : 'q-badge';
-}
-function rows(data, fields) {
-  return data.map(r =>
-    '<tr><td>' + fields.map(f => {
-      const v = r[f]; return v == null ? '-' : v === true ? 'Ja' : v === false ? '' : v;
-    }).join('</td><td>') + '</td>' + mapBtn(r.kbr_lat, r.kbr_lng, r.namn) + '</tr>'
-  ).join('');
 }
 
 // Koordinatfliken
@@ -483,33 +312,6 @@ function buildTable(rs) {
     const lngs = [r.kbr_lng, r.platser_lng, r.osm_lng, r.bv_lng].filter(Boolean);
     map.setView([(Math.min(...lats)+Math.max(...lats))/2,(Math.min(...lngs)+Math.max(...lngs))/2], Math.max(map.getZoom(),13));
   }));
-}
-
-function buildMarkers(rs) {
-  markerLayer.clearLayers();
-  rs.forEach(r => {
-    const c = distColor(r.avstand_m);
-    if (r.platser_lat != null) {
-      L.polyline([[r.kbr_lat,r.kbr_lng],[r.platser_lat,r.platser_lng]],
-        {color:'#1565c0',weight:1.5,opacity:0.5,dashArray:'4 4'}).addTo(markerLayer);
-      L.circleMarker([r.platser_lat,r.platser_lng],{radius:4,color:'#1565c0',fillColor:'#42a5f5',fillOpacity:0.8,weight:1.5})
-        .bindTooltip(`<strong>Platser-API</strong><br>${r.namn}<br>${r.platser_lat}, ${r.platser_lng}${r.platser_slug ? `<br><a href="https://www.svenskakyrkan.se/platser/${r.platser_slug}" target="_blank" style="color:#1565c0">Öppna på svenskakyrkan.se</a>` : ''}`,{sticky:true}).addTo(markerLayer);
-    }
-    if (r.osm_lat != null) {
-      L.polyline([[r.kbr_lat,r.kbr_lng],[r.osm_lat,r.osm_lng]],
-        {color:'#2e7d32',weight:1.5,opacity:0.5,dashArray:'2 4'}).addTo(markerLayer);
-      L.circleMarker([r.osm_lat,r.osm_lng],{radius:4,color:'#2e7d32',fillColor:'#66bb6a',fillOpacity:0.8,weight:1.5})
-        .bindTooltip(`<strong>OSM</strong><br>${r.namn}<br>${r.osm_lat}, ${r.osm_lng}`,{sticky:true}).addTo(markerLayer);
-    }
-    if (r.bv_lat != null) {
-      L.polyline([[r.kbr_lat,r.kbr_lng],[r.bv_lat,r.bv_lng]],
-        {color:'#7B1FA2',weight:1.5,opacity:0.5,dashArray:'3 5'}).addTo(markerLayer);
-      L.circleMarker([r.bv_lat,r.bv_lng],{radius:4,color:'#7B1FA2',fillColor:'#CE93D8',fillOpacity:0.8,weight:1.5})
-        .bindTooltip(`<strong>BV</strong><br>${r.namn}<br>${r.bv_lat}, ${r.bv_lng}`,{sticky:true}).addTo(markerLayer);
-    }
-    L.circleMarker([r.kbr_lat,r.kbr_lng],{radius:5,color:c,fillColor:c,fillOpacity:0.9,weight:1.5})
-      .bindTooltip(`<strong>KBR (Kyrkobyggnadsregistret)</strong><br>${r.namn}<br>${r.kbr_lat}, ${r.kbr_lng}<br>Platser: ${fmtDist(r.avstand_platser_m)} | OSM: ${fmtDist(r.avstand_osm_m)} | BV: ${fmtDist(r.avstand_bv_m)}`,{sticky:true}).addTo(markerLayer);
-  });
 }
 
 function applyFilter() {
@@ -607,13 +409,6 @@ const TOMTMARK_TYPER = new Set([
   'Kyrktomt','Trädgård','Kyrkogårdsmur','Vatten',
   'Lekplats','Cykelparkering','Skärmtak','Skolgård',
 ]);
-
-function hvs(lat1, lng1, lat2, lng2) {
-  const R = 6371000, toRad = x => x * Math.PI / 180;
-  const dp = toRad(lat2-lat1), dl = toRad(lng2-lng1);
-  const a = Math.sin(dp/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dl/2)**2;
-  return Math.round(2 * R * Math.asin(Math.sqrt(a)));
-}
 
 let bvDataGlobal = null, kbrAllGlobal = null, kbrBegravningGlobal = null;
 let bvLoaded = false;
