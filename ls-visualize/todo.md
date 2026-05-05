@@ -12,12 +12,6 @@ först. `[KLAR]`-markerade är implementerade.
   Skalan är absolut - en enhet med 200 konton har samma cirkel
   oavsett stift.
 
-- **6. Stiftshov-aggregation vid utzoom**
-  Vid utzoomad nivå byts enhetspolygoner mot en cirkel per stift -
-  storlek = totala konton, färg = anslutningsgrad. Vid inzoom återgår
-  till nuvarande vy. Mest kostsam att implementera men ger renaste
-  helhetsbild.
-
 - `[KLAR]` **7. Choropleth på "anslutningsgrad per stift"**
   Toggle "Stift-choropleth" i Lager-panelen. Diskret 5-stegs skala
   från vinröd (<20%) till mörk grön (>=80%) baserat på % anslutna
@@ -62,13 +56,3 @@ först. `[KLAR]`-markerade är implementerade.
   sparas i URL-hashen. Bara avvikelser från default skrivs ut, så
   basal URL är ren. Stödjer browser-back/forward.
 
-## Datalager
-
-- **11. Tidslinje över anslutningar**
-  Kräver historisk data om när enheterna anslöt - finns inte i
-  CSV:n idag. Skulle kräva annan datakälla.
-
-- **12. Korrelation med andra datapunkter**
-  T.ex. mot ekonomiska_enheter-API:t (storlek, antal anställda) eller
-  KBR (antal byggnader). Bara meningsfullt om vi vill driva en specifik
-  hypotes.
