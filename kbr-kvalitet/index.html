@@ -280,6 +280,61 @@
     return PRESETS.reduce((bi, p, i) => Math.abs(p - v) < Math.abs(PRESETS[bi] - v) ? i : bi, 0);
   }
 let allRows = [], filteredRows = [];
+
+  function pushHash() {
+    const params = new URLSearchParams();
+    const activeTab = document.querySelector(".tab-btn.active")?.dataset.tab || "koordinater";
+    if (activeTab !== "koordinater") params.set("tab", activeTab);
+    const thr = +document.getElementById("threshold-num").value || 0;
+    if (thr !== 500) params.set("thr", thr);
+    if (filterStift.size > 0) params.set("stift", [...filterStift].join(","));
+    if (filterTyp.size > 0) params.set("typ", [...filterTyp].join(","));
+    if (filterSrc.size < 3) params.set("src", [...filterSrc].join(","));
+    if (document.getElementById("show-unmatched").checked) params.set("unmatched", "1");
+    const hash = params.toString();
+    history.replaceState(null, "", hash ? "#" + hash : location.pathname + location.search);
+  }
+
+  function applyHash() {
+    if (location.hash) {
+      const params = new URLSearchParams(location.hash.slice(1));
+      const tab = params.get("tab");
+      if (tab) {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+        const btn = document.querySelector("[data-tab=\"" + tab + "\"]");
+        if (btn) {
+          btn.classList.add("active");
+          document.getElementById("tab-" + tab)?.classList.add("active");
+          if (tab === "koordinater") map.invalidateSize();
+          if (tab === "bv" && !bvLoaded) { bvLoaded = true; loadBvTab(); }
+        }
+      }
+      const thr = params.get("thr");
+      if (thr != null) {
+        document.getElementById("threshold-num").value = +thr;
+        document.getElementById("threshold").value = presetIdx(+thr);
+      }
+      const stift = params.get("stift");
+      if (stift) {
+        filterStift = new Set(stift.split(",").filter(Boolean));
+        document.querySelectorAll("#filter-stifts input").forEach(cb => { cb.checked = filterStift.has(cb.value); });
+      }
+      const typ = params.get("typ");
+      if (typ) {
+        filterTyp = new Set(typ.split(",").filter(Boolean));
+        document.querySelectorAll("#filter-typer input").forEach(cb => { cb.checked = filterTyp.has(cb.value); });
+      }
+      const src = params.get("src");
+      if (src != null) {
+        filterSrc = new Set(src.split(",").filter(Boolean));
+        document.querySelectorAll("#filter-sources input").forEach(cb => { cb.checked = filterSrc.has(cb.value); });
+      }
+      if (params.get("unmatched") === "1") document.getElementById("show-unmatched").checked = true;
+      updateFilterBtn();
+    }
+    applyFilter();
+  }
 let sortCol = 'avstand_m', sortAsc = false;
 
 let filterStift = new Set();
@@ -395,7 +450,7 @@ function applyFilter() {
     }
     return (va<vb?-1:va>vb?1:0)*(sortAsc?1:-1);
   });
-  filteredRows = rs; buildTable(rs); buildMarkers(rs);
+  filteredRows = rs; buildTable(rs); buildMarkers(rs); pushHash();
 }
 
 document.getElementById('threshold').addEventListener('input', function() {
@@ -482,6 +537,7 @@ document.getElementById('show-unmatched').addEventListener('change', function() 
     map.removeLayer(unmatchedLayer);
     if (leg) leg.style.display = 'none';
   }
+  pushHash();
 });
 document.getElementById('sidebar-toggle').addEventListener('click', () => {
   document.getElementById('coord-main').classList.toggle('sidebar-hidden');
@@ -665,6 +721,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   if (btn.dataset.tab === 'koordinater') map.invalidateSize();
   if (btn.dataset.tab === 'bv' && !bvLoaded) { bvLoaded = true; loadBvTab(); }
+  pushHash();
 }));
 
 // Ladda data
@@ -698,7 +755,7 @@ fetch('data/report.json').then(r=>r.json()).then(data => {
     tDiv.appendChild(lbl);
   });
 
-  applyFilter();
+  applyHash();
 
   fetch("data/kbr_all.json").then(r=>r.ok?r.json():null).catch(()=>null).then(kbrAll => {
     if (!kbrAll) return;
