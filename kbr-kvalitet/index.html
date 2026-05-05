@@ -316,7 +316,7 @@ function buildTable(rs) {
             + chip(hb, r.avstand_bv_m,      '#7B1FA2', 'BV',      r.bv_lat,      r.bv_lng)
             + kbrChip
             + '</div>';
-    html += `<tr class="data-row" data-idx="${i}"><td>${b}</td><td>${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
+    html += `<tr class="data-row" data-idx="${i}"><td>${b}</td><td>${r.skydd ? '<span class="kml-badge">KML</span> ' : ''}${r.namn}</td><td>${(r.stift||'').replace(' stift','')}</td></tr>
     <tr class="row-detail"><td colspan="3">
       <strong>KBR (Kyrkobyggnadsregistret)</strong> ${r.kbr_lat}, ${r.kbr_lng}<br>
       ${hp ? `<strong>Platser-API</strong> ${r.platser_lat}, ${r.platser_lng}${r.platser_slug ? ` | <a href="https://www.svenskakyrkan.se/platser/${r.platser_slug}" target="_blank" style="color:#1565c0">svenskakyrkan.se/platser/${r.platser_slug}</a>` : ''}<br>` : ''}
@@ -527,7 +527,7 @@ function renderBvTab() {
       if (dist >= thr) coordAvvikelse.push({...bv, kbr_lat: kbr.kbr_lat, kbr_lng: kbr.kbr_lng, avstand_m: dist});
     });
   coordAvvikelse.sort((a, b) => b.avstand_m - a.avstand_m);
-  setCount('cnt-bv-koord', coordAvvikelse.length, true);
+  setCount('cnt-bv-koord', coordAvvikelse.length);
   document.getElementById('tbody-bv-koord').innerHTML = coordAvvikelse.map(r =>
     `<tr><td><span class="dist-badge" style="background:${distColor(r.avstand_m)}">${fmtDist(r.avstand_m)}</span></td>
     <td>${r.namn}</td><td>${r.stift||''}</td><td style="font-size:10px">${r.enhet||''}</td>
@@ -537,7 +537,7 @@ function renderBvTab() {
   // KBR-kyrkor utan BV-koppling
   const bvKbrIds = new Set(bvData.filter(r => r.kbr_id).map(r => r.kbr_id));
   const kbrUtanBv = kbrAll ? kbrAll.filter(c => !bvKbrIds.has(c.kbr_id)) : [];
-  setCount('cnt-bv-kbr-saknar', kbrAll ? kbrUtanBv.length : '?', !!kbrAll);
+  setCount('cnt-bv-kbr-saknar', kbrAll ? kbrUtanBv.length : '?');
   document.getElementById('tbody-bv-kbr-saknar').innerHTML = kbrAll
     ? kbrUtanBv.map(c => `<tr><td>${c.namn}</td><td>${c.stift||''}</td><td>${c.kbr_id}</td>${mapBtn(c.kbr_lat, c.kbr_lng, c.namn)}</tr>`).join('')
       || '<tr><td colspan="4" style="color:#2e7d32;font-style:italic">Alla KBR-kyrkor har BV-koppling</td></tr>'
@@ -555,7 +555,7 @@ function renderBvTab() {
     if (dist >= thr) begrAvvikelse.push({...bv, kbr_lat: kbr.kbr_lat, kbr_lng: kbr.kbr_lng, avstand_m: dist});
   });
   begrAvvikelse.sort((a, b) => b.avstand_m - a.avstand_m);
-  setCount('cnt-bv-begr-koord', begrAvvikelse.length, true);
+  setCount('cnt-bv-begr-koord', begrAvvikelse.length);
   document.getElementById('tbody-bv-begr-koord').innerHTML = begrAvvikelse.map(r =>
     '<tr><td><span class="dist-badge" style="background:' + distColor(r.avstand_m) + '">' + fmtDist(r.avstand_m) + '</span></td>' +
     '<td>' + r.namn + '</td><td>' + (r.stift||'') + '</td><td style="font-size:10px">' + (r.enhet||'') + '</td>' +
@@ -563,7 +563,7 @@ function renderBvTab() {
   ).join('') || '<tr><td colspan="5" style="color:#2e7d32;font-style:italic">Inga avvikelser</td></tr>';
   const bvBegrKbrIds = new Set(bvData.filter(r => r.typ === 'Begravningsplats' && r.kbr_id).map(r => r.kbr_id));
   const kbrBegrUtanBv = kbrBegravning ? kbrBegravning.filter(c => !bvBegrKbrIds.has(c.kbr_id)) : [];
-  setCount('cnt-bv-begr-saknar', kbrBegravning ? kbrBegrUtanBv.length : '?', !!kbrBegravning);
+  setCount('cnt-bv-begr-saknar', kbrBegravning ? kbrBegrUtanBv.length : '?');
   document.getElementById('tbody-bv-begr-saknar').innerHTML = kbrBegravning
     ? kbrBegrUtanBv.map(c => '<tr><td>' + c.namn + '</td><td>' + (c.stift||'') + '</td><td>' + c.kbr_id + '</td>' + mapBtn(c.kbr_lat, c.kbr_lng, c.namn) + '</tr>').join('')
       || '<tr><td colspan="4" style="color:#2e7d32;font-style:italic">Alla KBR-begravningsplatser har BV-koppling</td></tr>'
@@ -697,54 +697,54 @@ fetch('data/report.json').then(r=>r.json()).then(data => {
 
 fetch('data/quality.json').then(r=>r.json()).then(q => {
   // Datum
-  setCount('cnt-omojligt', q.datum_omojligt.length, true);
+  setCount('cnt-omojligt', q.datum_omojligt.length);
   document.getElementById('tbody-omojligt').innerHTML = rows(q.datum_omojligt,['namn','stift','nybyggnadFran','invigning','diff_år']);
-  setCount('cnt-lang', q.byggnadstid_lang.length, false);
+  setCount('cnt-lang', q.byggnadstid_lang.length);
   document.getElementById('tbody-lang').innerHTML = rows(q.byggnadstid_lang,['namn','stift','nybyggnadFran','invigning','byggnadstid']);
-  setCount('cnt-samma', q.datum_samma_ar.length, false);
+  setCount('cnt-samma', q.datum_samma_ar.length);
   document.getElementById('tbody-samma').innerHTML = rows(q.datum_samma_ar,['namn','stift','år','funktion']);
-  setCount('cnt-saknas', q.datum_saknas.length, true);
+  setCount('cnt-saknas', q.datum_saknas.length);
   document.getElementById('tbody-saknas').innerHTML = q.datum_saknas.map(r =>
     `<tr><td>${r.namn}</td><td>${r.stift}</td><td>${r.saknas}</td><td>${r.invigning??r.nybyggnadFran??'-'}</td>${mapBtn(r.kbr_lat,r.kbr_lng,r.namn)}</tr>`).join('');
 
   // Koordinatkvalitet
-  setCount('cnt-utanfor', q.koord_utanfor.length, true);
+  setCount('cnt-utanfor', q.koord_utanfor.length);
   document.getElementById('tbody-utanfor').innerHTML = rows(q.koord_utanfor,['namn','stift','kbr_lat','kbr_lng']);
-  setCount('cnt-rundad', q.koord_rundad.length, false);
+  setCount('cnt-rundad', q.koord_rundad.length);
   document.getElementById('tbody-rundad').innerHTML = rows(q.koord_rundad,['namn','stift','kbr_lat','kbr_lng','kbr_x','kbr_y']);
-  setCount('cnt-duplikat-koord', q.koord_duplikat.length, true);
+  setCount('cnt-duplikat-koord', q.koord_duplikat.length);
   document.getElementById('tbody-duplikat-koord').innerHTML = q.koord_duplikat.map(g =>
     `<tr><td>${g.kyrkor.map(k=>k.namn).join(', ')}</td><td>${g.kbr_lat}</td><td>${g.kbr_lng}</td>${mapBtn(g.kbr_lat,g.kbr_lng,g.kyrkor[0].namn)}</tr>`).join('');
 
   // Namnkvalitet
-  setCount('cnt-namn-dup', q.namn_duplikat.length, false);
+  setCount('cnt-namn-dup', q.namn_duplikat.length);
   document.getElementById('tbody-namn-dup').innerHTML = q.namn_duplikat.map(g =>
     `<tr><td>${g.namn}</td><td>${g.stift}</td><td>${g.kyrkor.length}</td><td style="font-size:10px">${g.kyrkor.map(k=>k.kbr_id).join(', ')}</td>${mapBtn(g.kyrkor[0]?.kbr_lat,g.kyrkor[0]?.kbr_lng,g.namn)}</tr>`).join('');
 
   // Status
-  setCount('cnt-ej-aktiv', q.status_ej_aktiv.length, true);
+  setCount('cnt-ej-aktiv', q.status_ej_aktiv.length);
   document.getElementById('tbody-ej-aktiv').innerHTML = rows(q.status_ej_aktiv,['namn','stift','invigning','anvandningsfrekvens']);
-  setCount('cnt-funk-andrad', q.funktion_andrad.length, false);
+  setCount('cnt-funk-andrad', q.funktion_andrad.length);
   document.getElementById('tbody-funk-andrad').innerHTML = rows(q.funktion_andrad,['namn','stift','ursprunglig','nuvarande']);
 
   // Komplettering
-  setCount('cnt-raa', q.raa_saknas.length, false);
+  setCount('cnt-raa', q.raa_saknas.length);
   document.getElementById('tbody-raa').innerHTML = rows(q.raa_saknas,['namn','stift','invigning','skyddEnligtKML']);
-  setCount('cnt-byggarea', q.byggarea_saknas.length, false);
+  setCount('cnt-byggarea', q.byggarea_saknas.length);
   document.getElementById('tbody-byggarea').innerHTML = rows(q.byggarea_saknas,['namn','stift','invigning']);
-  setCount('cnt-fastighet', q.fastighet_saknas.length, false);
+  setCount('cnt-fastighet', q.fastighet_saknas.length);
   document.getElementById('tbody-fastighet').innerHTML = rows(q.fastighet_saknas,['namn','stift','invigning']);
-  setCount('cnt-planform', q.planform_saknas.length, false);
+  setCount('cnt-planform', q.planform_saknas.length);
   document.getElementById('tbody-planform').innerHTML = rows(q.planform_saknas,['namn','stift','invigning']);
-  setCount('cnt-material', q.material_saknas.length, false);
+  setCount('cnt-material', q.material_saknas.length);
   document.getElementById('tbody-material').innerHTML = rows(q.material_saknas,['namn','stift','saknar','materialStomme','materialFasad']);
-  setCount('cnt-tillg-prog', q.tillg_ej_prog.length, false);
+  setCount('cnt-tillg-prog', q.tillg_ej_prog.length);
   document.getElementById('tbody-tillg-prog').innerHTML = rows(q.tillg_ej_prog,['namn','stift','program','anpassning']);
-  setCount('cnt-ej-tillg', q.ej_tillganglig.length, false);
+  setCount('cnt-ej-tillg', q.ej_tillganglig.length);
   document.getElementById('tbody-ej-tillg').innerHTML = rows(q.ej_tillganglig,['namn','stift','anpassning','program']);
-  setCount('cnt-andrad', q.andrad_gammal.length, false);
+  setCount('cnt-andrad', q.andrad_gammal.length);
   document.getElementById('tbody-andrad').innerHTML = rows(q.andrad_gammal,['namn','stift','invigning','andradDatum','skapadDatum']);
-  setCount('cnt-agare', q.agare_mismatch.length, false);
+  setCount('cnt-agare', q.agare_mismatch.length);
   document.getElementById('tbody-agare').innerHTML = rows(q.agare_mismatch,['namn','stift','agandeEnhet','geografiskEnhet']);
 }).catch(() => {});
 

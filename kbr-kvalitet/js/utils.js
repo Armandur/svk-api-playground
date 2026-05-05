@@ -14,10 +14,10 @@ function fmtDist(m) {
   return m >= 1000 ? (m/1000).toFixed(1)+' km' : m+' m';
 }
 
-function setCount(id, n, warn) {
+function setCount(id, n) {
   const el = document.getElementById(id); if (!el) return;
   el.textContent = n;
-  el.className = warn ? (n > 0 ? 'q-badge' : 'q-badge ok') : 'q-badge';
+  el.className = n === 0 ? 'q-badge ok' : 'q-badge';
 }
 
 function mapBtn(lat, lng, name) {

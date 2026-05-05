@@ -77,8 +77,10 @@ body { font-family:system-ui,Arial,sans-serif; background:var(--beige); color:va
 .q-section { margin-bottom:22px; }
 .q-section h2 { font-size:13px; font-weight:600; color:var(--wine); margin-bottom:4px;
   display:flex; align-items:center; gap:6px; }
-.q-badge { background:var(--wine); color:#fff; font-size:10px; font-weight:600;
-  padding:1px 6px; border-radius:10px; }
+.q-badge { background:var(--wine); color:#fff; font-size:12px; font-weight:600;
+  padding:2px 8px; border-radius:10px; }
+.kml-badge { background:#7D0037; color:#fff; font-size:9px; font-weight:600;
+  padding:1px 4px; border-radius:3px; vertical-align:middle; }
 .q-badge.ok { background:#2e7d32; }
 .q-note { font-size:11px; color:#666; margin-bottom:5px; }
 
