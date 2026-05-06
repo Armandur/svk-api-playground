@@ -1181,6 +1181,7 @@ function renderSummary() {
       <td>${escapeHtml(STIFT_STAD[namn] || namn)}</td>
       <td>${s.ja_enheter}/${s.totalt_enheter}</td>
       <td class="pct">${pct(s.ja_enheter, s.totalt_enheter)}</td>
+      <td class="bar-cell">${bar(s.ja_enheter, s.totalt_enheter)}</td>
       <td>${fmtInt(s.ja_konton)}/${fmtInt(s.totalt_konton)}</td>
       <td class="pct">${pct(s.ja_konton, s.totalt_konton)}</td>
       <td class="bar-cell">${bar(s.ja_konton, s.totalt_konton)}</td>
@@ -1192,11 +1193,12 @@ function renderSummary() {
     totEnhJa += tross.ja_enheter;
     totK += tross.totalt_konton;
     totKJa += tross.ja_konton;
-    trossRow = `<tr class="separator"><td colspan="6"></td></tr>
+    trossRow = `<tr class="separator"><td colspan="7"></td></tr>
       <tr class="tross-row">
         <td>Kyrkokansliet</td>
         <td>${tross.ja_enheter}/${tross.totalt_enheter}</td>
         <td class="pct">${pct(tross.ja_enheter, tross.totalt_enheter)}</td>
+        <td class="bar-cell">${bar(tross.ja_enheter, tross.totalt_enheter)}</td>
         <td>${fmtInt(tross.ja_konton)}/${fmtInt(tross.totalt_konton)}</td>
         <td class="pct">${pct(tross.ja_konton, tross.totalt_konton)}</td>
         <td class="bar-cell">${bar(tross.ja_konton, tross.totalt_konton)}</td>
@@ -1215,13 +1217,14 @@ function renderSummary() {
     <div class="tab-panel" data-panel="stift">
       <table>
         <thead><tr>
-          <th>Stift</th><th>Enheter</th><th></th><th>Konton</th><th></th><th></th>
+          <th>Stift</th><th>Enheter</th><th></th><th></th><th>Konton</th><th></th><th></th>
         </tr></thead>
         <tbody>${rows}${trossRow}
           <tr class="total">
             <td>Totalt</td>
             <td>${totEnhJa}/${totEnh}</td>
             <td class="pct">${pct(totEnhJa, totEnh)}</td>
+            <td class="bar-cell">${bar(totEnhJa, totEnh)}</td>
             <td>${fmtInt(totKJa)}/${fmtInt(totK)}</td>
             <td class="pct">${pct(totKJa, totK)}</td>
             <td class="bar-cell">${bar(totKJa, totK)}</td>
