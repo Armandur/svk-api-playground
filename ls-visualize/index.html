@@ -265,13 +265,9 @@ header .stats b { color: var(--wine); font-weight: 600; }
     background: transparent; max-width: none;
   }
 
-  /* Statspanel: tighta tabellen och dölj enhets-kolumnerna - konton +
-     bar räcker. Flikraden får horisontell scroll vid trångt utrymme. */
+  /* Statspanel: tighta tabellen. Flikraden får horisontell scroll
+     vid trångt utrymme. */
   .summary table { font-size: 11px; }
-  .summary th:nth-child(2),
-  .summary td:nth-child(2),
-  .summary th:nth-child(3),
-  .summary td:nth-child(3) { display: none; }
   .tabs { overflow-x: auto; flex-wrap: nowrap; }
   .tabs button {
     flex-shrink: 0; min-height: 44px; padding: 10px 12px;
