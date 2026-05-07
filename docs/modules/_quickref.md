@@ -7,6 +7,23 @@ export APIKEY='din-svk-api-nyckel'
 export AZURE_KEY='din-azure-apim-subscription-key'   # behövs bara för CalendarAPI
 ```
 
+## Bönewebben - tända ljus och böner
+
+```bash
+# Metadata för allhelgona-eventet (totalt antal ljus + böner)
+curl -s "https://be.svenskakyrkan.se/api/event/allhelgona/" | jq '.data.metadata, .data.candles.count, .data.prayers.count'
+
+# Senaste 20 ljusen med text
+curl -s "https://be.svenskakyrkan.se/api/event/allhelgona/candles-with-text/20/0/" | jq '.data.thoughts[] | {created, text}'
+
+# Geo-positioner i tag allhelgona2025 (paginera 1000 åt gången)
+curl -s "https://be.svenskakyrkan.se/api/geo-positions/tags/allhelgona2025/candles/1000/0/" | jq '.data.metadata'
+
+# Topp 5 kyrkor med flest ljus
+curl -s "https://be.svenskakyrkan.se/api/geo-positions/tags/allhelgona2025/candles/1000/0/" \
+  | jq '.data.rooms.results | sort_by(-.count) | .[0:5]'
+```
+
 ## CalendarAPI - sök events
 
 ```bash

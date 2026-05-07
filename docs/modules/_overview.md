@@ -24,6 +24,7 @@ prenumeration; "(öppet)" = ingen auth krävs.
 
 | Tjänst | Stil | Modul-fil | Bas-URL prod | Prod-auth | Test-auth |
 |---|---|---|---|---|---|
+| Bönewebben | REST | [BONEWEBBEN](#BONEWEBBEN) | `https://be.svenskakyrkan.se/api/` | (öppet) | - |
 | CalendarAPI | REST + OAuth2 | [CALENDARAPI](#CALENDARAPI) | `https://svk-apim-prod.azure-api.net/calendar/v1` | ✓ Azure-key | - |
 | Kyrkoåret + bibeltexter | REST | [CHURCHCALENDAR](#CHURCHCALENDAR) | `https://www.svenskakyrkan.se/webapi/api-v2/` | ✓ publik nyckel | - |
 | Enhetsinformation | REST | [ENHETSINFORMATION](#ENHETSINFORMATION) | `https://api.svenskakyrkan.se/enhetsinfo/v2` | ✗ 403 Access denied | ✗ 302 |
@@ -45,6 +46,8 @@ prenumeration; "(öppet)" = ingen auth krävs.
 - **Enhetsinformation** kräver fortfarande separat prenumeration -
   status 403 "Access denied". Tjänsten kanske är begränsad till
   internanvändning.
+- **Bönewebben** är inte listad i någon SVK-portal - upptäcktes via
+  `be.svenskakyrkan.se/allhelgona/karta/`. Helt öppet, ingen nyckel.
 
 ## Gemensam autentisering
 
