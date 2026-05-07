@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Allhelgona - topplatser</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="title">
+    <h1>Allhelgona <em>topplatser</em></h1>
+    <p class="sub">Var tänds flest ljus på Bönewebben? <span id="meta-summary">–</span></p>
+  </div>
+  <div class="filters">
+    <input type="search" id="search" placeholder="Sök plats..." autocomplete="off">
+    <select id="stift-filter" aria-label="Stift">
+      <option value="">Alla stift</option>
+    </select>
+    <select id="year-filter" aria-label="Sortera på år">
+      <option value="total" selected>Total 2020-2025</option>
+    </select>
+  </div>
+</header>
+
+<main>
+  <table id="board">
+    <thead>
+      <tr>
+        <th class="r"><abbr title="Placering">#</abbr></th>
+        <th>Plats</th>
+        <th class="hide-narrow">Stift / församling / pastorat</th>
+        <th>Per år</th>
+        <th class="r"><span id="ljus-header">Ljus 2020-2025</span></th>
+      </tr>
+    </thead>
+    <tbody id="rows">
+      <tr><td colspan="5" class="loading">Laddar...</td></tr>
+    </tbody>
+  </table>
+  <p id="status" class="status">–</p>
+</main>
+
+<footer>
+  Data från <code>be.svenskakyrkan.se</code>. Stift, pastorat och
+  församling bestäms via point-in-polygon mot Svenska kyrkans
+  kartlager - och eftersom indelningen ändras över tid används rätt
+  års karta för respektive år. Platser utan match är typiskt
+  utlandsförsamlingar.
+  <a href="../">Tillbaka till svk-api-playground</a>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

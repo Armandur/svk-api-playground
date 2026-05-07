@@ -13,6 +13,7 @@ name: Deploy to Pages
 #   - kyrkoaret-widget/            - Dagens kyrkohögtid (publik endpoint)
 #   - unit-api/                    - Aktuella ekonomiska enheter
 #   - allhelgona-replay/           - Tidsreplay av tända ljus (Bönewebben)
+#   - allhelgona-topplatser/       - Leaderboard 2020-2025 per plats
 #
 # Trigger:
 #   - Dagligen 04:00 UTC - bygger om alla projekt med färsk data
@@ -49,6 +50,8 @@ on:
       - '!unit-api/**.md'
       - 'allhelgona-replay/**'
       - '!allhelgona-replay/**.md'
+      - 'allhelgona-topplatser/**'
+      - '!allhelgona-topplatser/**.md'
       - '.github/workflows/pages-deploy.yml'
 
 permissions:
@@ -238,6 +241,16 @@ jobs:
              allhelgona-replay/data/candles-*.json \
              _deploy/allhelgona-replay/data/
 
+          # allhelgona-topplatser - datat är historiskt fryst och
+          # committat. Inget bygge behövs.
+          mkdir -p _deploy/allhelgona-topplatser/data
+          cp allhelgona-topplatser/index.html \
+             allhelgona-topplatser/style.css \
+             allhelgona-topplatser/app.js \
+             _deploy/allhelgona-topplatser/
+          cp allhelgona-topplatser/data/leaderboard.json \
+             _deploy/allhelgona-topplatser/data/
+
           cat > _deploy/index.html <<'HTML'
           <!doctype html>
           <html lang="sv">
@@ -334,6 +347,14 @@ jobs:
               <p>Tidsbaserad replay av tända ljus på Svenska kyrkans Bönewebben
               under allhelgona 2025 - 16 559 flammor på en mörk Sverigekarta.</p>
               <span class="url">/allhelgona-replay/</span>
+            </a>
+
+            <a class="card" href="allhelgona-topplatser/">
+              <h2>Allhelgona-topplatser</h2>
+              <p>Leaderboard över de 3 444 platser där flest digitala ljus
+              tänts på Bönewebben 2020-2025 - med stift, pastorat och
+              församling per år.</p>
+              <span class="url">/allhelgona-topplatser/</span>
             </a>
 
             <a class="card" href="signage-platser/">
