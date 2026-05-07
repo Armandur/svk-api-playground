@@ -350,12 +350,15 @@
     infoOpen.classList.remove("show");
   });
 
-  // Tangentbord: mellanslag = play/pause
+  // Tangentbord: mellanslag = play/pause, H = toggla UI
   document.addEventListener("keydown", (e) => {
     if (e.target.tagName === "INPUT") return;
     if (e.code === "Space") {
       e.preventDefault();
       playing ? pause() : play();
+    } else if (e.key === "h" || e.key === "H") {
+      e.preventDefault();
+      document.body.classList.toggle("ui-hidden");
     }
   });
 

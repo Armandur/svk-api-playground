@@ -288,6 +288,20 @@ button.ghost {
 .info-fab.show { display: inline-flex; align-items: center; justify-content: center; }
 .info-fab:hover { color: var(--accent); border-color: var(--accent); }
 
+/* ---------- UI dolt (cinema-läge, tangent H) ---------- */
+body.ui-hidden .topbar,
+body.ui-hidden .controls,
+body.ui-hidden .info,
+body.ui-hidden .info-fab,
+body.ui-hidden .leaflet-control-container {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.topbar, .controls, .info, .info-fab, .leaflet-control-container {
+  transition: opacity 0.25s ease;
+}
+
 /* ---------- Leaflet override ---------- */
 .leaflet-control-zoom a {
   background-color: var(--bg) !important;
