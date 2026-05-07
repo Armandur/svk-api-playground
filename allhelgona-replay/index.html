@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Allhelgona-replay</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="map"></div>
+
+<header class="topbar">
+  <div class="title">
+    <h1>Allhelgona <em>replay</em></h1>
+    <p class="sub">Tända ljus på Bönewebben - allhelgona <span id="meta-tag">2025</span></p>
+  </div>
+  <div class="clock">
+    <div class="clock-date" id="clock-date">–</div>
+    <div class="clock-time" id="clock-time">–</div>
+    <div class="clock-counter"><span id="lit-count">0</span> av <span id="lit-total">–</span> tända</div>
+  </div>
+</header>
+
+<div class="controls">
+  <button id="btn-play" class="play" aria-label="Spela / pausa">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path id="play-icon" d="M6 4l14 8-14 8z" fill="currentColor"/>
+    </svg>
+  </button>
+
+  <div class="slider-wrap">
+    <canvas id="heatmap" aria-hidden="true"></canvas>
+    <input type="range" id="slider" min="0" max="1000" value="0" step="1" aria-label="Tidpunkt">
+  </div>
+
+  <div class="speeds" role="group" aria-label="Hastighet">
+    <button data-speed="600">10 min/s</button>
+    <button data-speed="3600" class="active">1 tim/s</button>
+    <button data-speed="21600">6 tim/s</button>
+    <button data-speed="86400">1 dygn/s</button>
+  </div>
+
+  <button id="btn-reset" class="ghost" aria-label="Börja om">Börja om</button>
+</div>
+
+<aside class="info hidden" id="info">
+  <p>
+    Replay av <strong id="info-total">–</strong> tända ljus på Svenska kyrkans
+    <a href="https://be.svenskakyrkan.se/allhelgona/karta/" target="_blank" rel="noopener">Bönewebben</a>
+    under allhelgona <span id="info-tag">2025</span> - från 1 oktober till och
+    med 10 november.
+  </p>
+  <p>
+    Tryck <strong>play</strong> eller dra i tidslinjen för att spela upp
+    tändningarna i kronologisk ordning. Heatmappen bakom slidern visar var
+    aktiviteten är som tätast.
+  </p>
+  <p class="muted-line">
+    Data från det öppna API:et på <code>be.svenskakyrkan.se/api</code>,
+    <span id="info-fetched">hämtat –</span>.
+  </p>
+  <p class="muted-line">Byggt med inspiration av idé från Pompom.</p>
+  <button id="info-close" aria-label="Stäng">×</button>
+</aside>
+
+<button id="info-open" class="info-fab show" aria-label="Om">i</button>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="app.js"></script>
+</body>
+</html>

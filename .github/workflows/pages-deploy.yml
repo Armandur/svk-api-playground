@@ -12,6 +12,7 @@ name: Deploy to Pages
 #   - signage-platser/             - Härnösands domkyrka som demo
 #   - kyrkoaret-widget/            - Dagens kyrkohögtid (publik endpoint)
 #   - unit-api/                    - Aktuella ekonomiska enheter
+#   - allhelgona-replay/           - Tidsreplay av tända ljus (Bönewebben)
 #
 # Trigger:
 #   - Dagligen 04:00 UTC - bygger om alla projekt med färsk data
@@ -46,6 +47,8 @@ on:
       - '!kyrkoaret-widget/**.md'
       - 'unit-api/**'
       - '!unit-api/**.md'
+      - 'allhelgona-replay/**'
+      - '!allhelgona-replay/**.md'
       - '.github/workflows/pages-deploy.yml'
 
 permissions:
@@ -161,6 +164,23 @@ jobs:
       - name: Build kyrkoaret-widget
         run: uv run kyrkoaret-widget/build_data.py
 
+      # allhelgona-replay: hämta alla ljus med tag allhelgona2025 från
+      # Bönewebbens öppna API. Datat för helgen 2025 är historiskt och
+      # ändras knappt - cache återanvänds tills build-skriptet ändras.
+      # Ingen secret, ingen API-nyckel.
+      - name: Restore allhelgona-replay cache
+        id: ahrep-cache
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
+        with:
+          path: allhelgona-replay/data/candles.json
+          key: ahrep-built-${{ hashFiles('allhelgona-replay/build_data.py') }}
+          restore-keys: ahrep-built-
+
+      - name: Build allhelgona-replay
+        if: github.event_name != 'push' || steps.ahrep-cache.outputs.cache-hit != 'true'
+        run: uv run allhelgona-replay/build_data.py
+
       - name: Prepare deploy folder
         run: |
           # osm-konsistenscheck
@@ -218,6 +238,14 @@ jobs:
           cp unit-api/data/ekonomiska_enheter.json \
              unit-api/data/ekonomiska_enheter.csv \
              _deploy/unit-api/data/
+
+          # allhelgona-replay
+          mkdir -p _deploy/allhelgona-replay/data
+          cp allhelgona-replay/index.html \
+             allhelgona-replay/style.css \
+             allhelgona-replay/app.js \
+             _deploy/allhelgona-replay/
+          cp allhelgona-replay/data/candles.json _deploy/allhelgona-replay/data/
 
           cat > _deploy/index.html <<'HTML'
           <!doctype html>
@@ -308,6 +336,13 @@ jobs:
               <p>Dagens kyrkohögtid med liturgisk färg, kyrkoårsdel och dagens
               bibeltexter.</p>
               <span class="url">/kyrkoaret-widget/</span>
+            </a>
+
+            <a class="card" href="allhelgona-replay/">
+              <h2>Allhelgona-replay</h2>
+              <p>Tidsbaserad replay av tända ljus på Svenska kyrkans Bönewebben
+              under allhelgona 2025 - 16 559 flammor på en mörk Sverigekarta.</p>
+              <span class="url">/allhelgona-replay/</span>
             </a>
 
             <a class="card" href="signage-platser/">
