@@ -9,13 +9,14 @@ och spelar upp tändningarna i tidsordning.
 ## Snabbstart
 
 ```bash
-# Hämta datat (~500 KB JSON, en gång räcker)
-uv run build_data.py
-
-# Servera (från repo-roten)
+# Datat (data/candles.json) är committat i repo:t - inget bygge behövs.
+# Servera direkt från repo-roten:
 cd ..
 ./start.sh
 # -> http://localhost:8088/allhelgona-replay/
+
+# För att hämta om från API:et (sällsynt - datat är fryst):
+uv run allhelgona-replay/build_data.py --force
 ```
 
 Mellanslag växlar play/paus. Hastighetsknapparna mappar sim-tid mot

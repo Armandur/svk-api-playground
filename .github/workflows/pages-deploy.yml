@@ -164,22 +164,11 @@ jobs:
       - name: Build kyrkoaret-widget
         run: uv run kyrkoaret-widget/build_data.py
 
-      # allhelgona-replay: hämta alla ljus med tag allhelgona2025 från
-      # Bönewebbens öppna API. Datat för helgen 2025 är historiskt och
-      # ändras knappt - cache återanvänds tills build-skriptet ändras.
-      # Ingen secret, ingen API-nyckel.
-      - name: Restore allhelgona-replay cache
-        id: ahrep-cache
-        if: github.event_name == 'push'
-        uses: actions/cache@v4
-        with:
-          path: allhelgona-replay/data/candles.json
-          key: ahrep-built-${{ hashFiles('allhelgona-replay/build_data.py') }}
-          restore-keys: ahrep-built-
-
-      - name: Build allhelgona-replay
-        if: github.event_name != 'push' || steps.ahrep-cache.outputs.cache-hit != 'true'
-        run: uv run allhelgona-replay/build_data.py
+      # allhelgona-replay: datat är historiskt fryst (helgen 2025 är förbi)
+      # och checkat in i repo:t som candles.json. Inget byggsteg behövs -
+      # detta gör projektet immunt mot att SVK rensar tag/allhelgona2025
+      # inför 2026. Kör `uv run allhelgona-replay/build_data.py --force`
+      # lokalt för att hämta om.
 
       - name: Prepare deploy folder
         run: |

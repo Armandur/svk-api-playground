@@ -6,6 +6,11 @@
 """Hämtar alla tända ljus från senaste allhelgonahelgen via Bönewebbens
 publika API och skriver till data/candles.json i kompakt format.
 
+Datat är historiskt fryst (allhelgona 2025 är förbi) och checkas in i
+repo:t. Skriptet skippar om filen redan finns - kör med `--force` för
+att hämta om från API:et. Detta skyddar mot att SVK rensar datat inför
+allhelgona 2026.
+
 Inga secrets - API:et är öppet.
 
 Format:
@@ -87,6 +92,13 @@ def fetch_all() -> list[tuple[int, float, float]]:
 
 
 def main() -> None:
+    force = "--force" in sys.argv
+    if OUT.exists() and not force:
+        size_kb = OUT.stat().st_size // 1024
+        print(f"{OUT.relative_to(ROOT.parent)} finns redan ({size_kb} KB). "
+              f"Kör med --force för att hämta om.", file=sys.stderr)
+        return
+
     print(f"Hämtar tag={TAG} ...", file=sys.stderr)
     candles = fetch_all()
     candles.sort(key=lambda c: c[0])
