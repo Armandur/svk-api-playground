@@ -12,7 +12,7 @@
 (() => {
   "use strict";
 
-  const DATA_URL = "data/candles.json";
+  const INDEX_URL = "data/index.json";
   const PULSE_DURATION_MS = 4500;   // hur länge ett nytt ljus pulsar
   const RECENT_WINDOW_S   = 4 * 3600; // ljus tända inom X sek räknas som "aktiva" (för pulse-färg)
 
@@ -219,6 +219,7 @@
   const litTotal = $("#lit-total");
   const infoTotal = $("#info-total");
   const infoTag = $("#info-tag");
+  const infoPeriod = $("#info-period");
   const metaTag = $("#meta-tag");
   const infoFetched = $("#info-fetched");
   const info = $("#info");
@@ -230,6 +231,10 @@
   });
   const timeFmt = new Intl.DateTimeFormat("sv-SE", {
     hour: "2-digit", minute: "2-digit",
+    timeZone: "Europe/Stockholm",
+  });
+  const periodFmt = new Intl.DateTimeFormat("sv-SE", {
+    day: "numeric", month: "short",
     timeZone: "Europe/Stockholm",
   });
 
@@ -362,35 +367,87 @@
     }
   });
 
-  /* ---------------- Init ---------------- */
-  fetch(DATA_URL)
-    .then((r) => r.json())
-    .then((d) => {
-      candles = d.candles;
-      totalCount = d.count;
-      firstTs = candles[0][0];
-      lastTs = candles[candles.length - 1][0];
-      replayTs = firstTs;
+  /* ---------------- År-byte ---------------- */
+  const yearPicker = $("#year-picker");
+  let currentYear = null;
+  let yearIndex = null;
 
-      // Default-vy: hela Sverige - bounds satt redan vid map-init,
-      // anropar igen för säkerhets skull eftersom container kan ha
-      // bytt storlek mellan init och data-load.
+  function buildYearPicker(years) {
+    yearPicker.innerHTML = "";
+    for (const entry of years) {
+      const b = document.createElement("button");
+      b.dataset.year = String(entry.year);
+      b.title = `Ladda allhelgona ${entry.year}`;
+      b.innerHTML =
+        `<span class="yr-label">${entry.year}</span>` +
+        `<span class="yr-count">${entry.count.toLocaleString("sv-SE")} ljus</span>`;
+      b.addEventListener("click", () => loadYear(entry.year));
+      yearPicker.appendChild(b);
+    }
+  }
+
+  function setActiveYear(year) {
+    currentYear = year;
+    yearPicker.querySelectorAll("button").forEach((b) =>
+      b.classList.toggle("active", Number(b.dataset.year) === year));
+  }
+
+  function loadYear(year) {
+    const entry = yearIndex.years.find((e) => e.year === year);
+    if (!entry) return;
+    pause();
+    setActiveYear(year);
+
+    // Visa "laddar"-tillstånd
+    litCount.textContent = "0";
+    litTotal.textContent = "...";
+
+    return fetch(`data/${entry.file}`)
+      .then((r) => r.json())
+      .then((d) => {
+        candles = d.candles;
+        totalCount = d.count;
+        firstTs = candles[0][0];
+        lastTs = candles[candles.length - 1][0];
+        replayTs = firstTs;
+        litIndex = 0;
+
+        litTotal.textContent = totalCount.toLocaleString("sv-SE");
+        infoTotal.textContent = totalCount.toLocaleString("sv-SE");
+        infoTag.textContent = String(year);
+        metaTag.textContent = String(year);
+        const firstStr = periodFmt.format(new Date(firstTs * 1000));
+        const lastStr  = periodFmt.format(new Date(lastTs * 1000));
+        infoPeriod.textContent = `${firstStr} - ${lastStr} ${year}`;
+        infoFetched.textContent =
+          `hämtat ${d.fetched.replace("T", " ").replace("Z", " UTC")}`;
+
+        syncUiToReplayTs();
+        candleLayer.redraw();
+        drawHeatmap();
+      })
+      .catch((err) => {
+        console.error(err);
+        alert(`Kunde inte ladda ${entry.file}.`);
+      });
+  }
+
+  /* ---------------- Init ---------------- */
+  fetch(INDEX_URL)
+    .then((r) => r.json())
+    .then((idx) => {
+      yearIndex = idx;
+      buildYearPicker(idx.years);
+
+      // Default-vy: hela Sverige
       map.fitBounds(SWEDEN_BOUNDS, { padding: [10, 10] });
 
-      litTotal.textContent = totalCount.toLocaleString("sv-SE");
-      infoTotal.textContent = totalCount.toLocaleString("sv-SE");
-      const tagYear = (d.tag.match(/\d{4}/) || ["?"])[0];
-      infoTag.textContent = tagYear;
-      metaTag.textContent = tagYear;
-      infoFetched.textContent =
-        `hämtat ${d.fetched.replace("T", " ").replace("Z", " UTC")}`;
-
-      syncUiToReplayTs();
-      candleLayer.redraw();
-      drawHeatmap();
+      // Default-år: senaste i indexet
+      const defaultYear = idx.years[idx.years.length - 1].year;
+      return loadYear(defaultYear);
     })
     .catch((err) => {
       console.error(err);
-      alert("Kunde inte ladda candles.json - kör build_data.py först?");
+      alert("Kunde inte ladda index.json - kör build_data.py först?");
     });
 })();

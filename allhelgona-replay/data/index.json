@@ -1,0 +1,41 @@
+{
+  "fetched": "2026-05-07T18:56:31Z",
+  "years": [
+    {
+      "year": 2020,
+      "tag": "allhelgona2020",
+      "count": 4830,
+      "file": "candles-2020.json"
+    },
+    {
+      "year": 2021,
+      "tag": "allhelgona2021",
+      "count": 5162,
+      "file": "candles-2021.json"
+    },
+    {
+      "year": 2022,
+      "tag": "allhelgona2022",
+      "count": 5930,
+      "file": "candles-2022.json"
+    },
+    {
+      "year": 2023,
+      "tag": "allhelgona2023",
+      "count": 8334,
+      "file": "candles-2023.json"
+    },
+    {
+      "year": 2024,
+      "tag": "allhelgona2024",
+      "count": 7429,
+      "file": "candles-2024.json"
+    },
+    {
+      "year": 2025,
+      "tag": "allhelgona2025",
+      "count": 16559,
+      "file": "candles-2025.json"
+    }
+  ]
+}

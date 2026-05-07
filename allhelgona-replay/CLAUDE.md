@@ -17,23 +17,28 @@ Leaflet-karta.
 
 ## Datapipeline
 
-`build_data.py` paginerar `GET /api/geo-positions/tags/allhelgona2025/candles/{1000}/{offset}/`
-tills tomt svar. Tag:en är hårdkodad till `allhelgona2025` (senaste
-helgen). Output är `data/candles.json` i kompakt array-format:
+`build_data.py` paginerar `GET /api/geo-positions/tags/allhelgona{year}/candles/{1000}/{offset}/`
+för varje år i `YEARS = [2020..2025]` tills tomt svar. Output i `data/`:
+
+- `index.json` - lista över tillgängliga år + totalt antal ljus per år
+  (för år-väljaren i UI:t)
+- `candles-{year}.json` per år, format:
 
 ```json
 {
-  "tag": "allhelgona2025",
-  "fetched": "...",
-  "count": 16586,
-  "first_lit": "2025-04-01T07:18:22Z",
-  "last_lit":  "2026-03-31T12:45:43Z",
+  "year": 2025, "tag": "allhelgona2025",
+  "window_from": "...", "window_to": "...",
+  "fetched": "...", "count": 16559,
   "candles": [[1730476313, 60.913, 14.572], ...]
 }
 ```
 
-Sorteras ASC på `ts` redan i bygget så klienten slipper. Koordinater
-avrundas till 5 decimaler (~1 m) - filstorlek ~500 KB.
+Sorterad ASC på `ts` redan i bygget. Koordinater avrundas till 5 decimaler
+(~1 m). Storlek per år: 2020 ~150 KB, 2025 ~500 KB. Klienten lazy-loadar
+en fil i taget när användaren byter år.
+
+Datat checkas in i repo:t (immunt mot framtida API-rens). `build_data.py`
+skippar år som redan finns - kör med `--force` för att hämta om alla.
 
 API-dokumentation: se `_underlag/bonewebben-api.md` om jag återbesöker
 projektet, eller `/mnt/vmworkspace/bonewebben-api.txt` (ursprunget).

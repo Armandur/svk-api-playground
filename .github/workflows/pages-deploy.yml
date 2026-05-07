@@ -234,7 +234,9 @@ jobs:
              allhelgona-replay/style.css \
              allhelgona-replay/app.js \
              _deploy/allhelgona-replay/
-          cp allhelgona-replay/data/candles.json _deploy/allhelgona-replay/data/
+          cp allhelgona-replay/data/index.json \
+             allhelgona-replay/data/candles-*.json \
+             _deploy/allhelgona-replay/data/
 
           cat > _deploy/index.html <<'HTML'
           <!doctype html>
