@@ -32,7 +32,11 @@ SYNC_DEST = Path("/mnt/vmworkspace/svk-api-playground")
 # Tailscale (Chrome-extension-flödet).
 RSYNC_CMDS = [
     [
-        "rsync", "-a", "--delete",
+        # -a minus -o/-g/dir-times eftersom virtiofs-mounten är `nobody:users`
+        # från Unraid-hostsidan: chown/chgrp och utimensat på kataloger ger
+        # EPERM. Filerna själva får mtime, ägare blir användaren som kör.
+        "rsync", "-a", "--no-owner", "--no-group", "--omit-dir-times",
+        "--delete",
         "--exclude=.env", "--exclude=.env.local",
         "--exclude=.claude/",
         "--exclude=__pycache__/", "--exclude=.venv/",
