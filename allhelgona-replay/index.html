@@ -17,6 +17,20 @@
     <h1>Allhelgona <em>replay</em></h1>
     <p class="sub">Tända ljus på Bönewebben - allhelgona <span id="meta-tag">2025</span></p>
     <div class="year-picker" id="year-picker" role="group" aria-label="Välj år"></div>
+    <div class="mobile-row">
+      <select id="year-select" aria-label="Välj år"></select>
+      <button id="cinema-toggle" class="icon-btn" aria-label="Dölj gränssnitt" title="Dölj gränssnitt (H)">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M12 5c-5.5 0-9.5 4.5-10 7 .5 2.5 4.5 7 10 7s9.5-4.5 10-7c-.5-2.5-4.5-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button id="info-toggle" class="icon-btn" aria-label="Om" title="Om">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v2h-2zm0 4h2v7h-2z" fill="currentColor"/>
+        </svg>
+      </button>
+      <span class="mobile-counter"><span id="lit-count-m">0</span> / <span id="lit-total-m">–</span></span>
+    </div>
   </div>
   <div class="clock">
     <div class="clock-date" id="clock-date">–</div>
@@ -44,7 +58,19 @@
     <button data-speed="86400">1 dygn/s</button>
   </div>
 
-  <button id="btn-reset" class="ghost" aria-label="Börja om">Börja om</button>
+  <select id="speed-select" aria-label="Hastighet">
+    <option value="600">10 min/s</option>
+    <option value="3600" selected>1 tim/s</option>
+    <option value="21600">6 tim/s</option>
+    <option value="86400">1 dygn/s</option>
+  </select>
+
+  <button id="btn-reset" class="ghost" aria-label="Börja om" title="Börja om">
+    <span class="reset-text">Börja om</span>
+    <svg class="reset-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path d="M12 5V2L7 7l5 5V8c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z" fill="currentColor"/>
+    </svg>
+  </button>
 </div>
 
 <aside class="info hidden" id="info">

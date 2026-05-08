@@ -118,6 +118,64 @@ body {
   opacity: 0.85;
 }
 
+/* Mobil-rad i title-blocket - select, cinema-toggle, counter.
+ * Visas bara under 600px (se media query längre ner). */
+.mobile-row {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.mobile-row select,
+#speed-select {
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 6px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.mobile-row select:focus,
+#speed-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.mobile-row select option,
+#speed-select option {
+  background: var(--bg);
+  color: var(--text);
+}
+.icon-btn {
+  width: 30px; height: 30px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.icon-btn:hover {
+  background: var(--accent-dim);
+  color: var(--text);
+  border-color: var(--accent);
+}
+body.ui-hidden #cinema-toggle { /* dolt med övrigt UI */ }
+.mobile-counter {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.mobile-counter span { color: var(--text); font-weight: 600; }
+
+#speed-select { display: none; }
+.reset-icon { display: none; }
+
 .clock { text-align: right; min-width: 180px; }
 .clock-date {
   font-size: 11px;
@@ -381,22 +439,60 @@ body.ui-hidden .leaflet-control-container {
 /* ---------- Mobil ---------- */
 @media (max-width: 600px) {
   .topbar {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: stretch;
     padding: 8px;
+    gap: 8px;
   }
-  .topbar .clock {
-    text-align: left;
+  .topbar .title {
+    flex: 1 1 auto;
+    padding: 8px 10px;
     min-width: 0;
-    align-self: stretch;
   }
-  .clock-time { font-size: 22px; }
+  .topbar h1 { font-size: 13px; }
+  .topbar .sub { display: none; }
+  .year-picker { display: none; }
+  .mobile-row { display: flex; }
+
+  /* Klock-blocket på mobil: bara datum + tid, ingen counter (den ligger
+   * i mobile-row). Komprimerat. */
+  .topbar .clock {
+    flex: 0 0 auto;
+    text-align: right;
+    min-width: 0;
+    padding: 8px 10px;
+  }
+  .clock-date {
+    font-size: 9px;
+    letter-spacing: 0.05em;
+  }
+  .clock-time { font-size: 18px; margin-top: 0; }
+  .clock-counter { display: none; }
+
   .info { right: 14px; max-width: none; }
+  /* FAB:en ersätts av info-knappen i headern på mobil */
+  .info-fab, .info-fab.show { display: none; }
+
   .controls {
     bottom: 32px;
     bottom: max(32px, calc(32px + env(safe-area-inset-bottom)));
     padding: 8px;
-    gap: 6px;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
-  #slider { flex: 1 1 100%; order: 10; }
-  .speeds button { padding: 5px 8px; font-size: 11px; }
+  .speeds { display: none; }
+  #speed-select { display: inline-block; flex-shrink: 0; }
+  #slider { flex: 1 1 auto; order: 0; }
+  .slider-wrap { flex: 1 1 auto; min-width: 80px; }
+
+  /* Reset blir ikon-only på mobil */
+  #btn-reset {
+    width: 38px; height: 38px;
+    padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+  }
+  .reset-text { display: none; }
+  .reset-icon { display: inline-block; }
 }

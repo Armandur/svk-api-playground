@@ -213,10 +213,14 @@
   const btnReset = $("#btn-reset");
   const playIcon = $("#play-icon");
   const speedBtns = document.querySelectorAll(".speeds button");
+  const speedSelect = $("#speed-select");
+  const cinemaToggle = $("#cinema-toggle");
   const clockDate = $("#clock-date");
   const clockTime = $("#clock-time");
   const litCount = $("#lit-count");
   const litTotal = $("#lit-total");
+  const litCountM = $("#lit-count-m");
+  const litTotalM = $("#lit-total-m");
   const infoTotal = $("#info-total");
   const infoTag = $("#info-tag");
   const infoPeriod = $("#info-period");
@@ -293,7 +297,9 @@
     const date = new Date(replayTs * 1000);
     clockDate.textContent = dateFmt.format(date);
     clockTime.textContent = timeFmt.format(date);
-    litCount.textContent = litIndex.toLocaleString("sv-SE");
+    const litStr = litIndex.toLocaleString("sv-SE");
+    litCount.textContent = litStr;
+    litCountM.textContent = litStr;
     const span = lastTs - firstTs || 1;
     slider.value = String(Math.round(((replayTs - firstTs) / span) * 1000));
   }
@@ -302,6 +308,9 @@
     speedFactor = s;
     speedBtns.forEach((b) =>
       b.classList.toggle("active", Number(b.dataset.speed) === s));
+    if (speedSelect && Number(speedSelect.value) !== s) {
+      speedSelect.value = String(s);
+    }
   }
 
   function updatePlayBtn() {
@@ -335,6 +344,17 @@
   });
   speedBtns.forEach((b) =>
     b.addEventListener("click", () => setSpeed(Number(b.dataset.speed))));
+  speedSelect.addEventListener("change", () =>
+    setSpeed(Number(speedSelect.value)));
+
+  cinemaToggle.addEventListener("click", () => {
+    document.body.classList.toggle("ui-hidden");
+  });
+
+  $("#info-toggle").addEventListener("click", () => {
+    info.classList.toggle("hidden");
+    infoOpen.classList.toggle("show", info.classList.contains("hidden"));
+  });
 
   slider.addEventListener("input", () => {
     const span = lastTs - firstTs || 1;
@@ -369,11 +389,13 @@
 
   /* ---------------- År-byte ---------------- */
   const yearPicker = $("#year-picker");
+  const yearSelect = $("#year-select");
   let currentYear = null;
   let yearIndex = null;
 
   function buildYearPicker(years) {
     yearPicker.innerHTML = "";
+    yearSelect.innerHTML = "";
     for (const entry of years) {
       const b = document.createElement("button");
       b.dataset.year = String(entry.year);
@@ -383,13 +405,24 @@
         `<span class="yr-count">${entry.count.toLocaleString("sv-SE")} ljus</span>`;
       b.addEventListener("click", () => loadYear(entry.year));
       yearPicker.appendChild(b);
+
+      const opt = document.createElement("option");
+      opt.value = String(entry.year);
+      opt.textContent = `${entry.year} - ${entry.count.toLocaleString("sv-SE")} ljus`;
+      yearSelect.appendChild(opt);
     }
   }
+
+  yearSelect.addEventListener("change", () =>
+    loadYear(Number(yearSelect.value)));
 
   function setActiveYear(year) {
     currentYear = year;
     yearPicker.querySelectorAll("button").forEach((b) =>
       b.classList.toggle("active", Number(b.dataset.year) === year));
+    if (Number(yearSelect.value) !== year) {
+      yearSelect.value = String(year);
+    }
   }
 
   function loadYear(year) {
@@ -401,6 +434,8 @@
     // Visa "laddar"-tillstånd
     litCount.textContent = "0";
     litTotal.textContent = "...";
+    litCountM.textContent = "0";
+    litTotalM.textContent = "...";
 
     return fetch(`data/${entry.file}`)
       .then((r) => r.json())
@@ -412,8 +447,10 @@
         replayTs = firstTs;
         litIndex = 0;
 
-        litTotal.textContent = totalCount.toLocaleString("sv-SE");
-        infoTotal.textContent = totalCount.toLocaleString("sv-SE");
+        const totalStr = totalCount.toLocaleString("sv-SE");
+        litTotal.textContent = totalStr;
+        litTotalM.textContent = totalStr;
+        infoTotal.textContent = totalStr;
         infoTag.textContent = String(year);
         metaTag.textContent = String(year);
         const firstStr = periodFmt.format(new Date(firstTs * 1000));
