@@ -57,6 +57,8 @@ publiceras under <https://armandur.github.io/svk-api-playground/>:
 - **unit-api** - sökbar lista över ekonomiska enheter
 - **signage-platser** - signage-demo med Härnösands domkyrka
 - **kyrkoaret-widget** - kyrkoårs-widget med dagens högtid
+- **PDF-bokhylla** - Kyrkoordningen, alla SvKB och biskopsbrev som statisk
+  3D-bokhylla med inbyggda läsare
 
 Cache används flitigt: data som ändras sällan (t.ex. shapefiles per
 år) återanvänds mellan körningar och byggs bara om vid script-ändring.
