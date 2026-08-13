@@ -1,0 +1,30 @@
+{
+  "bokhylla": {
+    "repository": "Armandur/bokhylla",
+    "ref": "49a2968a40b251fe4bab3b231731bc7b52a988ec"
+  },
+  "grupper": [
+    {
+      "namn": "kyrkoordningen",
+      "minst_antal": 117,
+      "tillatet_saknade": []
+    },
+    {
+      "namn": "svkb-samtliga",
+      "minst_antal": 376,
+      "tillatet_saknade": [
+        "svkb-2005-2",
+        "svkb-2014-6",
+        "svkb-2014-8",
+        "svkb-2023-3"
+      ]
+    },
+    {
+      "namn": "biskopsbrev",
+      "minst_antal": 13,
+      "tillatet_saknade": []
+    }
+  ],
+  "max_pdf_mib": 900,
+  "max_pages_mib": 950
+}

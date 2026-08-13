@@ -14,6 +14,7 @@ name: Deploy to Pages
 #   - unit-api/                    - Aktuella ekonomiska enheter
 #   - allhelgona-replay/           - Tidsreplay av tända ljus (Bönewebben)
 #   - allhelgona-topplatser/       - Leaderboard 2020-2025 per plats
+#   - pdf-bokhylla/                - Kyrkoordning, SvKB och biskopsbrev
 #
 # Trigger:
 #   - Dagligen 04:00 UTC - bygger om alla projekt med färsk data
@@ -22,6 +23,8 @@ name: Deploy to Pages
 #
 # Krav:
 #   - Repo-secret APIKEY_PROD (Svenska kyrkans API-nyckel)
+#   - Repo-secret SVK_ODATA_API_KEY (PDF-gruppernas OData-nyckel)
+#   - Repo-secret BOKHYLLA_READ_TOKEN (read-only checkout av bokhylla)
 #   - Settings -> Pages -> Source: GitHub Actions
 
 on:
@@ -52,6 +55,8 @@ on:
       - '!allhelgona-replay/**.md'
       - 'allhelgona-topplatser/**'
       - '!allhelgona-topplatser/**.md'
+      - 'pdf-bokhylla/**'
+      - 'scripts/retry_command.py'
       - '.github/workflows/pages-deploy.yml'
 
 permissions:
@@ -75,6 +80,41 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
+      - name: Läs pinnad bokhylla-version
+        id: pdf-config
+        run: |
+          repository="$(jq -r '.bokhylla.repository' pdf-bokhylla/config.json)"
+          ref="$(jq -r '.bokhylla.ref' pdf-bokhylla/config.json)"
+          if ! [[ "$ref" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Fel: pdf-bokhylla/config.json måste ange en fullständig commit-SHA" >&2
+            exit 1
+          fi
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checka ut pinnad bokhylla-version
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.pdf-config.outputs.repository }}
+          ref: ${{ steps.pdf-config.outputs.ref }}
+          path: _bokhylla
+          token: ${{ secrets.BOKHYLLA_READ_TOKEN }}
+
+      - name: Installera bokhyllas beroenden
+        run: uv sync --directory _bokhylla/backend --frozen
+
+      - name: Bestäm PDF-cachevecka
+        id: pdf-cache-week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Återställ PDF-cache
+        uses: actions/cache@v4
+        with:
+          path: _bokhylla/backend/pdfdata
+          key: pdfdata-${{ steps.pdf-config.outputs.ref }}-${{ steps.pdf-cache-week.outputs.week }}
+          restore-keys: |
+            pdfdata-${{ steps.pdf-config.outputs.ref }}-
+
       # OSM: dygnsfärsk data behövs, byggs alltid vid schedule/manuell
       # körning. Vid push återanvänds cache om build-skripten inte ändrats.
       - name: Restore OSM cache
@@ -94,10 +134,14 @@ jobs:
         env:
           APIKEY_PROD: ${{ secrets.APIKEY_PROD }}
         run: |
-          uv run osm-konsistenscheck/build_svk.py
-          uv run osm-konsistenscheck/build_kbr.py
-          uv run osm-konsistenscheck/build_osm.py
-          uv run osm-konsistenscheck/build_wikidata.py
+          python3 scripts/retry_command.py --namn "SVK Platser" -- \
+            uv run osm-konsistenscheck/build_svk.py
+          python3 scripts/retry_command.py --namn "KBR" -- \
+            uv run osm-konsistenscheck/build_kbr.py
+          python3 scripts/retry_command.py --namn "OpenStreetMap" -- \
+            uv run osm-konsistenscheck/build_osm.py
+          python3 scripts/retry_command.py --namn "Wikidata" -- \
+            uv run osm-konsistenscheck/build_wikidata.py
           uv run osm-konsistenscheck/build_diff.py
 
       # KBR: byggnadsregistret ändras sällan. Cache baseras på build-skriptets
@@ -364,6 +408,25 @@ jobs:
               <span class="url">/signage-platser/</span>
             </a>
 
+            <a class="card" href="pdf-bokhylla/kyrkoordningen/">
+              <h2>Kyrkoordning och gällande bestämmelser</h2>
+              <p>Kapitel och avdelningar ur Kyrkoordningen samt nu gällande
+              Svenska kyrkans bestämmelser.</p>
+              <span class="url">/pdf-bokhylla/kyrkoordningen/</span>
+            </a>
+
+            <a class="card" href="pdf-bokhylla/alla-bestammelser/">
+              <h2>Alla Svenska kyrkans bestämmelser</h2>
+              <p>Den samlade serien SvKB från 1999 och framåt.</p>
+              <span class="url">/pdf-bokhylla/alla-bestammelser/</span>
+            </a>
+
+            <a class="card" href="pdf-bokhylla/biskopsbrev/">
+              <h2>Biskopsbrev</h2>
+              <p>Biskopsbrev som sidtrogna PDF-böcker med blädderläsare.</p>
+              <span class="url">/pdf-bokhylla/biskopsbrev/</span>
+            </a>
+
             <footer>
               Källkod: <a href="https://github.com/Armandur/svk-api-playground">github.com/Armandur/svk-api-playground</a>
             </footer>
@@ -371,6 +434,15 @@ jobs:
           </body>
           </html>
           HTML
+
+      - name: Bygg och validera statisk PDF-bokhylla
+        env:
+          SVK_ODATA_API_KEY: ${{ secrets.SVK_ODATA_API_KEY }}
+        run: |
+          python3 pdf-bokhylla/build.py \
+            --bokhylla _bokhylla \
+            --mal _deploy/pdf-bokhylla \
+            --pages-rot _deploy
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
