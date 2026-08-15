@@ -505,9 +505,9 @@ OAuth2-flödet och OData-aktig sökning.
 
 ### 9. KBR + Riksantikvarieämbetet K-samsök (`kbr-raa/`)
 
-KBR har ett `identitetRAA`-fält per kyrka som är en direktlänk till RAÄ:s
-kulturmiljöregister. K-samsök (SOCH) har ett öppet REST/SPARQL-API:
-`https://kulturarvsdata.se/ksamsok/api`.
+KBR har ett `identitetRAA`-fält per kyrka som är ett BBR-id - direktlänk
+till RAÄ:s Bebyggelseregister via [K-samsök](KSAMSOK.md). API:et är öppet
+och kräver ingen nyckel.
 
 Möjliga vinklar:
 - Berika `kbr-tidslinje/` med skyddsstatus per kyrka (byggnadsminne,

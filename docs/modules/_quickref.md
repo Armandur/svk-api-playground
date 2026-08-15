@@ -93,6 +93,24 @@ curl -s "https://api.svenskakyrkan.se/kbr/api/byggnader?namn=~mora&apikey=${APIK
 curl -s "https://api.svenskakyrkan.se/kbr/api/byggnader?andraddatum=20240101-&apikey=${APIKEY}" | jq
 ```
 
+## K-samsök (RAÄ) - öppet, korslänka från KBR
+
+```bash
+# Hämta ett BBR-objekt direkt via persistent URI (JSON-LD)
+curl -s -H "Accept: application/json" \
+  "https://kulturarvsdata.se/raa/bbr/21400000148207" | jq '.["@graph"][0]'
+
+# Fritextsökning
+curl -s 'https://kulturarvsdata.se/ksamsok/api?method=search&version=1.1&hitsPerPage=5&query=text=runsten'
+
+# Alla bilder kopplade till en byggnad (foton ligger på pub.raa.se)
+curl -s 'https://kulturarvsdata.se/ksamsok/api?method=getRelations&version=1.1&relation=isVisualizedBy&objectId=raa/bbr/21400000148207'
+
+# Korslänka: KBR-id 32494 -> BBR -> K-samsök
+BBR=$(curl -s "https://api.svenskakyrkan.se/kbr/api/byggnad/32494?fields=identitetRAA&apikey=${APIKEY}" | jq -r '.identitetRAA')
+curl -s -H "Accept: application/json" "https://kulturarvsdata.se/raa/bbr/${BBR}" | jq '.["@graph"][0]["ns5:itemLabel"]'
+```
+
 ## Platser - hämta plats
 
 ```bash

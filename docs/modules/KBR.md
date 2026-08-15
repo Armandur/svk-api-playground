@@ -157,7 +157,7 @@ Verifierat mot Linköpings domkyrka (id 32555) och Abilds kyrka (id 35789).
 | `materialStomme` | str | Stommaterial |
 | `materialFasad` | str | Fasadmaterial |
 | `skyddEnligtKML` | str | Skyddsklassning |
-| `identitetRAA` | str | Internt RAÄ-id i KBR. **Obs:** är inte samma som OSM:s `ref:se:raa` som avser fornlämningsnummer. |
+| `identitetRAA` | str | BBR-id (RAÄ:s Bebyggelseregister), 14 siffror. Slå upp i Kringla med `https://www.kringla.nu/kringla/objekt?referens=raa/bbr/{identitetRAA}`. **Obs:** är inte samma som OSM:s `ref:se:raa` som avser fornlämningsnummer. Datakvaliteten i KBR är inte garanterad - se "Kända datafel" nedan. |
 | `teleslinga` | str | Hörselslinga (t.ex. "Teleslinga finns") |
 | `tillganglighetsanpassning` | str | Tillgänglighetsgrad |
 | `handlingsprogramTillganglighet` | str | Handlingsprogram tillgänglighet |
@@ -211,6 +211,35 @@ curl -s "${BASE}/byggnader?limit=1&apikey=${APIKEY}" | jq '.[0] | keys'
 # Alla fält på en specifik byggnad
 curl -s "${BASE}/byggnad/32555?fields=*&apikey=${APIKEY}" | jq 'keys'
 ```
+
+## Kringla-uppslag via `identitetRAA`
+
+Fältet är ett BBR-id ur Riksantikvarieämbetets Bebyggelseregister och
+kan slås upp direkt i Kringla:
+
+```bash
+# Vadstena klosterkyrka (KBR id 32494)
+curl -s "${BASE}/byggnad/32494?fields=id,namn,identitetRAA&apikey=${APIKEY}" | jq
+# -> "identitetRAA": "21400000148207"
+# -> https://www.kringla.nu/kringla/objekt?referens=raa/bbr/21400000148207
+```
+
+Användbart för att länka KBR-objekt vidare till antikvariska
+beskrivningar, foton och fornlämningskontext via RAÄ.
+
+## Kända datafel
+
+KBR:s data är inmatat manuellt och kvaliteten varierar. Bekräftade fel
+(2026-05-12):
+
+- **Linköpings domkyrka (id 32555)** har `identitetRAA = 21400000577362`,
+  vilket i Kringla pekar på **Östra Hargs kyrka**. Samma BBR-id ligger
+  också på Östra Hargs egen post (KBR id 32446) - alltså en dubblett
+  där domkyrkans rätta BBR-id saknas. Koordinaterna för domkyrkan har
+  också observerats vara fel i tidigare utforskningar.
+
+Verifiera alltid `identitetRAA` mot Kringla innan användning i produktion,
+särskilt för enstaka högprofilbyggnader.
 
 ## Användningsfall
 

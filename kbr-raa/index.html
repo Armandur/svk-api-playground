@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>KBR vs K-samsök - korslänkningskvalitet</title>
+<style>
+:root { --bg:#fafafa; --fg:#222; --muted:#777; --accent:#0066cc; --border:#e2e2e2;
+        --bad:#c53030; --warn:#b7791f; --ok:#2f855a; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+       font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+header { background:#fff; border-bottom:1px solid var(--border); padding:20px 32px; }
+header h1 { margin:0 0 4px; font-size:22px; }
+header p { margin:0; color:var(--muted); font-size:13px; }
+main { max-width:1200px; margin:0 auto; padding:24px 32px; }
+.summary { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+           gap:12px; margin-bottom:24px; }
+.summary .card { background:#fff; border:1px solid var(--border); border-radius:6px;
+                 padding:16px; text-align:center; cursor:pointer; transition:border-color 0.15s; }
+.summary .card:hover { border-color:var(--accent); }
+.summary .card.active { border-color:var(--accent); background:#eef5ff; }
+.summary .num { font-size:28px; font-weight:600; }
+.summary .lbl { font-size:12px; color:var(--muted); text-transform:uppercase;
+                letter-spacing:0.5px; margin-top:4px; }
+.summary .num.bad { color:var(--bad); }
+.summary .num.warn { color:var(--warn); }
+.summary .num.ok { color:var(--ok); }
+.filters { margin:16px 0; display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.filters input { padding:6px 10px; border:1px solid var(--border); border-radius:4px;
+                 font-size:14px; width:260px; }
+.filters .hint { color:var(--muted); font-size:12px; }
+table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border);
+        font-size:13px; }
+th, td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left;
+         vertical-align:top; }
+th { background:#f5f5f5; cursor:pointer; user-select:none; font-weight:600; }
+th.sorted::after { content:" \25BC"; color:var(--muted); }
+th.sorted.asc::after { content:" \25B2"; }
+tr:hover { background:#fafafa; }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.tag { display:inline-block; padding:1px 6px; border-radius:3px; font-size:11px;
+       font-weight:500; }
+.tag.match { background:#c6f6d5; color:#22543d; }
+.tag.mismatch { background:#fed7d7; color:#742a2a; }
+.tag.not_found { background:#fefcbf; color:#744210; }
+.tag.error { background:#feb2b2; color:#742a2a; }
+.tag.missing_id { background:#e2e8f0; color:#2d3748; }
+.sim-bar { display:inline-block; width:60px; height:8px; background:#e2e8f0;
+           border-radius:2px; vertical-align:middle; margin-right:6px; overflow:hidden; }
+.sim-bar > div { height:100%; background:var(--accent); }
+.sim-low { background:var(--bad); }
+.sim-mid { background:var(--warn); }
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+.muted { color:var(--muted); }
+.empty { text-align:center; padding:48px; color:var(--muted); }
+footer { margin:32px 0 64px; color:var(--muted); font-size:12px; text-align:center; }
+.duplicate-list { background:#fff; border:1px solid var(--border); border-radius:4px;
+                  padding:12px 16px; margin-top:16px; }
+.duplicate-list h3 { margin:0 0 8px; font-size:14px; }
+.duplicate-list ul { margin:0; padding-left:20px; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>KBR vs K-samsök - korslänkningskvalitet</h1>
+  <p id="meta">Laddar...</p>
+</header>
+<main>
+  <div class="summary" id="summary"></div>
+  <div class="filters">
+    <input type="search" id="search" placeholder="Sök namn, BBR-id, stift, ägande enhet...">
+    <span class="hint">Klicka på en kategori ovan för att filtrera. Klicka på en kolumnrubrik för att sortera.</span>
+  </div>
+  <div id="content"></div>
+  <div id="duplicates"></div>
+  <footer id="footer"></footer>
+</main>
+<script>
+let DATA = null;
+let activeFilter = "mismatch";
+let sortKey = null;
+let sortAsc = true;
+
+const STATUS_LABELS = {
+  match: "Matchar",
+  mismatch: "Namn skiljer sig",
+  not_found: "404 i K-samsök",
+  error: "HTTP-fel (oftast 410)",
+  missing_id: "Saknar identitetRAA",
+};
+
+const STATUS_CLASS = {
+  match: "ok",
+  mismatch: "bad",
+  not_found: "warn",
+  error: "warn",
+  missing_id: "muted",
+};
+
+async function load() {
+  const resp = await fetch("data/report.json");
+  DATA = await resp.json();
+  document.getElementById("meta").textContent =
+    `Kollat ${DATA.results.length} kyrkor mot K-samsök ${new Date(DATA.checked_at).toLocaleString("sv-SE")}. Tröskel för match: similarity >= ${DATA.match_threshold}.`;
+  renderSummary();
+  renderDuplicates();
+  render();
+  document.getElementById("search").addEventListener("input", render);
+}
+
+function renderSummary() {
+  const order = ["match", "mismatch", "not_found", "error", "missing_id"];
+  const total = DATA.results.length;
+  const html = order.map(s => {
+    const n = DATA.summary[s] || 0;
+    const pct = total ? ((n / total) * 100).toFixed(1) : 0;
+    const cls = STATUS_CLASS[s];
+    return `<div class="card" data-status="${s}">
+      <div class="num ${cls}">${n}</div>
+      <div class="lbl">${STATUS_LABELS[s]}</div>
+      <div class="lbl">${pct}%</div>
+    </div>`;
+  }).join("");
+  const dup = DATA.summary.duplicate_groups || 0;
+  const dupHtml = `<div class="card" data-status="duplicates">
+    <div class="num bad">${dup}</div>
+    <div class="lbl">Dubblett-grupper</div>
+    <div class="lbl">samma BBR</div>
+  </div>`;
+  document.getElementById("summary").innerHTML = html + dupHtml;
+  document.querySelectorAll("#summary .card").forEach(el => {
+    el.addEventListener("click", () => {
+      activeFilter = el.dataset.status;
+      document.querySelectorAll("#summary .card").forEach(c => c.classList.toggle("active", c.dataset.status === activeFilter));
+      render();
+    });
+    if (el.dataset.status === activeFilter) el.classList.add("active");
+  });
+}
+
+function kringlaLink(bbr) {
+  return `https://www.kringla.nu/kringla/objekt?referens=raa/bbr/${bbr}`;
+}
+
+function ksamsokLink(bbr) {
+  return `https://kulturarvsdata.se/raa/bbr/${bbr}`;
+}
+
+function simBar(sim) {
+  if (sim == null) return "";
+  const pct = Math.round(sim * 100);
+  const cls = sim < 0.5 ? "sim-low" : sim < 0.8 ? "sim-mid" : "";
+  return `<span class="sim-bar"><div class="${cls}" style="width:${pct}%"></div></span>${sim.toFixed(2)}`;
+}
+
+function render() {
+  const q = document.getElementById("search").value.toLowerCase().trim();
+  let rows;
+  if (activeFilter === "duplicates") {
+    const dupSet = new Set();
+    DATA.duplicates.forEach(d => d.kbr_ids.forEach(id => dupSet.add(id)));
+    rows = DATA.results.filter(r => dupSet.has(r.kbr_id));
+  } else {
+    rows = DATA.results.filter(r => r.status === activeFilter);
+  }
+  if (q) {
+    rows = rows.filter(r =>
+      (r.kbr_namn || "").toLowerCase().includes(q) ||
+      (r.ksamsok_namn || "").toLowerCase().includes(q) ||
+      (r.identitetRAA || "").includes(q) ||
+      (r.stift || "").toLowerCase().includes(q) ||
+      (r.agandeEnhet || "").toLowerCase().includes(q)
+    );
+  }
+
+  if (sortKey) {
+    rows.sort((a, b) => {
+      const va = a[sortKey], vb = b[sortKey];
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return (va > vb ? 1 : va < vb ? -1 : 0) * (sortAsc ? 1 : -1);
+    });
+  }
+
+  if (!rows.length) {
+    document.getElementById("content").innerHTML = `<div class="empty">Inga rader.</div>`;
+    return;
+  }
+
+  const showSim = ["mismatch", "match"].includes(activeFilter);
+  const showKsamsok = activeFilter !== "missing_id";
+
+  const headers = [
+    ["kbr_id", "KBR-id", "num"],
+    ["kbr_namn", "KBR-namn", ""],
+    ["identitetRAA", "BBR-id", "num"],
+    ["ksamsok_namn", "K-samsök-namn", ""],
+    ["similarity", "Likhet", "num"],
+    ["stift", "Stift", ""],
+    ["agandeEnhet", "Ägande enhet", ""],
+    ["links", "Länkar", ""],
+  ].filter(h => {
+    if (h[0] === "similarity") return showSim;
+    if (h[0] === "ksamsok_namn") return showKsamsok;
+    return true;
+  });
+
+  const headHtml = headers.map(([k, lbl, cls]) => {
+    const sortedCls = k === sortKey ? `sorted ${sortAsc ? "asc" : ""}` : "";
+    return `<th class="${sortedCls}" data-key="${k}">${lbl}</th>`;
+  }).join("");
+
+  const bodyHtml = rows.map(r => {
+    const cells = [];
+    cells.push(`<td class="num">${r.kbr_id}</td>`);
+    cells.push(`<td>${escape(r.kbr_namn || "")}</td>`);
+    cells.push(`<td class="num">${r.identitetRAA ? `<a href="${ksamsokLink(r.identitetRAA)}" target="_blank">${r.identitetRAA}</a>` : '<span class="muted">-</span>'}</td>`);
+    if (showKsamsok) {
+      cells.push(`<td>${r.ksamsok_namn ? escape(r.ksamsok_namn) : `<span class="muted">${r.error || "-"}</span>`}</td>`);
+    }
+    if (showSim) {
+      cells.push(`<td class="num">${simBar(r.similarity)}</td>`);
+    }
+    cells.push(`<td>${escape(r.stift || "")}</td>`);
+    cells.push(`<td>${escape(r.agandeEnhet || "")}</td>`);
+    const links = [];
+    if (r.identitetRAA) {
+      links.push(`<a href="${kringlaLink(r.identitetRAA)}" target="_blank">Kringla</a>`);
+    }
+    cells.push(`<td>${links.join(" · ")}</td>`);
+    return `<tr>${cells.join("")}</tr>`;
+  }).join("");
+
+  document.getElementById("content").innerHTML =
+    `<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>
+     <div class="muted" style="margin-top:8px; font-size:12px;">${rows.length} träffar.</div>`;
+
+  document.querySelectorAll("th[data-key]").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.key;
+      if (k === "links") return;
+      if (sortKey === k) sortAsc = !sortAsc;
+      else { sortKey = k; sortAsc = true; }
+      render();
+    });
+  });
+}
+
+function renderDuplicates() {
+  if (!DATA.duplicates.length) return;
+  const idToRow = {};
+  DATA.results.forEach(r => idToRow[r.kbr_id] = r);
+  const items = DATA.duplicates.map(d => {
+    const names = d.kbr_ids.map(id => {
+      const r = idToRow[id];
+      return r ? `<a href="${kringlaLink(d.identitetRAA)}" target="_blank">${escape(r.kbr_namn)}</a> <span class="muted">(KBR ${id})</span>` : `KBR ${id}`;
+    }).join(" + ");
+    return `<li><code>${d.identitetRAA}</code>: ${names}</li>`;
+  }).join("");
+  document.getElementById("duplicates").innerHTML =
+    `<div class="duplicate-list">
+       <h3>Dubblett-grupper - samma BBR-id på flera KBR-byggnader</h3>
+       <ul>${items}</ul>
+     </div>`;
+}
+
+function escape(s) {
+  return String(s).replace(/[<>&"']/g, c => ({
+    "<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+load();
+</script>
+</body>
+</html>

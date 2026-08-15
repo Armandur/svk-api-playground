@@ -31,6 +31,7 @@ prenumeration; "(öppet)" = ingen auth krävs.
 | Församlingskartor | OGC WMS/WFS | [FORSAMLINGSKARTOR](#FORSAMLINGSKARTOR) | `https://flax.svenskakyrkan.se/geoserver/uff/` | (öppet) | (öppet) |
 | Församlingssök (Flax) | REST | [FORSAMLINGSSOK](#FORSAMLINGSSOK) | `https://flax.svenskakyrkan.se/flax/api/` | ✓ prod | ✗ |
 | Kyrkobyggnadsregistret | REST | [KBR](#KBR) | `https://api.svenskakyrkan.se/kbr/api/` | ✓ prod | ✗ 302 |
+| K-samsök (RAÄ, ej SVK) | REST + CQL | [KSAMSOK](#KSAMSOK) | `https://kulturarvsdata.se/ksamsok/api` | (öppet) | - |
 | Platser | REST | [PLATSER](#PLATSER) | `https://api.svenskakyrkan.se/platser/v4` | ✓ prod | ✗ 401 |
 | UnitAPI (Enheter v2) | OData | [UNITAPI](#UNITAPI) | `https://api.svenskakyrkan.se/externwebb/api-v2/odata/` | ✓ prod | ✓ test |
 | Ämnesområden v2 | OData | [AMNESOMRADEN](#AMNESOMRADEN) | `https://api.svenskakyrkan.se/externwebb/api-v2/odata/` | ✓ prod | ✓ test |
@@ -48,6 +49,9 @@ prenumeration; "(öppet)" = ingen auth krävs.
   internanvändning.
 - **Bönewebben** är inte listad i någon SVK-portal - upptäcktes via
   `be.svenskakyrkan.se/allhelgona/karta/`. Helt öppet, ingen nyckel.
+- **K-samsök** drivs av Riksantikvarieämbetet, inte Svenska kyrkan, men
+  ligger med här eftersom KBR:s `identitetRAA` är ett BBR-id som mappar
+  rakt in i `kulturarvsdata.se/raa/bbr/{id}`. Helt öppet, CC0-licens.
 
 ## Gemensam autentisering
 
