@@ -32,18 +32,15 @@
 
   L.control.scale({ imperial: false }).addTo(map);
 
-  // CartoDB DarkMatter passar mörk natthimmel-stämning för flammor.
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> ' +
-        '&copy; <a href="https://carto.com/attributions">CARTO</a> · ' +
-        'data <a href="https://be.svenskakyrkan.se/">Svenska kyrkan</a>',
-      subdomains: "abcd",
-      maxZoom: 18,
-    }
-  ).addTo(map);
+  // OpenFreeMap dark (vektor via MapLibre) passar mörk natthimmel-stämning
+  // för flammor. Kräver ingen nyckel, till skillnad från CARTO.
+  L.maplibreGL({
+    style: "https://tiles.openfreemap.org/styles/dark",
+    attribution:
+      '<a href="https://openfreemap.org">OpenFreeMap</a> ' +
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · ' +
+      'data <a href="https://be.svenskakyrkan.se/">Svenska kyrkan</a>',
+  }).addTo(map);
 
   /* ---------------- Canvas-overlay för ljus ---------------- */
   /* Egen Leaflet-overlay som ritar alla synliga ljus på ett <canvas>
