@@ -18,7 +18,7 @@ Leaflet-karta.
 ## Datapipeline
 
 `build_data.py` paginerar `GET /api/geo-positions/tags/allhelgona{year}/candles/{1000}/{offset}/`
-för varje år i `YEARS = [2020..2025]` tills tomt svar. Output i `data/`:
+för varje år i `YEARS = [2020..2026]` tills tomt svar. Output i `data/`:
 
 - `index.json` - lista över tillgängliga år + totalt antal ljus per år
   (för år-väljaren i UI:t)
@@ -38,7 +38,8 @@ Sorterad ASC på `ts` redan i bygget. Koordinater avrundas till 5 decimaler
 en fil i taget när användaren byter år.
 
 Datat checkas in i repo:t (immunt mot framtida API-rens). `build_data.py`
-skippar år som redan finns - kör med `--force` för att hämta om alla.
+skippar år som redan finns - kör med `--force` för att hämta om alla,
+eller `--year 2026` för att hämta om bara ett pågående år.
 
 API-dokumentation: se `_underlag/bonewebben-api.md` om jag återbesöker
 projektet, eller `/mnt/vmworkspace/bonewebben-api.txt` (ursprunget).

@@ -8,7 +8,8 @@ till data/candles-{year}.json + data/index.json. Klienten lazy-loadar
 det år som är valt.
 
 Datat är historiskt fryst och checkas in i repo:t. Skriptet skippar
-år som redan finns - kör med `--force` för att hämta om alla år.
+år som redan finns - kör med `--force` för att hämta om alla år, eller
+`--year 2026` för att hämta om bara ett pågående år.
 Detta skyddar mot att SVK rensar gamla taggar inför 2026.
 
 Inga secrets - API:et är öppet.
@@ -50,7 +51,7 @@ BATCH = 1000
 MAX_PAGES = 50
 
 # Tagsystemet börjar 2020 - äldre taggar finns inte i API:et.
-YEARS = [2020, 2021, 2022, 2023, 2024, 2025]
+YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026]
 
 TZ = ZoneInfo("Europe/Stockholm")
 
@@ -152,12 +153,15 @@ def write_year(year: int, client: httpx.Client) -> dict | None:
 def main() -> None:
     DATA.mkdir(parents=True, exist_ok=True)
     force = "--force" in sys.argv
+    refresh: set[int] = set()
+    if "--year" in sys.argv:
+        refresh.add(int(sys.argv[sys.argv.index("--year") + 1]))
 
     entries: list[dict] = []
     with httpx.Client(timeout=60) as client:
         for year in YEARS:
             out_path = DATA / f"candles-{year}.json"
-            if out_path.exists() and not force:
+            if out_path.exists() and not force and year not in refresh:
                 # Återanvänd befintlig - läs metadata för index
                 existing = json.loads(out_path.read_text(encoding="utf-8"))
                 entries.append({

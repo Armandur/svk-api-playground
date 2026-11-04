@@ -1,5 +1,5 @@
 {
-  "fetched": "2026-05-07T18:56:31Z",
+  "fetched": "2026-11-04T10:08:21Z",
   "years": [
     {
       "year": 2020,
@@ -36,6 +36,12 @@
       "tag": "allhelgona2025",
       "count": 16559,
       "file": "candles-2025.json"
+    },
+    {
+      "year": 2026,
+      "tag": "allhelgona2026",
+      "count": 12441,
+      "file": "candles-2026.json"
     }
   ]
 }
