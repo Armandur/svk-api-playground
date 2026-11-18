@@ -208,11 +208,11 @@ jobs:
       - name: Build kyrkoaret-widget
         run: uv run kyrkoaret-widget/build_data.py
 
-      # allhelgona-replay: datat är historiskt fryst (helgen 2025 är förbi)
-      # och checkat in i repo:t som candles.json. Inget byggsteg behövs -
-      # detta gör projektet immunt mot att SVK rensar tag/allhelgona2025
-      # inför 2026. Kör `uv run allhelgona-replay/build_data.py --force`
-      # lokalt för att hämta om.
+      # allhelgona-replay: datat är historiskt fryst och checkat in i
+      # repo:t som data/candles-<år>.json. Inget byggsteg behövs, vilket
+      # gör projektet immunt mot att SVK rensar gamla allhelgona-taggar.
+      # Hämta om ett år lokalt med
+      # `uv run allhelgona-replay/build_data.py --year <år>`.
 
       - name: Prepare deploy folder
         run: |
@@ -386,7 +386,7 @@ jobs:
             <a class="card" href="allhelgona-replay/">
               <h2>Allhelgona-replay</h2>
               <p>Tidsbaserad replay av tända ljus på Svenska kyrkans Bönewebben
-              under allhelgona 2025 - 16 559 flammor på en mörk Sverigekarta.</p>
+              under allhelgona 2020–2026. Drygt 60 000 flammor på en mörk Sverigekarta.</p>
               <span class="url">/allhelgona-replay/</span>
             </a>
 
